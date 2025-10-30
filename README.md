@@ -55,6 +55,10 @@ npm run start
 
 ## 🔐 Authentication Flow
 
+Lihat juga: `REMOTE_APP_TOKEN_GUIDE.md` untuk ringkasan remote app & token sharing dari ESSPortal.
+
+Catatan deployment: Bila Update-Data menggunakan domain sendiri (mis. `https://update-data.company.com`), ESSPortal harus menyesuaikan `iframe.src`, `remoteOrigin` pada `postMessage`, dan CSP (`frame-ancestors`/`frame-src`). Detail lengkap ada di `REMOTE_APP_TOKEN_GUIDE.md` bagian Deploy.
+
 ### 1. Token Passing dari Host ke Remote
 
 Ketika ESS-Sigma membuka Update-Data via iframe:
@@ -168,6 +172,97 @@ devServer: {
   port: 3001,
   host: '0.0.0.0'
 }
+```
+
+### Tech Stack
+
+- Nuxt 3 (SPA, ssr: false), Vue 3, Vue Router
+- PrimeVue 4, PrimeIcons, @primeuix/themes (Aura)
+- TailwindCSS, @nuxtjs/google-fonts (Lato)
+- @vueuse/core & @vueuse/nuxt
+- Axios (client-side helpers)
+
+### NPM Scripts
+
+```bash
+npm run dev              # Start dev server (port 3001)
+npm run build            # Build
+npm run start            # Start production build (.output)
+npm run build:production # Build with NODE_ENV=production (Windows)
+npm run start:production # Start with NODE_ENV=production
+npm run generate         # SSG generate (tidak digunakan; app ini SPA)
+npm run preview          # Preview build
+npm run lint             # ESLint
+npm run lint:fix         # ESLint --fix
+npm run type-check       # Nuxt typecheck (TS)
+```
+
+### Nuxt Modules & Plugins
+
+- Modules: TailwindCSS, Google Fonts, Color Mode, PrimeVue
+- Plugins client:
+  - `plugins/iframe-token-handler.client.js` (token receiver, auto-refresh, postMessage)
+  - `plugins/update-data-navigation.client.js` (reset cache saat kembali dari history)
+  - `plugins/ticket-handler.client.js` (opsional; SSO ticket flow)
+  - `plugins/url-sync.client.js`, `plugins/iframe-ready.client.js` (utility)
+
+### Middleware
+
+- `middleware/auth.ts`: cek token hanya di client; jika tidak valid di iframe → minta token ke parent, tidak redirect ke login
+- `middleware/rbac.js`: validasi permissions dari JWT atau `localStorage:user_permissions`; 403 bila tidak memenuhi
+
+## 🧩 Server (Nitro) & Proxy Endpoints
+
+Semua endpoint berada di `server/api/` (base route: `/api`). Menggunakan preset Node.
+
+- `POST /api/ticket-exchange`
+  - Body: `{ ticket }`
+  - Proxy ke `${API_BASE_URL}/auth/ticket-exchange`
+
+- `ALL /api/proxy/[...path]`
+  - Catch-all proxy: meneruskan query, Authorization, dan body
+  - Validasi response JSON (error bila backend mengembalikan HTML)
+
+- `GET /api/proxy/employee/basic-information`
+  - Ambil token dari Authorization/cookies/query
+  - Proxy ke `${API_BASE_URL}/employee/basic-information`
+  - Normalisasi response: `{ success, status, data }`
+
+- `GET /api/proxy/employee/address`
+  - Proxy ke `${API_BASE_URL}/employee/address`
+
+- `GET /api/proxy/master-api?category=...`
+  - Proxy ke `${API_BASE_URL}/master-api` dengan query params
+
+- Struktur lainnya (tersedia via file route):
+  - `/api/proxy/employee/attachments/[id]/(information|preview|download|delete)`
+  - `/api/proxy/employee/attachments/parent/[parent_id]/item/[item_id]/(preview|download)`
+  - `/api/proxy/employee/change-request` (GET/POST)
+  - `/api/proxy/employee/change-request/[id]` (GET/PUT)
+  - `/api/proxy/employee/change-request/[id]/attachments` (POST)
+  - `/api/proxy/employee/change-request/[id]/attachments/[attachmentId]` (DELETE)
+
+## 🧩 Composables Penting (ringkas)
+
+- Auth/komunikasi host: `useAuth.js`, `useAuthenticationCore.js`
+- API & cache: `useApi.js`, `useApiCache.js`, `useMasterData.js`, `useMasterOptions.js`
+- Edit flows/state: `useUnifiedEditState.js`, `useEditModePreservation.js`, `useTabManagement.js`
+- Histori: `useRequestHistory.js`, `useChangeRequestHistory.js`, `useHybridRequestHistory.js`
+- UX/observabilitas: `useErrorHandler.js`, `useToast.js`, `useLogger.js`
+
+## 🗂️ Struktur Direktori (ringkas)
+
+```
+components/                # UI components (common, form, layout, update-data/*)
+composables/               # Reusable state & logic (auth, api, cache, edit flows)
+layouts/update-data.vue    # Layout utama
+middleware/auth.ts         # Auth check (client), iframe-friendly
+middleware/rbac.js         # RBAC dari JWT/localStorage
+pages/                     # Halaman (login, ticket-loading, update-data/*)
+plugins/                   # Iframe token/ticket handlers, navigation reset
+server/api/                # Nitro endpoints (proxy, ticket-exchange)
+assets/css/                # Tailwind & global styles
+config/environment.js      # Konfigurasi env & constants
 ```
 
 ## 📋 Features
