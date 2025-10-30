@@ -1,0 +1,506 @@
+/**
+ * Iframe Token Handler Plugin
+ * Handles token receiving from parent (ESS-Sigma) and auto-refresh
+ * Uses shared auth service for consistent logout behavior
+ */
+import { defineNuxtPlugin } from '#app';
+import envConfig from '~/config/environment.js';
+
+export default defineNuxtPlugin(() => {
+  if (process.server) return;
+
+  // Note: Using local clearTokens function instead of external auth-service
+  // The auth-service.js file doesn't exist, so we handle logout locally
+
+  const tokenStore = {
+    accessToken: null,
+    refreshToken: null,
+    tokenExpiry: null,
+    refreshTimer: null
+  };
+
+  /**
+   * Validate origin untuk keamanan
+   */
+  const isValidOrigin = (origin) => {
+    return envConfig.REMOTE_APP.ALLOWED_ORIGINS.includes(origin);
+  };
+
+  /**
+   * Save token ke storage
+   */
+  const saveTokens = (access_token, refresh_token, expires_in) => {
+    tokenStore.accessToken = access_token;
+    tokenStore.refreshToken = refresh_token;
+
+    // Calculate token expiry time
+    const expiryTime = Date.now() + (expires_in * 1000);
+    tokenStore.tokenExpiry = expiryTime;
+
+    // Save to localStorage for persistence
+    localStorage.setItem('access_token', access_token);
+    localStorage.setItem('refresh_token', refresh_token);
+    localStorage.setItem('token_expiry', expiryTime.toString());
+
+    console.log('[Update-Data] Tokens saved successfully');
+
+    // Setup auto-refresh
+    setupTokenRefresh(expires_in);
+  };
+
+  /**
+   * Setup auto-refresh timer
+   */
+  const setupTokenRefresh = (expires_in) => {
+    // Clear existing timer
+    if (tokenStore.refreshTimer) {
+      clearTimeout(tokenStore.refreshTimer);
+    }
+
+    // Set refresh to happen 5 minutes before expiry
+    const refreshBuffer = envConfig.SECURITY.TOKEN_REFRESH_BUFFER;
+    const refreshTime = (expires_in * 1000) - refreshBuffer;
+
+    tokenStore.refreshTimer = setTimeout(() => {
+      refreshAccessToken();
+    }, refreshTime);
+
+    console.log('[Update-Data] Token refresh scheduled in', Math.floor(refreshTime / 1000), 'seconds');
+  };
+
+  /**
+   * Refresh access token using refresh token
+   */
+  const refreshAccessToken = async () => {
+    try {
+      const refreshToken = tokenStore.refreshToken || localStorage.getItem('refresh_token');
+
+      if (!refreshToken) {
+        console.error('[Update-Data] No refresh token available');
+        notifyParentTokenExpired();
+        return;
+      }
+
+      const response = await fetch(`${envConfig.API_BASE_URL}${envConfig.API_ENDPOINTS.AUTH.REFRESH}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          refresh_token: refreshToken
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Token refresh failed');
+      }
+
+      const data = await response.json();
+
+      if (data.access_token) {
+        saveTokens(
+          data.access_token,
+          data.refresh_token || refreshToken,
+          data.expires_in || 1800 // Default 30 minutes
+        );
+
+        console.log('[Update-Data] Token refreshed successfully');
+      }
+    } catch (error) {
+      console.error('[Update-Data] Token refresh error:', error);
+      notifyParentTokenExpired();
+    }
+  };
+
+  /**
+   * Notify parent that token expired
+   */
+  const notifyParentTokenExpired = () => {
+    if (window.parent !== window) {
+      window.parent.postMessage({
+        type: 'TOKEN_EXPIRED',
+        source: 'update-data'
+      }, envConfig.REMOTE_APP.HOST_ORIGIN);
+    }
+  };
+
+  /**
+   * Get current access token
+   */
+  const getAccessToken = () => {
+    return tokenStore.accessToken || localStorage.getItem('access_token');
+  };
+
+  /**
+   * Request token from parent
+   */
+  const requestTokenFromParent = () => {
+    if (window.parent !== window) {
+      window.parent.postMessage({
+        type: 'REQUEST_TOKEN',
+        source: 'update-data'
+      }, envConfig.REMOTE_APP.HOST_ORIGIN);
+    }
+  };
+
+  /**
+   * Sync authentication data from ESSHost
+   */
+  const syncFromESSHost = () => {
+    try {
+      // Get ESSHost data using ESSHost keys
+      const essToken = localStorage.getItem('access_token');
+      const essUser = localStorage.getItem('user');
+      const essRoles = localStorage.getItem('user_roles');
+      const essPermissions = localStorage.getItem('user_permissions');
+
+      if (!essToken || !essUser) {
+        console.log('[Update-Data] No ESSHost auth data found');
+        return false;
+      }
+
+      // Parse ESSHost data
+      const userData = JSON.parse(essUser);
+      const roles = essRoles ? JSON.parse(essRoles) : [];
+      const permissions = essPermissions ? JSON.parse(essPermissions) : [];
+
+      // Update token store
+      tokenStore.accessToken = essToken;
+      tokenStore.refreshToken = localStorage.getItem('refresh_token');
+      
+      // Calculate token expiry
+      const tokenExpiry = localStorage.getItem('token_expiry');
+      if (tokenExpiry) {
+        tokenStore.tokenExpiry = parseInt(tokenExpiry);
+      }
+
+      // Store in localStorage for persistence (keep ESSHost keys for compatibility)
+      localStorage.setItem('access_token', essToken);
+      if (tokenStore.refreshToken) {
+        localStorage.setItem('refresh_token', tokenStore.refreshToken);
+      }
+      if (tokenStore.tokenExpiry) {
+        localStorage.setItem('token_expiry', tokenStore.tokenExpiry.toString());
+      }
+
+      // Also store in microfrontend format for compatibility
+      localStorage.setItem('auth_token', essToken);
+      localStorage.setItem('auth_user', JSON.stringify({
+        userId: userData.id || userData.user_id,
+        username: userData.email || userData.username,
+        userName: userData.name || userData.user_name,
+        email: userData.email,
+        authCode: userData.auth_code || '',
+        profile: userData.profile,
+        roles: roles,
+        features: permissions,
+        permissions: permissions
+      }));
+
+      if (roles.length > 0) {
+        localStorage.setItem('user_roles', JSON.stringify(roles));
+      }
+      if (permissions.length > 0) {
+        localStorage.setItem('user_permissions', JSON.stringify(permissions));
+      }
+
+      console.log('[Update-Data] ✅ Synced from ESSHost successfully');
+      return true;
+    } catch (error) {
+      console.error('[Update-Data] ❌ Failed to sync from ESSHost:', error);
+      return false;
+    }
+  };
+
+  /**
+   * Send ready message to parent
+   */
+  const notifyParentReady = () => {
+    if (window.parent !== window) {
+      window.parent.postMessage({
+        type: 'IFRAME_READY',
+        source: 'update-data',
+        timestamp: Date.now()
+      }, envConfig.REMOTE_APP.HOST_ORIGIN);
+      console.log('[Update-Data] Ready message sent to parent');
+    }
+  };
+
+
+  /**
+   * Handle visibility change
+   */
+  const handleVisibilityChange = () => {
+    if (!document.hidden) {
+      // Check if token needs refresh when becoming visible
+      const expiryTime = tokenStore.tokenExpiry || parseInt(localStorage.getItem('token_expiry'));
+      const now = Date.now();
+
+      if (expiryTime && (expiryTime - now) < envConfig.SECURITY.TOKEN_REFRESH_BUFFER) {
+        console.log('[Update-Data] Token near expiry, requesting refresh on visibility change');
+        refreshAccessToken();
+      }
+    }
+  };
+
+  /**
+   * Listen for messages from parent
+   */
+  window.addEventListener('message', (event) => {
+    // Validate origin
+    if (!isValidOrigin(event.origin)) {
+      console.warn('[Update-Data] ⚠️ Invalid origin:', event.origin);
+      return;
+    }
+
+    const { type, data, source } = event.data;
+
+    // Only process messages from ESS-Sigma
+    if (source !== 'ess-sigma') {
+      return;
+    }
+
+    console.log('[Update-Data] 📩 Received message from parent:', type);
+
+    switch (type) {
+      case 'AUTH_TOKEN':
+        // Receive token from parent
+        console.log('[Update-Data] 🔑 Received token from parent', {
+          hasAccessToken: !!data?.access_token,
+          hasUserData: !!data?.user,
+          expiresIn: data?.expires_in
+        });
+        if (data?.access_token) {
+          // Check if we already have this exact token to prevent reload loop
+          const currentToken = localStorage.getItem('access_token');
+          const isNewToken = currentToken !== data.access_token;
+
+          saveTokens(
+            data.access_token,
+            data.refresh_token,
+            data.expires_in || 1800
+          );
+
+          // ✅ NEW: Save user data to localStorage
+          if (data?.user) {
+            localStorage.setItem('user', JSON.stringify(data.user));
+            console.log('[Update-Data] ✅ User data saved', {
+              employeeName: data.user.employee_name || data.user.name,
+              email: data.user.email
+            });
+
+            // Dispatch event to notify app about user data update
+            window.dispatchEvent(new CustomEvent('user-data-updated', {
+              detail: data.user
+            }));
+          }
+
+          // ✅ Save user_roles from message data
+          if (data?.user_roles && Array.isArray(data.user_roles)) {
+            localStorage.setItem('user_roles', JSON.stringify(data.user_roles));
+            console.log('[Update-Data] ✅ User roles saved', {
+              rolesCount: data.user_roles.length,
+              roles: data.user_roles.map(r => r.role_name || r.name)
+            });
+          } else {
+            console.warn('[Update-Data] ⚠️ No user_roles in AUTH_TOKEN message');
+          }
+
+          // ✅ Save user_permissions from message data
+          if (data?.user_permissions && Array.isArray(data.user_permissions)) {
+            localStorage.setItem('user_permissions', JSON.stringify(data.user_permissions));
+            console.log('[Update-Data] ✅ User permissions saved', {
+              permissionsCount: data.user_permissions.length
+            });
+          } else {
+            console.warn('[Update-Data] ⚠️ No user_permissions in AUTH_TOKEN message');
+          }
+
+          console.log('[Update-Data] ✅ Token saved successfully', {
+            tokenLength: data.access_token.length,
+            isNewToken,
+            hasTokenStore: !!tokenStore.accessToken,
+            hasUserData: !!data?.user
+          });
+
+
+          // Only trigger page refresh if it's a new/different token and page needs it
+          if (isNewToken && !tokenStore.accessToken && window.location.pathname.includes('/update-data')) {
+            console.log('[Update-Data] 🔄 Reloading page to apply new token');
+            window.location.reload();
+          } else {
+            console.log('[Update-Data] ℹ️ Token saved but no reload needed', {
+              isNewToken,
+              hasTokenStore: !!tokenStore.accessToken,
+              pathname: window.location.pathname
+            });
+          }
+        } else {
+          console.error('[Update-Data] ❌ No access_token in AUTH_TOKEN message', data);
+        }
+        break;
+
+      case 'TOKEN_REFRESH':
+        // Parent notified us to refresh
+        console.log('[Update-Data] 🔄 Parent requested token refresh');
+        refreshAccessToken();
+        break;
+
+      case 'LOGOUT':
+        // Parent initiated logout
+        console.log('[Update-Data] 🚪 Parent initiated logout');
+
+        // Clear all tokens and auth data locally
+        clearTokens();
+
+        // Notify parent that logout is complete
+        if (window.parent !== window) {
+          window.parent.postMessage({
+            type: 'LOGOUT_COMPLETE',
+            source: 'update-data',
+            timestamp: Date.now(),
+            data: {
+              message: 'Logout completed successfully'
+            }
+          }, envConfig.REMOTE_APP.HOST_ORIGIN);
+        }
+
+        console.log('[Update-Data] ✅ Logout completed, all tokens cleared');
+        break;
+
+      case 'HOST_READY':
+        // Parent is ready, we can request token if needed
+        console.log('[Update-Data] ✅ Parent is ready');
+        if (!getAccessToken()) {
+          console.log('[Update-Data] 🔑 No token found, requesting from parent');
+          requestTokenFromParent();
+        }
+        break;
+
+      case 'PARENT_VISIBLE':
+        // Parent became visible, check token status
+        console.log('[Update-Data] 👁️ Parent became visible');
+        handleVisibilityChange();
+        break;
+
+      default:
+        // Unknown message type
+        console.log('[Update-Data] ❓ Unknown message type:', type);
+        break;
+    }
+  });
+
+  // Listen for visibility changes
+  document.addEventListener('visibilitychange', handleVisibilityChange);
+
+  /**
+   * Clear all tokens
+   */
+  const clearTokens = () => {
+    tokenStore.accessToken = null;
+    tokenStore.refreshToken = null;
+    tokenStore.tokenExpiry = null;
+
+    if (tokenStore.refreshTimer) {
+      clearTimeout(tokenStore.refreshTimer);
+      tokenStore.refreshTimer = null;
+    }
+
+    // Clear all auth-related localStorage
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('refresh_token');
+    localStorage.removeItem('token_expiry');
+    localStorage.removeItem('user');
+    localStorage.removeItem('user_roles');
+    localStorage.removeItem('user_permissions');
+    
+    // Also clear microfrontend format
+    localStorage.removeItem('auth_token');
+    localStorage.removeItem('auth_user');
+    localStorage.removeItem('user_roles');
+    localStorage.removeItem('user_permissions');
+
+    console.log('[Update-Data] All tokens and auth data cleared');
+  };
+
+  /**
+   * Initialize: Try to load from storage first, then request from parent
+   */
+  const initialize = () => {
+    console.log('[Update-Data] 🚀 Initializing iframe token handler...');
+
+    // Try to sync from ESSHost first
+    syncFromESSHost();
+
+    // Don't notify parent immediately - let the actual page content handle it
+
+    const storedToken = localStorage.getItem('access_token');
+    const storedExpiry = localStorage.getItem('token_expiry');
+
+    console.log('[Update-Data] 📦 Token check on init:', {
+      hasStoredToken: !!storedToken,
+      tokenLength: storedToken?.length,
+      hasExpiry: !!storedExpiry
+    });
+
+    if (storedToken && storedExpiry) {
+      const expiryTime = parseInt(storedExpiry);
+      const now = Date.now();
+
+      // Check if token is still valid
+      if (expiryTime > now) {
+        tokenStore.accessToken = storedToken;
+        tokenStore.refreshToken = localStorage.getItem('refresh_token');
+        tokenStore.tokenExpiry = expiryTime;
+
+        // Setup refresh for remaining time
+        const remainingTime = expiryTime - now;
+        const refreshBuffer = envConfig.SECURITY.TOKEN_REFRESH_BUFFER;
+
+        if (remainingTime > refreshBuffer) {
+          setupTokenRefresh((remainingTime / 1000));
+        } else {
+          // Token about to expire, refresh now
+          refreshAccessToken();
+        }
+
+        console.log('[Update-Data] Token loaded from storage');
+        return;
+      }
+    }
+
+    // No valid token in storage, request from parent IMMEDIATELY
+    console.log('[Update-Data] Requesting token from parent');
+    requestTokenFromParent();
+  };
+
+  // Initialize on plugin load
+  initialize();
+
+
+  // DEBUG: Log token status every 5 seconds
+  if (process.dev) {
+    setInterval(() => {
+      const token = localStorage.getItem('access_token');
+      const expiry = localStorage.getItem('token_expiry');
+      console.log('[Update-Data Token Status]', {
+        hasToken: !!token,
+        tokenLength: token?.length,
+        expiryTime: expiry ? new Date(parseInt(expiry)).toLocaleTimeString() : 'N/A',
+        tokenStoreHasToken: !!tokenStore.accessToken
+      });
+    }, 5000);
+  }
+
+  // Provide token utilities to app
+  return {
+    provide: {
+      updateDataAuth: {
+        getAccessToken,
+        refreshAccessToken,
+        requestTokenFromParent,
+        clearTokens
+      }
+    }
+  };
+});

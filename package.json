@@ -1,0 +1,53 @@
+{
+  "name": "update-data-remote",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "nuxt build",
+    "dev": "nuxt dev --port 3001",
+    "generate": "nuxt generate",
+    "preview": "nuxt preview",
+    "postinstall": "nuxt prepare",
+    "start": "node .output/server/index.mjs",
+    "build:production": "set NODE_ENV=production && nuxt build",
+    "start:production": "set NODE_ENV=production && node .output/server/index.mjs",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "type-check": "nuxt typecheck"
+  },
+  "dependencies": {
+    "@nuxtjs/color-mode": "^3.5.2",
+    "@primeuix/themes": "^1.2.3",
+    "@vitejs/plugin-vue": "^6.0.1",
+    "@vueuse/core": "^13.6.0",
+    "@vueuse/nuxt": "^13.6.0",
+    "axios": "^1.6.0",
+    "nuxt": "^3.17.6",
+    "primeicons": "^7.0.0",
+    "primevue": "^4.3.6",
+    "@vueup/vue-quill": "^1.2.0",
+    "quill": "^1.3.7",
+    "vue": "^3.5.17",
+    "vue-router": "^4.5.1"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.33.0",
+    "@nuxt/eslint-config": "^1.8.0",
+    "@nuxtjs/google-fonts": "^3.2.0",
+    "@nuxtjs/tailwindcss": "^6.14.0",
+    "@primevue/nuxt-module": "^4.3.6",
+    "@types/node": "^20.0.0",
+    "autoprefixer": "^10.4.21",
+    "eslint": "^9.33.0",
+    "eslint-plugin-vue": "^10.4.0",
+    "globals": "^16.3.0",
+    "postcss": "^8.4.47",
+    "tailwindcss": "^3.4.12",
+    "typescript": "^5.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  }
+}

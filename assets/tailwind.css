@@ -1,0 +1,102 @@
+@import "primeicons/primeicons.css";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom PrimeVue DatePicker styling with maximum specificity */
+:root {
+  --p-datepicker-header-background: var(--color-primary-500) !important;
+  --p-datepicker-header-color: white !important;
+  --p-datepicker-header-border-color: var(--color-primary-500) !important;
+  --p-datepicker-selected-color: var(--color-primary-500) !important;
+}
+
+/* Header styling - Force override all possible selectors */
+.p-datepicker .p-datepicker-header,
+.p-component .p-datepicker .p-datepicker-header,
+div.p-datepicker .p-datepicker-header {
+  background: var(--color-primary-500) !important;
+  background-color: var(--color-primary-500) !important;
+  color: white !important;
+  border-color: var(--color-primary-500) !important;
+}
+
+/* Header navigation buttons */
+.p-datepicker .p-datepicker-header .p-datepicker-prev-button,
+.p-datepicker .p-datepicker-header .p-datepicker-next-button,
+.p-component .p-datepicker .p-datepicker-header .p-datepicker-prev-button,
+.p-component .p-datepicker .p-datepicker-header .p-datepicker-next-button {
+  background: var(--color-primary-500) !important;
+  background-color: var(--color-primary-500) !important;
+  border-color: var(--color-primary-500) !important;
+  color: white !important;
+}
+
+.p-datepicker .p-datepicker-header .p-datepicker-prev-button:hover,
+.p-datepicker .p-datepicker-header .p-datepicker-next-button:hover,
+.p-component .p-datepicker .p-datepicker-header .p-datepicker-prev-button:hover,
+.p-component .p-datepicker .p-datepicker-header .p-datepicker-next-button:hover {
+  background: var(--color-primary-600) !important;
+  background-color: var(--color-primary-600) !important;
+  border-color: var(--color-primary-600) !important;
+  color: white !important;
+}
+
+/* Title buttons */
+.p-datepicker .p-datepicker-header .p-datepicker-title .p-datepicker-select-month,
+.p-datepicker .p-datepicker-header .p-datepicker-title .p-datepicker-select-year,
+.p-component .p-datepicker .p-datepicker-header .p-datepicker-title .p-datepicker-select-month,
+.p-component .p-datepicker .p-datepicker-header .p-datepicker-title .p-datepicker-select-year {
+  color: white !important;
+}
+
+/* Selected date */
+.p-datepicker .p-datepicker-calendar td.p-datepicker-selected span,
+.p-component .p-datepicker .p-datepicker-calendar td.p-datepicker-selected span,
+div.p-datepicker .p-datepicker-calendar td.p-datepicker-selected span {
+  background: var(--color-primary-500) !important;
+  background-color: var(--color-primary-500) !important;
+  color: white !important;
+  border-color: var(--color-primary-500) !important;
+}
+
+/* Today's date */
+.p-datepicker .p-datepicker-calendar td.p-datepicker-today span,
+.p-component .p-datepicker .p-datepicker-calendar td.p-datepicker-today span,
+div.p-datepicker .p-datepicker-calendar td.p-datepicker-today span {
+  background: var(--color-primary-500) !important;
+  background-color: var(--color-primary-500) !important;
+  color: white !important;
+  border-color: var(--color-primary-500) !important;
+}
+
+/* Date hover */
+.p-datepicker .p-datepicker-calendar td span:hover,
+.p-component .p-datepicker .p-datepicker-calendar td span:hover,
+div.p-datepicker .p-datepicker-calendar td span:hover {
+  background: var(--color-primary-50) !important;
+  background-color: var(--color-primary-50) !important;
+  color: var(--color-primary-500) !important;
+}
+
+/* Footer buttons */
+.p-datepicker .p-datepicker-buttonbar .p-button,
+.p-component .p-datepicker .p-datepicker-buttonbar .p-button,
+div.p-datepicker .p-datepicker-buttonbar .p-button {
+  background: var(--color-primary-500) !important;
+  background-color: var(--color-primary-500) !important;
+  border-color: var(--color-primary-500) !important;
+  color: white !important;
+}
+
+.p-datepicker .p-datepicker-buttonbar .p-button:hover,
+.p-component .p-datepicker .p-datepicker-buttonbar .p-button:hover,
+div.p-datepicker .p-datepicker-buttonbar .p-button:hover {
+  background: var(--color-primary-600) !important;
+  background-color: var(--color-primary-600) !important;
+  border-color: var(--color-primary-600) !important;
+  color: white !important;
+}
+}
+}
+}
