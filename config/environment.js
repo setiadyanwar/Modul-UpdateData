@@ -42,9 +42,9 @@ export default {
     PORT: parseInt(process.env.REMOTE_PORT) || 3001,
     HOST_ORIGIN: process.env.HOST_ORIGIN || 'http://localhost:3000',
     ALLOWED_ORIGINS: [
-      'http://localhost:3000',
-      'http://127.0.0.1:3000',
-      'https://ess-dev.telkomsigma.co.id'
+      process.env.HOST_ORIGIN || 'http://localhost:3000',
+      process.env.HOST_ORIGIN_PROD || 'https://people-dev.telkomsigma.co.id',
+      'http://127.0.0.1:3000'
     ]
   },
 

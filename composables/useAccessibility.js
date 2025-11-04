@@ -12,6 +12,7 @@ const rootFontSize = ref(DEFAULT_FONT_SIZE);
 const colorMode = ref('light');
 
 export const useAccessibility = () => {
+  const nuxtApp = useNuxtApp?.();
 
   const setPrimaryColor = (color) => {
     primaryColor.value = color;
@@ -19,6 +20,14 @@ export const useAccessibility = () => {
     if (process.client) {
       document.documentElement.style.setProperty("--color-primary-500", color);
     }
+    // Kirim ke host
+    try {
+      nuxtApp?.$postAccessibilityToHost?.({
+        mode: undefined,
+        primaryColor: color,
+        rootFontSize: rootFontSize.value,
+      });
+    } catch {}
   };
 
   const changeFontSize = (direction) => {
@@ -30,6 +39,53 @@ export const useAccessibility = () => {
       }
       document.documentElement.style.fontSize = `${rootFontSize.value}px`;
     }
+    // Kirim ke host
+    try {
+      nuxtApp?.$postAccessibilityToHost?.({
+        mode: undefined,
+        primaryColor: primaryColor.value,
+        rootFontSize: rootFontSize.value,
+      });
+    } catch {}
+  };
+
+  // Setter eksplisit untuk root font size (dipakai saat menerima postMessage)
+  const setRootFontSize = (sizePx) => {
+    if (!Number.isFinite(sizePx)) return;
+    rootFontSize.value = sizePx;
+    if (process.client) {
+      document.documentElement.style.fontSize = `${rootFontSize.value}px`;
+      localStorage.setItem("root-font-size", String(rootFontSize.value));
+    }
+    try {
+      nuxtApp?.$postAccessibilityToHost?.({
+        mode: undefined,
+        primaryColor: primaryColor.value,
+        rootFontSize: rootFontSize.value,
+      });
+    } catch {}
+  };
+
+  // Setter eksplisit untuk mode (light/dark) agar reactive state ikut berubah
+  const setMode = (mode) => {
+    if (mode !== 'light' && mode !== 'dark') return;
+    // colorMode di-provide Nuxt Color Mode via useColorMode() pada komponen,
+    // namun kita simpan mirror state sederhana di ref colorMode untuk sinkronisasi.
+    try {
+      // Jika tersedia colorMode Nuxt di global, gunakan preference
+      if (typeof useColorMode === 'function') {
+        const cm = useColorMode();
+        cm.preference = mode;
+      }
+    } catch {}
+    colorMode.value = mode;
+    try {
+      nuxtApp?.$postAccessibilityToHost?.({
+        mode,
+        primaryColor: primaryColor.value,
+        rootFontSize: rootFontSize.value,
+      });
+    } catch {}
   };
 
   // --- FUNGSI BARU UNTUK RESET ---
@@ -43,6 +99,13 @@ export const useAccessibility = () => {
     }
     // Reset mode terang/gelap ke default ('light')
     colorMode.preference = "light";
+    try {
+      nuxtApp?.$postAccessibilityToHost?.({
+        mode: 'light',
+        primaryColor: DEFAULT_COLOR,
+        rootFontSize: DEFAULT_FONT_SIZE,
+      });
+    } catch {}
   };
 
   // Watcher untuk menyimpan preferensi ke localStorage
@@ -79,5 +142,7 @@ export const useAccessibility = () => {
     changeFontSize,
     resetSettings,
     colorMode, // tambahkan agar bisa diakses dari komponen
+    setRootFontSize,
+    setMode,
   };
 };

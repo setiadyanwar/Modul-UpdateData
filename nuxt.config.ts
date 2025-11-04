@@ -114,6 +114,7 @@ export default defineNuxtConfig({
   // Plugins configuration
   plugins: [
     { src: '~/plugins/iframe-token-handler.client.js', mode: 'client' },
+    { src: '~/plugins/accessibility-sync.client.js', mode: 'client' },
     { src: '~/plugins/update-data-navigation.client.js', mode: 'client' }
   ],
 

@@ -132,15 +132,30 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from "vue";
+import { ref, onMounted, onUnmounted, watch } from "vue";
 
 // State lokal HANYA untuk membuka/menutup menu
 const isOpen = ref(false);
 
 // Memanggil composable global
 const colorMode = useColorMode();
+const nuxtApp = useNuxtApp();
 const { primaryColor, setPrimaryColor, changeFontSize, resetSettings } =
   useAccessibility();
+
+// Sinkronkan perubahan mode ke Host
+watch(
+  () => colorMode.value,
+  (newMode) => {
+    try {
+      nuxtApp?.$postAccessibilityToHost?.({
+        mode: newMode,
+        primaryColor: primaryColor?.value,
+        rootFontSize: undefined,
+      });
+    } catch {}
+  }
+);
 
 // Handle ESC key untuk menutup menu
 const handleKeydown = (event) => {
