@@ -58,6 +58,73 @@ export default defineNuxtPlugin((nuxtApp) => {
         localStorage.setItem('token_expiry', (Date.now() + (expiresIn * 1000)).toString());
 
         console.log('[Ticket Handler] ✅ Tokens saved to localStorage');
+
+        // Step 2a: Parse JWT to extract roles and permissions early
+        try {
+          const parseJWTPayload = (token) => {
+            const parts = token.split('.');
+            if (parts.length !== 3) return {};
+            const decoded = atob(parts[1]);
+            return JSON.parse(decoded);
+          };
+
+          const payload = parseJWTPayload(accessToken);
+          if (payload) {
+            // Roles from payload.role or payload.roles
+            const rawRoles = payload.role || payload.roles;
+            const normRoles = (() => {
+              if (!rawRoles) return [];
+              if (Array.isArray(rawRoles)) {
+                if (!rawRoles.length) return [];
+                if (typeof rawRoles[0] === 'string') {
+                  return rawRoles.map((name) => ({ role_name: String(name) }));
+                }
+                if (typeof rawRoles[0] === 'object') {
+                  return rawRoles
+                    .map((r) => {
+                      const role_name = r?.role_name || r?.name || r?.code || (typeof r === 'string' ? r : null);
+                      const role_id = r?.role_id ?? r?.id ?? undefined;
+                      if (!role_name) return null;
+                      return role_id !== undefined ? { role_id, role_name: String(role_name) } : { role_name: String(role_name) };
+                    })
+                    .filter(Boolean);
+                }
+              }
+              if (typeof rawRoles === 'string') return [{ role_name: rawRoles }];
+              return [];
+            })();
+            if (normRoles.length) {
+              localStorage.setItem('user_roles', JSON.stringify(normRoles));
+              console.log('[Ticket Handler] ✅ User roles saved from JWT payload:', normRoles);
+            }
+
+            // Direct permissions from payload.access (array of strings) → normalize to objects
+            if (Array.isArray(payload.access) && payload.access.length) {
+              const perms = payload.access.map((p) => ({ permission_code: p }));
+              localStorage.setItem('user_permissions', JSON.stringify(perms));
+              console.log('[Ticket Handler] ✅ Permissions saved from JWT payload.access');
+            }
+          }
+        } catch (e) {
+          console.warn('[Ticket Handler] ⚠️ Failed to parse JWT for roles/permissions:', e?.message);
+        }
+
+        // Step 2b: Initialize user data via Authentication Core (ensures roles from JWT/profile)
+        try {
+          const { useAuthenticationCore } = await import('~/composables/useAuthenticationCore');
+          const auth = useAuthenticationCore();
+          // Ensure minimal user state exists for auth core
+          // Save basic user data first so checkAuth can pick it up
+          if (response.data) {
+            localStorage.setItem('user', JSON.stringify(response.data));
+          }
+          // Let auth core read tokens and user from localStorage
+          await auth.checkAuth();
+          const initResult = await auth.initializeUserData();
+          console.log('[Ticket Handler] Auth core initializeUserData result:', initResult?.success);
+        } catch (e) {
+          console.warn('[Ticket Handler] ⚠️ Failed to initialize auth core user data:', e?.message);
+        }
         console.log('[Ticket Handler] Token check:', localStorage.getItem('access_token') ? 'EXISTS' : 'NOT FOUND');
 
         // Step 3: Store user data
@@ -67,6 +134,47 @@ export default defineNuxtPlugin((nuxtApp) => {
         } else {
           console.warn('[Ticket Handler] ⚠️ No user data in response!');
         }
+
+        // Utility: normalize permissions to [{ permission_code: string }]
+        const normalizePermissions = (val) => {
+          if (!val) return [];
+          // Already correct shape
+          if (Array.isArray(val) && val.length && typeof val[0] === 'object' && 'permission_code' in val[0]) {
+            return val;
+          }
+          // Array of strings -> map to objects
+          if (Array.isArray(val) && (!val.length || typeof val[0] === 'string')) {
+            return val.map((p) => ({ permission_code: p }));
+          }
+          // Single string
+          if (typeof val === 'string') {
+            return [{ permission_code: val }];
+          }
+          return [];
+        };
+
+        // Utility: normalize roles to an array of objects: { role_id?: number|string, role_name: string }
+        const normalizeRoles = (val) => {
+          if (!val) return [];
+          if (Array.isArray(val)) {
+            if (!val.length) return [];
+            if (typeof val[0] === 'string') {
+              return val.map((name) => ({ role_name: String(name) }));
+            }
+            if (typeof val[0] === 'object') {
+              return val
+                .map((r) => {
+                  const role_name = r?.role_name || r?.name || r?.code || (typeof r === 'string' ? r : null);
+                  const role_id = r?.role_id ?? r?.id ?? undefined;
+                  if (!role_name) return null;
+                  return role_id !== undefined ? { role_id, role_name: String(role_name) } : { role_name: String(role_name) };
+                })
+                .filter(Boolean);
+            }
+          }
+          if (typeof val === 'string') return [{ role_name: val }];
+          return [];
+        };
 
         // Step 4: Try to fetch user detail, roles & permissions (like mango does)
         // This is needed because ticket login might not return full user detail
@@ -95,24 +203,30 @@ export default defineNuxtPlugin((nuxtApp) => {
             }
           }
 
-          // If we got user detail, update localStorage
-          if (userDetailResponse?.data?.status && userDetailResponse.data.data) {
-            const fullUserData = userDetailResponse.data.data;
-            localStorage.setItem('user', JSON.stringify(fullUserData));
-            console.log('[Ticket Handler] ✅ Full user data updated');
+          // If we got user detail, update localStorage (support multiple response shapes)
+          if (userDetailResponse?.data) {
+            const payload = (typeof userDetailResponse.data === 'object' && 'data' in userDetailResponse.data)
+              ? userDetailResponse.data.data
+              : userDetailResponse.data;
+            if (payload && typeof payload === 'object') {
+              localStorage.setItem('user', JSON.stringify(payload));
+              console.log('[Ticket Handler] ✅ Full user data updated');
 
-            // Store roles if available
-            if (fullUserData.roles || fullUserData.user_roles) {
-              const roles = fullUserData.roles || fullUserData.user_roles;
-              localStorage.setItem('user_roles', JSON.stringify(roles));
-              console.log('[Ticket Handler] ✅ User roles saved:', roles);
-            }
+              // Store roles if available (normalized to array of { role_id?, role_name })
+              const rawRoles = payload.user_roles || payload.roles || payload.role_list || payload.userRoles;
+              const roles = normalizeRoles(rawRoles);
+              if (roles.length) {
+                localStorage.setItem('user_roles', JSON.stringify(roles));
+                console.log('[Ticket Handler] ✅ User roles saved (normalized objects):', roles);
+              }
 
-            // Store permissions if available
-            if (fullUserData.permissions || fullUserData.user_permissions) {
-              const permissions = fullUserData.permissions || fullUserData.user_permissions;
-              localStorage.setItem('user_permissions', JSON.stringify(permissions));
-              console.log('[Ticket Handler] ✅ User permissions saved:', permissions);
+              // Store permissions if available (normalize shape)
+              const rawPerms = payload.permissions || payload.user_permissions;
+              if (rawPerms) {
+                const permissions = normalizePermissions(rawPerms);
+                localStorage.setItem('user_permissions', JSON.stringify(permissions));
+                console.log('[Ticket Handler] ✅ User permissions saved (normalized):', permissions);
+              }
             }
           }
 
@@ -122,14 +236,25 @@ export default defineNuxtPlugin((nuxtApp) => {
         }
 
         // Step 5: Store roles and permissions from ticket response (if available)
-        if (response.user_roles) {
-          localStorage.setItem('user_roles', JSON.stringify(response.user_roles));
-          console.log('[Ticket Handler] ✅ User roles from ticket response saved');
+        if (response.user_roles || response.roles) {
+          const roles = normalizeRoles(response.user_roles || response.roles);
+          if (roles.length) {
+            localStorage.setItem('user_roles', JSON.stringify(roles));
+            console.log('[Ticket Handler] ✅ User roles from ticket response saved (normalized objects)');
+          }
         }
 
         if (response.user_permissions) {
-          localStorage.setItem('user_permissions', JSON.stringify(response.user_permissions));
-          console.log('[Ticket Handler] ✅ User permissions from ticket response saved');
+          const permissions = normalizePermissions(response.user_permissions);
+          localStorage.setItem('user_permissions', JSON.stringify(permissions));
+          console.log('[Ticket Handler] ✅ User permissions from ticket response saved (normalized)');
+        }
+
+        // Map permissions/roles from ticket response if present
+        if (Array.isArray(response.access) && response.access.length) {
+          const permissions = normalizePermissions(response.access);
+          localStorage.setItem('user_permissions', JSON.stringify(permissions));
+          console.log('[Ticket Handler] ✅ Permissions from ticket response saved (normalized from response.access)');
         }
 
         // Step 6: Final verification before redirect

@@ -216,6 +216,7 @@ import UpdateDataSocialSecuritySection from "~/components/update-data/sections/U
 import UpdateDataEmploymentInfoSection from "~/components/update-data/sections/UpdateDataEmploymentInfoSection.vue";
 import UpdateDataPageHeader from "~/components/update-data/UpdateDataPageHeader.vue";
 import UiBreadcrumb from "~/components/ui/Breadcrumb.vue";
+import envConfig from "~/config/environment.js";
 
 // Composables
 import { usePersonalData } from "~/composables/usePersonalData";
@@ -393,6 +394,13 @@ const {
 // Local medical options that we will explicitly preload on mount (so network shows requests)
 const medicalBloodTypeOptions = ref([])
 const medicalHealthStatusOptions = ref([])
+
+// Notify parent host that the iframe/app is ready as soon as this page mounts
+onMounted(() => {
+  if (typeof window !== 'undefined' && window.parent !== window) {
+    window.parent.postMessage({ type: 'IFRAME_READY', source: 'update-data' }, envConfig.REMOTE_APP.HOST_ORIGIN);
+  }
+});
 
 // Loader for medical select options (called within main onMounted)
 async function loadMedicalOptions() {

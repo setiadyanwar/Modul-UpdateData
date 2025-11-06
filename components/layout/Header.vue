@@ -92,13 +92,12 @@
               class="absolute right-0 mt-2 w-48 bg-background rounded-md shadow-lg border border-grey-200 dark:border-grey-700 z-50"
             >
               <div class="py-1">
-                <NuxtLink
-                  to="/profile"
+                <button
+                  @click="goToProfile"
                   class="flex items-center w-full text-left px-4 py-2 text-sm text-grey-700 dark:text-grey-300 hover:bg-grey-100 dark:hover:bg-grey-700"
-                  @click="isProfileOpen = false"
                 >
                   <i class="pi pi-user mr-3"></i> Profile
-                </NuxtLink>
+                </button>
                 <hr class="border-grey-200 dark:border-grey-700" />
                 <button
                   @click="handleLogout"
@@ -138,6 +137,7 @@ import { useProfile, useUserRoles } from "#imports";
 import { useAuthenticationCore } from "~/composables/useAuthenticationCore";
 import NotificationBell from "./NotificationBell.vue";
 import NotificationDropdown from "./NotificationDropdown.vue";
+import envConfig from "~/config/environment.js";
 
 // Get authentication and profile data
 const { isAuthenticated, logout } = useAuthenticationCore();
@@ -218,25 +218,24 @@ const closeDropdowns = () => {
   isNotificationOpen.value = false;
 };
 
+// External/profile navigation handler
+const goToProfile = () => {
+  isProfileOpen.value = false;
+  const externalUrl = 'https://people-dev.telkomsigma.co.id/profile';
+  if (typeof window !== 'undefined' && window.parent && window.parent !== window) {
+    try {
+      window.parent.postMessage({ type: 'NAVIGATE', source: 'update-data', path: '/profile' }, envConfig.REMOTE_APP.HOST_ORIGIN);
+      return;
+    } catch {}
+  }
+  window.location.href = externalUrl;
+};
+
 // Notifications: commented out dummy data while feature is in development
 // const unreadCount = ref(3);
 // const notifications = ref([
 //   {
 //     id: 1,
-//     title: "Status update change to review",
-//     description: "Your data change has been sent to HC and will be processed soon...",
-//     time: "14:00",
-//     icon: "https://cdn-icons-png.flaticon.com/512/3063/3063823.png",
-//   },
-//   {
-//     id: 2,
-//     title: "Status update change to review", 
-//     description: "Your data change has been sent to HC and will be processed soon...",
-//     time: "14:00",
-//     icon: "https://cdn-icons-png.flaticon.com/512/3063/3063823.png",
-//   },
-//   {
-//     id: 3,
 //     title: "Status update change to review",
 //     description: "Your data change has been sent to HC and will be processed soon...",
 //     time: "14:00",
