@@ -26,7 +26,20 @@ const notifyParentReady = () => {
 };
 
 onMounted(async () => {
-  // Redirect to update-data page after brief delay
+  const route = useRoute();
+
+  // Check if there's a ticket in URL
+  const ticket = route.query.ticket;
+
+  if (ticket) {
+    // If ticket exists, DON'T redirect - let ticket-handler plugin handle it
+    console.log('[Index Page] Ticket detected, skipping auto-redirect (ticket-handler will handle it)');
+    // Ticket handler plugin will redirect to /ticket-loading
+    return;
+  }
+
+  // No ticket, proceed with normal redirect to update-data page
+  console.log('[Index Page] No ticket, redirecting to /update-data after brief delay...');
   setTimeout(() => {
     navigateTo('/update-data');
   }, 500);

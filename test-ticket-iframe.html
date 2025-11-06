@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Update-Data Ticket Exchange</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        .controls {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f9f9f9;
+            border-radius: 4px;
+        }
+        input[type="text"] {
+            width: 600px;
+            padding: 8px;
+            margin-right: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            padding: 8px 16px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        #iframe-container {
+            width: 100%;
+            height: 800px;
+            border: 2px solid #ddd;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+        .info {
+            margin-bottom: 15px;
+            padding: 10px;
+            background: #e3f2fd;
+            border-left: 4px solid #2196F3;
+            border-radius: 4px;
+        }
+        .log {
+            margin-top: 20px;
+            padding: 15px;
+            background: #1e1e1e;
+            color: #00ff00;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            border-radius: 4px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .log-entry {
+            margin-bottom: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Test Update-Data Ticket Exchange</h1>
+
+        <div class="info">
+            <strong>📋 Instructions:</strong>
+            <ol>
+                <li>Pastikan Update-Data sudah jalan di <code>http://localhost:3001</code></li>
+                <li>Masukkan ticket dari SSO login (atau dummy ticket untuk test)</li>
+                <li>Klik "Load Iframe" untuk load Update-Data dengan ticket</li>
+                <li>Check console browser (F12) untuk lihat log detail</li>
+                <li>Check log dibawah untuk lihat postMessage communication</li>
+            </ol>
+        </div>
+
+        <div class="controls">
+            <label><strong>Ticket:</strong></label><br>
+            <input
+                type="text"
+                id="ticketInput"
+                placeholder="Paste your ticket here (e.g., a959636cc6695-49a2-8ea9-3cc6cadf7c6d2)"
+                value="TEST_TICKET_123456789"
+            >
+            <button onclick="loadIframe()">Load Iframe</button>
+            <button onclick="sendTicketViaPostMessage()">Send Ticket via postMessage</button>
+            <button onclick="clearLogs()">Clear Logs</button>
+        </div>
+
+        <div id="iframe-container">
+            <p style="padding: 20px; text-align: center; color: #999;">
+                Click "Load Iframe" to start...
+            </p>
+        </div>
+
+        <div class="log" id="logContainer">
+            <strong>📡 PostMessage Communication Log:</strong><br>
+            <span style="color: #888;">Waiting for messages...</span>
+        </div>
+    </div>
+
+    <script src="/parent-ticket-sender.js"></script>
+
+    <script>
+        // Log all postMessage communication
+        window.addEventListener('message', function(event) {
+            const logDiv = document.getElementById('logContainer');
+            const time = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.className = 'log-entry';
+
+            let color = '#00ff00';
+            if (event.data?.type?.includes('REQUEST')) color = '#ffff00';
+            if (event.data?.type?.includes('FAILED')) color = '#ff0000';
+
+            logEntry.innerHTML = `
+                <span style="color: #888;">[${time}]</span>
+                <span style="color: ${color};">${event.data?.type || 'UNKNOWN'}</span>
+                from <span style="color: #00bfff;">${event.origin}</span>
+                <br>&nbsp;&nbsp;&nbsp;&nbsp;Data: ${JSON.stringify(event.data, null, 2).substring(0, 200)}
+            `;
+            logDiv.appendChild(logEntry);
+            logDiv.scrollTop = logDiv.scrollHeight;
+
+            console.log('[Parent] Received postMessage:', event.data);
+
+            // Handle REQUEST_TICKET from iframe
+            if (event.data?.type === 'REQUEST_TICKET' && event.data?.source === 'update-data') {
+                console.log('[Parent] 📨 Update-Data requested ticket, sending...');
+                sendTicketViaPostMessage();
+            }
+        });
+
+        function loadIframe() {
+            const ticket = document.getElementById('ticketInput').value;
+            if (!ticket) {
+                alert('Please enter a ticket!');
+                return;
+            }
+
+            const iframeUrl = `http://localhost:3001?ticket=${encodeURIComponent(ticket)}`;
+            console.log('[Parent] Loading iframe with URL:', iframeUrl);
+
+            const container = document.getElementById('iframe-container');
+            container.innerHTML = `
+                <iframe
+                    id="update-data-iframe"
+                    name="update-data"
+                    src="${iframeUrl}"
+                ></iframe>
+            `;
+
+            addLog('success', `Iframe loaded with URL: ${iframeUrl}`);
+        }
+
+        function sendTicketViaPostMessage() {
+            const ticket = document.getElementById('ticketInput').value;
+            if (!ticket) {
+                alert('Please enter a ticket!');
+                return;
+            }
+
+            const iframe = document.getElementById('update-data-iframe');
+            if (!iframe) {
+                alert('Please load iframe first!');
+                return;
+            }
+
+            if (!iframe.contentWindow) {
+                alert('Iframe not ready yet, wait a moment...');
+                return;
+            }
+
+            console.log('[Parent] 📤 Sending TICKET_AUTH to iframe...');
+            iframe.contentWindow.postMessage({
+                type: 'TICKET_AUTH',
+                ticket: ticket,
+                source: 'ess-portal'
+            }, '*');
+
+            addLog('info', `Sent TICKET_AUTH with ticket: ${ticket.substring(0, 20)}...`);
+        }
+
+        function clearLogs() {
+            const logDiv = document.getElementById('logContainer');
+            logDiv.innerHTML = '<strong>📡 PostMessage Communication Log:</strong><br><span style="color: #888;">Logs cleared.</span>';
+        }
+
+        function addLog(type, message) {
+            const logDiv = document.getElementById('logContainer');
+            const time = new Date().toLocaleTimeString();
+            const colors = {
+                success: '#00ff00',
+                error: '#ff0000',
+                info: '#00bfff',
+                warning: '#ffff00'
+            };
+
+            const logEntry = document.createElement('div');
+            logEntry.className = 'log-entry';
+            logEntry.innerHTML = `
+                <span style="color: #888;">[${time}]</span>
+                <span style="color: ${colors[type] || '#00ff00'};">[${type.toUpperCase()}]</span>
+                ${message}
+            `;
+            logDiv.appendChild(logEntry);
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        // Auto-send ticket after iframe loads
+        let iframeLoadAttempts = 0;
+        setInterval(() => {
+            const iframe = document.getElementById('update-data-iframe');
+            if (iframe && iframe.contentWindow && iframeLoadAttempts < 3) {
+                iframeLoadAttempts++;
+                console.log('[Parent] Auto-sending ticket (attempt', iframeLoadAttempts, ')...');
+                sendTicketViaPostMessage();
+            }
+        }, 2000);
+    </script>
+</body>
+</html>

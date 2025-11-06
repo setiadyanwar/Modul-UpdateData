@@ -113,6 +113,8 @@ export default defineNuxtConfig({
 
   // Plugins configuration
   plugins: [
+    // Ticket handler - MUST run FIRST to handle SSO ticket exchange before any other auth logic
+    { src: '~/plugins/ticket-handler.client.js', mode: 'client' },
     { src: '~/plugins/iframe-token-handler.client.js', mode: 'client' },
     { src: '~/plugins/accessibility-sync.client.js', mode: 'client' },
     { src: '~/plugins/update-data-navigation.client.js', mode: 'client' }

@@ -5,6 +5,10 @@ import envConfig from "~/config/environment";
 
 // Get API base URL from environment config
 function getApiBaseUrl() {
+  // Prefer server proxy during development to avoid CORS
+  if (process.env.NODE_ENV !== 'production') {
+    return '/api/proxy';
+  }
   return envConfig.API_BASE_URL || '/api/proxy';
 }
 
@@ -47,6 +51,9 @@ apiService.interceptors.request.use(
         config.timeout = envConfig.TIMEOUT.DOWNLOAD;
       } else if (config.url?.includes('/health') || config.url?.includes('/status')) {
         config.timeout = envConfig.TIMEOUT.HEALTH_CHECK;
+  } else if (config.url?.includes('/auth/ticket/login')) {
+    // Use shorter timeout for login exchange to fail fast
+    config.timeout = envConfig.TIMEOUT.LOGIN;
       }
 
     } catch (error) {
