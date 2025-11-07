@@ -5,11 +5,9 @@ import envConfig from "~/config/environment";
 
 // Get API base URL from environment config
 function getApiBaseUrl() {
-  // Prefer server proxy during development to avoid CORS
-  if (process.env.NODE_ENV !== 'production') {
-    return '/api/proxy';
-  }
-  return envConfig.API_BASE_URL || '/api/proxy';
+  // ALWAYS use server proxy to avoid CORS (even in production/dev)
+  // This ensures all API requests go through Nuxt server proxy which handles CORS properly
+  return '/api/proxy';
 }
 
 // Create axios instance with improved configuration
