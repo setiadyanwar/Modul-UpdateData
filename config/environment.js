@@ -4,8 +4,10 @@ export default {
   IS_PRODUCTION: process.env.NODE_ENV === 'production',
   IS_DEVELOPMENT: process.env.NODE_ENV === 'development',
 
-  // API Configuration - Inherited from Host
-  API_BASE_URL: process.env.API_BASE_URL || 'https://apigwsand.telkomsigma.co.id/essbe',
+  // API Configuration
+  // Dev/Staging: https://apigwsand.telkomsigma.co.id/essbe
+  // Production: https://apigw.telkomsigma.co.id/essbe (update when deploying to prod)
+  API_BASE_URL: 'https://apigwsand.telkomsigma.co.id/essbe',
 
   // API Endpoints
   API_ENDPOINTS: {
@@ -39,22 +41,26 @@ export default {
 
   // Remote App Configuration
   REMOTE_APP: {
-    PORT: parseInt(process.env.REMOTE_PORT) || 3001,
-    HOST_ORIGIN: process.env.HOST_ORIGIN || 'http://localhost:3000',
+    PORT: 3001,
+    // CRITICAL: Must match parent portal domain for postMessage to work!
+    // Dev/Staging: https://people-dev.telkomsigma.co.id
+    // Production: https://people.telkomsigma.co.id (update when deploying to prod)
+    HOST_ORIGIN: 'https://people-dev.telkomsigma.co.id',
     ALLOWED_ORIGINS: [
-      process.env.HOST_ORIGIN || 'http://localhost:3000',
-      process.env.HOST_ORIGIN_PROD || 'https://people-dev.telkomsigma.co.id',
+      'https://people-dev.telkomsigma.co.id',
+      'http://localhost:3000',
+      'http://localhost:8001',
       'http://127.0.0.1:3000'
     ]
   },
 
-  // Request Timeout Configuration
+  // Request Timeout Configuration (milliseconds)
   TIMEOUT: {
-    DEFAULT: parseInt(process.env.TIMEOUT_DEFAULT) || 45000,
-    UPLOAD: parseInt(process.env.TIMEOUT_UPLOAD) || 120000,
-    DOWNLOAD: parseInt(process.env.TIMEOUT_DOWNLOAD) || 60000,
-    HEALTH_CHECK: parseInt(process.env.TIMEOUT_HEALTH_CHECK) || 15000,
-    LOGIN: parseInt(process.env.TIMEOUT_LOGIN) || 15000
+    DEFAULT: 45000,      // 45 seconds
+    UPLOAD: 120000,      // 2 minutes
+    DOWNLOAD: 60000,     // 1 minute
+    HEALTH_CHECK: 15000, // 15 seconds
+    LOGIN: 15000         // 15 seconds
   },
 
   // Cache Configuration
@@ -67,27 +73,27 @@ export default {
 
   // Circuit Breaker Configuration
   CIRCUIT_BREAKER: {
-    FAILURE_THRESHOLD: parseInt(process.env.CIRCUIT_BREAKER_FAILURE_THRESHOLD) || 5,
-    RECOVERY_TIMEOUT: parseInt(process.env.CIRCUIT_BREAKER_RECOVERY_TIMEOUT) || 60000, // 1 minute
-    MONITORING_WINDOW: parseInt(process.env.CIRCUIT_BREAKER_MONITORING_WINDOW) || 300000 // 5 minutes
+    FAILURE_THRESHOLD: 5,        // Max failures before circuit opens
+    RECOVERY_TIMEOUT: 60000,     // 1 minute
+    MONITORING_WINDOW: 300000    // 5 minutes
   },
 
   // Rate Limiting Configuration
   RATE_LIMIT: {
-    MAX_REQUESTS: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 100, // Max requests per window
-    WINDOW_MS: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 60000 // 1 minute window
+    MAX_REQUESTS: 100, // Max requests per window
+    WINDOW_MS: 60000   // 1 minute window
   },
 
   // Security Configuration
   SECURITY: {
-    JWT_EXPIRY: parseInt(process.env.JWT_EXPIRY) || 1800000, // 30 minutes
-    REFRESH_TOKEN_EXPIRY: parseInt(process.env.REFRESH_TOKEN_EXPIRY) || 604800000, // 7 days
-    TOKEN_REFRESH_BUFFER: parseInt(process.env.TOKEN_REFRESH_BUFFER) || 300000 // 5 minutes buffer
+    JWT_EXPIRY: 1800000,             // 30 minutes
+    REFRESH_TOKEN_EXPIRY: 604800000, // 7 days
+    TOKEN_REFRESH_BUFFER: 300000     // 5 minutes buffer
   },
 
   // App Configuration
   APP: {
-    NAME: process.env.NUXT_PUBLIC_APP_NAME || 'Update Data - ESS Sigma',
-    VERSION: process.env.NUXT_PUBLIC_APP_VERSION || '1.0.0'
+    NAME: 'Update Data - ESS Sigma',
+    VERSION: '1.0.0'
   }
 };

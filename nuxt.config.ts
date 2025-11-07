@@ -34,6 +34,29 @@ export default defineNuxtConfig({
         changeOrigin: true
       }
     },
+    // Security headers for iframe embedding
+    routeRules: {
+      '/**': {
+        headers: {
+          // Modern CSP with frame-ancestors (replaces deprecated X-Frame-Options ALLOW-FROM)
+          'Content-Security-Policy': [
+            'frame-ancestors https://people-dev.telkomsigma.co.id http://localhost:3000 http://localhost:8001',
+            "default-src 'self'",
+            "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com https://cdn.jsdelivr.net",
+            "style-src 'self' 'unsafe-inline' https://unpkg.com",
+            "img-src 'self' data: https:",
+            "font-src 'self' data: https://fonts.gstatic.com",
+            "connect-src 'self' https://apigwsand.telkomsigma.co.id https://people-dev.telkomsigma.co.id"
+          ].join('; '),
+          // X-Frame-Options for older browsers (CSP takes precedence in modern browsers)
+          'X-Frame-Options': 'SAMEORIGIN',
+          // Other security headers
+          'X-Content-Type-Options': 'nosniff',
+          'X-XSS-Protection': '1; mode=block',
+          'Referrer-Policy': 'strict-origin-when-cross-origin'
+        }
+      }
+    }
   },
 
   css: ["~/assets/css/main.css"],

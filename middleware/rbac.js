@@ -1,5 +1,6 @@
 import { defineNuxtRouteMiddleware, navigateTo } from '#app';
 import { createError } from 'h3';
+import envConfig from '~/config/environment';
 
 /**
  * RBAC Route Protection Middleware
@@ -94,7 +95,7 @@ export default defineNuxtRouteMiddleware((to) => {
         type: 'REQUEST_TOKEN',
         source: 'update-data',
         timestamp: Date.now()
-      }, '*'); // Will be validated by parent
+      }, envConfig.REMOTE_APP.HOST_ORIGIN);
 
       // Allow navigation to continue - token handler will manage authentication
       // Show loading state while waiting for token

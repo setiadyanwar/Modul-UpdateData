@@ -1059,7 +1059,7 @@ const parseJWTPayload = (token) => {
           type: 'LOGOUT_REQUEST',
           source: 'update-data',
           data: { reason }
-        }, '*');
+        }, envConfig.REMOTE_APP.HOST_ORIGIN);
       } else {
         // If not in iframe, redirect to login
         await navigateTo('/login');

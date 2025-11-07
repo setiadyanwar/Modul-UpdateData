@@ -1,10 +1,12 @@
 /**
  * URL Sync Plugin for Update-Data App
  * Sends URL changes to parent (ESSHost) for browser URL synchronization
- * 
+ *
  * This allows the parent window to keep its URL in sync with the iframe's URL
  * so that refreshing the page maintains the current state.
  */
+
+import envConfig from '~/config/environment';
 
 export default defineNuxtPlugin(() => {
   if (!process.client) return;
@@ -45,8 +47,8 @@ export default defineNuxtPlugin(() => {
           data: currentUrl,
           source: 'update-data',
           timestamp: Date.now()
-        }, '*');
-        
+        }, envConfig.REMOTE_APP.HOST_ORIGIN);
+
         console.log('[URL Sync] 📤 Sent URL update to parent:', currentUrl.pathname);
       }
     } catch (error) {
