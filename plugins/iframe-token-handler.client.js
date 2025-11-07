@@ -247,7 +247,7 @@ export default defineNuxtPlugin(() => {
    * Listen for messages from parent
    */
   window.addEventListener('message', (event) => {
-    // Validate origin
+    // Validate origin for security
     if (!isValidOrigin(event.origin)) {
       console.warn('[Update-Data] ⚠️ Invalid origin:', event.origin);
       return;
@@ -255,12 +255,17 @@ export default defineNuxtPlugin(() => {
 
     const { type, data, source } = event.data;
 
-    // Only process messages from ESS-Sigma
-    if (source !== 'ess-sigma') {
+    // Log all messages for debugging
+    console.log('[Update-Data] 📩 Received message:', { type, source, origin: event.origin });
+
+    // Accept messages from known sources (flexible for different parent apps)
+    const validSources = ['ess-sigma', 'people', 'host', 'portal', 'mango'];
+    if (source && !validSources.includes(source)) {
+      console.log('[Update-Data] Ignoring message from unknown source:', source);
       return;
     }
 
-    console.log('[Update-Data] 📩 Received message from parent:', type);
+    console.log('[Update-Data] ✅ Processing message:', type);
 
     switch (type) {
       case 'AUTH_TOKEN':

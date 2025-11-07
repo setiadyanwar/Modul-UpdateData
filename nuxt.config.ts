@@ -44,9 +44,9 @@ export default defineNuxtConfig({
             "default-src 'self'",
             "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com https://cdn.jsdelivr.net",
             "style-src 'self' 'unsafe-inline' https://unpkg.com",
-            "img-src 'self' data: https:",
+            "img-src 'self' data: blob: https:",
             "font-src 'self' data: https://fonts.gstatic.com",
-            "connect-src 'self' https://apigwsand.telkomsigma.co.id https://people-dev.telkomsigma.co.id"
+            "connect-src 'self' blob: https://apigwsand.telkomsigma.co.id https://people-dev.telkomsigma.co.id"
           ].join('; '),
           // X-Frame-Options for older browsers (CSP takes precedence in modern browsers)
           'X-Frame-Options': 'SAMEORIGIN',
