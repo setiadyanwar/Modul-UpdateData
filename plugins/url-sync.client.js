@@ -57,26 +57,11 @@ export default defineNuxtPlugin((nuxtApp) => {
 
       // ✅ CRITICAL: Save last route to localStorage for restoration after parent reload
       // Only save app routes (not root or ticket-loading)
-      // Don't overwrite if current route is default and we have a different last_visited_route
       if (currentUrl.pathname &&
           currentUrl.pathname !== '/' &&
           !currentUrl.pathname.includes('/ticket-loading')) {
-        const existingLastRoute = localStorage.getItem('last_visited_route');
-        
-        // Don't overwrite last_visited_route if:
-        // - Current route is default (/update-data)
-        // - We have a different last_visited_route saved
-        // - Last route is a valid app route
-        if (currentUrl.pathname === '/update-data' && 
-            existingLastRoute && 
-            existingLastRoute !== '/update-data' &&
-            existingLastRoute !== '/' &&
-            !existingLastRoute.includes('/ticket-loading')) {
-          console.log('[URL Sync] ⏭️ Skipping save - keeping existing last route:', existingLastRoute);
-        } else {
-          localStorage.setItem('last_visited_route', currentUrl.pathname);
-          console.log('[URL Sync] 💾 Saved last route to localStorage:', currentUrl.pathname);
-        }
+        localStorage.setItem('last_visited_route', currentUrl.pathname);
+        console.log('[URL Sync] 💾 Saved last route to localStorage:', currentUrl.pathname);
       }
 
       if (window.parent && window.parent !== window) {
@@ -139,7 +124,23 @@ export default defineNuxtPlugin((nuxtApp) => {
     console.log('[URL Sync] 📍 Sending initial URL');
     sendUrlUpdate();
   }, 1000);
-  
+
+  // ✅ CRITICAL: Hook into Vue Router for reliable route change detection
+  const router = nuxtApp.$router;
+  if (router) {
+    router.afterEach((to, from) => {
+      console.log('[URL Sync] 🧭 Vue Router navigation detected:', {
+        from: from.path,
+        to: to.path
+      });
+      // Small delay to ensure URL is fully updated
+      setTimeout(() => {
+        sendUrlUpdate();
+      }, 50);
+    });
+    console.log('[URL Sync] ✅ Vue Router hook installed');
+  }
+
   console.log('[URL Sync] ✅ URL sync plugin initialized');
 });
 
