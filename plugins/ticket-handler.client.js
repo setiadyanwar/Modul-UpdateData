@@ -59,6 +59,7 @@ export default defineNuxtPlugin((nuxtApp) => {
 
         // ✅ CRITICAL: Store the ticket ID so we don't re-process on reload
         localStorage.setItem('last_processed_ticket', ticket);
+        console.log('[Ticket Handler] ✅ Saved last_processed_ticket:', ticket.substring(0, 20) + '...');
 
         console.log('[Ticket Handler] ✅ Tokens saved to localStorage');
 
@@ -268,13 +269,18 @@ export default defineNuxtPlugin((nuxtApp) => {
         console.log('  - user_roles:', localStorage.getItem('user_roles') ? '✅ EXISTS' : '⚠️ MISSING');
         console.log('  - user_permissions:', localStorage.getItem('user_permissions') ? '✅ EXISTS' : '⚠️ MISSING');
 
-        // Step 7: Redirect to /update-data (new login should always start at default route)
-        console.log('[Ticket Handler] ✅ All data saved, redirecting to /update-data in 1000ms...');
+        // Step 7: Redirect to last visited route (if reload) or default /update-data (if fresh login)
+        const targetRoute = localStorage.getItem('last_visited_route') || '/update-data';
+        const isReload = !!localStorage.getItem('last_visited_route');
+
+        console.log('[Ticket Handler] ✅ All data saved, redirecting to', targetRoute, 'in 1000ms...');
+        console.log('[Ticket Handler] 📍 Route type:', isReload ? 'RELOAD (restored route)' : 'FRESH LOGIN (default route)');
+
         setTimeout(() => {
-          console.log('[Ticket Handler] Redirecting now!');
-          // Clean URL (remove ticket parameter) and go to default route
-          window.history.replaceState({}, document.title, '/update-data');
-          router.push('/update-data');
+          console.log('[Ticket Handler] Redirecting now to:', targetRoute);
+          // Clean URL (remove ticket parameter) and go to target route
+          window.history.replaceState({}, document.title, targetRoute);
+          router.push(targetRoute);
         }, 1000); // Increased from 500ms to 1000ms
 
         return true;
@@ -321,6 +327,14 @@ export default defineNuxtPlugin((nuxtApp) => {
   console.log('[Ticket Handler] route.query:', JSON.stringify(route.query));
   console.log('[Ticket Handler] Ticket from route.query:', ticket || '❌ NONE');
 
+  // ✅ DEBUG: Log current localStorage state BEFORE any processing
+  console.log('[Ticket Handler] 📊 Current localStorage state:', {
+    last_processed_ticket: localStorage.getItem('last_processed_ticket')?.substring(0, 20) + '...' || 'NONE',
+    last_visited_route: localStorage.getItem('last_visited_route') || 'NONE',
+    access_token: localStorage.getItem('access_token') ? 'EXISTS' : 'NONE',
+    token_expiry: localStorage.getItem('token_expiry') || 'NONE'
+  });
+
   // Also try to get from URL directly (fallback)
   if (!ticket) {
     const urlParams = new URLSearchParams(window.location.search);
@@ -348,6 +362,10 @@ export default defineNuxtPlugin((nuxtApp) => {
 
     // If same ticket and token still valid, DON'T clear and DON'T re-exchange
     if (ticket === lastProcessedTicket && tokenStillValid) {
+      console.log('');
+      console.log('═══════════════════════════════════════════════════════════');
+      console.log('[Ticket Handler] ✅ CACHED TICKET PATH - RESTORING SESSION');
+      console.log('═══════════════════════════════════════════════════════════');
       console.log('[Ticket Handler] ✅ Ticket already processed and token still valid - skipping exchange');
       console.log('[Ticket Handler] 🎉 Using existing token from localStorage');
 
@@ -376,7 +394,22 @@ export default defineNuxtPlugin((nuxtApp) => {
       // ✅ Redirect to last visited route or fallback to /update-data
       setTimeout(() => {
         const lastRoute = localStorage.getItem('last_visited_route') || '/update-data';
-        console.log('[Ticket Handler] Redirecting to last visited route:', lastRoute);
+        const hasLastRoute = !!localStorage.getItem('last_visited_route');
+
+        console.log('[Ticket Handler] 🔍 Checking last visited route:', {
+          lastRoute,
+          hasLastRoute,
+          willRedirectTo: lastRoute,
+          isDefaultFallback: !hasLastRoute
+        });
+
+        if (!hasLastRoute) {
+          console.warn('[Ticket Handler] ⚠️ No last_visited_route found in localStorage - using default /update-data');
+        } else {
+          console.log('[Ticket Handler] ✅ Found last_visited_route in localStorage:', lastRoute);
+        }
+
+        console.log('[Ticket Handler] 🚀 Redirecting to:', lastRoute);
         window.history.replaceState({}, document.title, lastRoute);
         router.push(lastRoute);
       }, 100);
@@ -385,7 +418,24 @@ export default defineNuxtPlugin((nuxtApp) => {
     }
 
     // Different ticket or expired token - clear and re-exchange
+    console.log('');
+    console.log('═══════════════════════════════════════════════════════════');
+    console.log('[Ticket Handler] 🔄 NEW TICKET PATH - EXCHANGING TICKET');
+    console.log('═══════════════════════════════════════════════════════════');
     console.log('[Ticket Handler] 🗑️ Clearing old tokens before exchange...');
+
+    // ✅ CRITICAL: Check if this is a RELOAD scenario (parent refresh)
+    // If we have last_visited_route AND access_token, this is likely a reload with new ticket
+    // We should PRESERVE the route in this case
+    const isReloadScenario = localStorage.getItem('last_visited_route') && localStorage.getItem('access_token');
+    const savedRouteForReload = isReloadScenario ? localStorage.getItem('last_visited_route') : null;
+
+    if (isReloadScenario) {
+      console.log('[Ticket Handler] 🔄 Reload scenario detected - will preserve last_visited_route:', savedRouteForReload);
+    } else {
+      console.log('[Ticket Handler] 🆕 Fresh login scenario - will start at /update-data');
+    }
+
     localStorage.removeItem('access_token');
     localStorage.removeItem('refresh_token');
     localStorage.removeItem('token_expiry');
@@ -393,8 +443,14 @@ export default defineNuxtPlugin((nuxtApp) => {
     localStorage.removeItem('user_roles');
     localStorage.removeItem('user_permissions');
     localStorage.removeItem('last_processed_ticket'); // Clear old ticket marker
-    localStorage.removeItem('last_visited_route'); // Clear old route (new login starts fresh)
-    console.log('[Ticket Handler] ✅ Old tokens and route history cleared');
+    localStorage.removeItem('last_visited_route'); // Temporarily clear (will restore if reload)
+    console.log('[Ticket Handler] ✅ Old tokens cleared');
+
+    // ✅ Restore last_visited_route if this was a reload scenario
+    if (savedRouteForReload) {
+      localStorage.setItem('last_visited_route', savedRouteForReload);
+      console.log('[Ticket Handler] ✅ Restored last_visited_route for reload:', savedRouteForReload);
+    }
   } else {
     console.log('[Ticket Handler] ❌ No ticket in URL');
   }
