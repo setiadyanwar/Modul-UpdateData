@@ -28,6 +28,20 @@ export default defineNuxtPlugin(() => {
   console.log('[URL Sync] 🔄 Initializing URL sync plugin for update-data app');
   
   /**
+   * Get parent origin dynamically
+   */
+  const getParentOrigin = () => {
+    try {
+      const referrer = document.referrer || '';
+      if (referrer) {
+        const origin = new URL(referrer).origin;
+        if (origin) return origin;
+      }
+    } catch (e) {}
+    return envConfig.REMOTE_APP.HOST_ORIGIN;
+  };
+  
+  /**
    * Send current URL to parent window
    */
   const sendUrlUpdate = () => {
@@ -42,12 +56,13 @@ export default defineNuxtPlugin(() => {
       };
       
       if (window.parent && window.parent !== window) {
+        const parentOrigin = getParentOrigin();
         window.parent.postMessage({
           type: 'IFRAME_URL_CHANGE',
           data: currentUrl,
           source: 'update-data',
           timestamp: Date.now()
-        }, envConfig.REMOTE_APP.HOST_ORIGIN);
+        }, parentOrigin);
 
         console.log('[URL Sync] 📤 Sent URL update to parent:', currentUrl.pathname);
       }

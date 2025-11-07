@@ -178,22 +178,31 @@ const route = useRoute();
 const { canUpdatePersonalData, canViewHistory, canManageConsent } = useRBAC();
 
 /**
+ * Get parent origin dynamically
+ */
+const getParentOrigin = () => {
+  try {
+    const referrer = document.referrer || '';
+    if (referrer) {
+      const origin = new URL(referrer).origin;
+      if (origin) return origin;
+    }
+  } catch (e) {}
+  return envConfig.REMOTE_APP.HOST_ORIGIN;
+};
+
+/**
  * Navigate to parent dashboard (for iframe mode)
  */
 const navigateToParentDashboard = () => {
-  // Check if running in iframe
-  if (window.parent !== window) {
-
-    // Send message to parent to navigate to dashboard
-    window.parent.postMessage({
-      type: 'NAVIGATE_TO_DASHBOARD',
-      source: 'update-data',
-      timestamp: Date.now()
-    }, envConfig.REMOTE_APP.HOST_ORIGIN);
-  } else {
-    // Standalone mode - navigate locally
-    window.location.href = envConfig.REMOTE_APP.HOST_ORIGIN;
+  const externalUrl = 'https://people-dev.telkomsigma.co.id/';
+  if (typeof window !== 'undefined' && window.parent && window.parent !== window) {
+    try {
+      window.parent.postMessage({ type: 'NAVIGATE', source: 'update-data', path: '/' }, getParentOrigin());
+      return;
+    } catch {}
   }
+  window.location.href = externalUrl;
 };
 
 // Regular navigation items (permission-based)

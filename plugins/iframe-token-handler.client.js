@@ -5,9 +5,13 @@
  */
 import { defineNuxtPlugin } from '#app';
 import envConfig from '~/config/environment.js';
+import { useAuthState } from '~/composables/useAuthState';
 
 export default defineNuxtPlugin(() => {
   if (process.server) return;
+
+  // Initialize auth state management
+  const { setAuthReady, resetAuthState } = useAuthState();
 
   // Note: Using local clearTokens function instead of external auth-service
   // The auth-service.js file doesn't exist, so we handle logout locally
@@ -113,6 +117,20 @@ export default defineNuxtPlugin(() => {
   };
 
   /**
+   * Get parent origin dynamically
+   */
+  const getParentOrigin = () => {
+    try {
+      const referrer = document.referrer || '';
+      if (referrer) {
+        const origin = new URL(referrer).origin;
+        if (origin) return origin;
+      }
+    } catch (e) {}
+    return envConfig.REMOTE_APP.HOST_ORIGIN;
+  };
+
+  /**
    * Notify parent that token expired
    */
   const notifyParentTokenExpired = () => {
@@ -120,7 +138,7 @@ export default defineNuxtPlugin(() => {
       window.parent.postMessage({
         type: 'TOKEN_EXPIRED',
         source: 'update-data'
-      }, envConfig.REMOTE_APP.HOST_ORIGIN);
+      }, getParentOrigin());
     }
   };
 
@@ -139,7 +157,7 @@ export default defineNuxtPlugin(() => {
       window.parent.postMessage({
         type: 'REQUEST_TOKEN',
         source: 'update-data'
-      }, envConfig.REMOTE_APP.HOST_ORIGIN);
+      }, getParentOrigin());
     }
   };
 
@@ -221,7 +239,7 @@ export default defineNuxtPlugin(() => {
         type: 'IFRAME_READY',
         source: 'update-data',
         timestamp: Date.now()
-      }, envConfig.REMOTE_APP.HOST_ORIGIN);
+      }, getParentOrigin());
       console.log('[Update-Data] Ready message sent to parent');
     }
   };
@@ -328,18 +346,29 @@ export default defineNuxtPlugin(() => {
             hasUserData: !!data?.user
           });
 
+          // ✅ NEW: Set global auth state (replaces reload)
+          // This allows components to wait for auth before making API calls
+          setAuthReady(
+            data.access_token,
+            data?.user || null,
+            data?.user_roles || null,
+            data?.user_permissions || null
+          );
+          console.log('[Update-Data] 🔐 Global auth state set - components can now proceed');
 
-          // Only trigger page refresh if it's a new/different token and page needs it
-          if (isNewToken && !tokenStore.accessToken && window.location.pathname.includes('/update-data')) {
-            console.log('[Update-Data] 🔄 Reloading page to apply new token');
-            window.location.reload();
-          } else {
-            console.log('[Update-Data] ℹ️ Token saved but no reload needed', {
-              isNewToken,
-              hasTokenStore: !!tokenStore.accessToken,
-              pathname: window.location.pathname
-            });
-          }
+          // Legacy: Dispatch event for backwards compatibility
+          window.dispatchEvent(new CustomEvent('auth-ready', {
+            detail: {
+              token: data.access_token,
+              user: data?.user,
+              roles: data?.user_roles,
+              permissions: data?.user_permissions
+            }
+          }));
+
+          // ✅ REMOVED: No more page reload!
+          // Components will use waitForAuth() to wait for this state
+          console.log('[Update-Data] ℹ️ Token ready, no reload needed (using auth state)');
         } else {
           console.error('[Update-Data] ❌ No access_token in AUTH_TOKEN message', data);
         }
@@ -367,7 +396,7 @@ export default defineNuxtPlugin(() => {
             data: {
               message: 'Logout completed successfully'
             }
-          }, envConfig.REMOTE_APP.HOST_ORIGIN);
+          }, getParentOrigin());
         }
 
         console.log('[Update-Data] ✅ Logout completed, all tokens cleared');
@@ -410,6 +439,9 @@ export default defineNuxtPlugin(() => {
       clearTimeout(tokenStore.refreshTimer);
       tokenStore.refreshTimer = null;
     }
+
+    // Reset global auth state
+    resetAuthState();
 
     // Clear all auth-related localStorage
     localStorage.removeItem('access_token');
@@ -458,6 +490,31 @@ export default defineNuxtPlugin(() => {
         tokenStore.refreshToken = localStorage.getItem('refresh_token');
         tokenStore.tokenExpiry = expiryTime;
 
+        // ✅ CRITICAL FIX: Restore full auth state from localStorage
+        // This allows the app to work immediately after parent reload without waiting for postMessage
+        try {
+          const storedUser = localStorage.getItem('user');
+          const storedRoles = localStorage.getItem('user_roles');
+          const storedPermissions = localStorage.getItem('user_permissions');
+
+          const user = storedUser ? JSON.parse(storedUser) : null;
+          const roles = storedRoles ? JSON.parse(storedRoles) : null;
+          const permissions = storedPermissions ? JSON.parse(storedPermissions) : null;
+
+          // Restore global auth state (same as when receiving from parent)
+          setAuthReady(storedToken, user, roles, permissions);
+
+          console.log('[Update-Data] ✅ Full auth state restored from localStorage', {
+            hasToken: true,
+            hasUser: !!user,
+            hasRoles: !!roles,
+            hasPermissions: !!permissions
+          });
+        } catch (error) {
+          console.error('[Update-Data] ❌ Error restoring auth state from localStorage:', error);
+          // Still have token, so continue
+        }
+
         // Setup refresh for remaining time
         const remainingTime = expiryTime - now;
         const refreshBuffer = envConfig.SECURITY.TOKEN_REFRESH_BUFFER;
@@ -469,7 +526,7 @@ export default defineNuxtPlugin(() => {
           refreshAccessToken();
         }
 
-        console.log('[Update-Data] Token loaded from storage');
+        console.log('[Update-Data] Token loaded from storage and auth state restored');
         return;
       }
     }

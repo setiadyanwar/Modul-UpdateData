@@ -218,13 +218,25 @@ const closeDropdowns = () => {
   isNotificationOpen.value = false;
 };
 
+// Get parent origin dynamically
+const getParentOrigin = () => {
+  try {
+    const referrer = document.referrer || '';
+    if (referrer) {
+      const origin = new URL(referrer).origin;
+      if (origin) return origin;
+    }
+  } catch (e) {}
+  return envConfig.REMOTE_APP.HOST_ORIGIN;
+};
+
 // External/profile navigation handler
 const goToProfile = () => {
   isProfileOpen.value = false;
   const externalUrl = 'https://people-dev.telkomsigma.co.id/profile';
   if (typeof window !== 'undefined' && window.parent && window.parent !== window) {
     try {
-      window.parent.postMessage({ type: 'NAVIGATE', source: 'update-data', path: '/profile' }, envConfig.REMOTE_APP.HOST_ORIGIN);
+      window.parent.postMessage({ type: 'NAVIGATE', source: 'update-data', path: '/profile' }, getParentOrigin());
       return;
     } catch {}
   }
