@@ -54,6 +54,8 @@ export default defineNuxtPlugin(() => {
 
   /**
    * Setup auto-refresh timer
+   * ✅ FIX: Don't refresh independently - request from parent instead
+   * This prevents race conditions where both iframe and parent refresh simultaneously
    */
   const setupTokenRefresh = (expires_in) => {
     // Clear existing timer
@@ -66,54 +68,44 @@ export default defineNuxtPlugin(() => {
     const refreshTime = (expires_in * 1000) - refreshBuffer;
 
     tokenStore.refreshTimer = setTimeout(() => {
-      refreshAccessToken();
+      // Request refresh from parent instead of doing it ourselves
+      requestTokenRefreshFromParent();
     }, refreshTime);
 
-    console.log('[Update-Data] Token refresh scheduled in', Math.floor(refreshTime / 1000), 'seconds');
+    console.log('[Update-Data] Token refresh check scheduled in', Math.floor(refreshTime / 1000), 'seconds');
   };
 
   /**
-   * Refresh access token using refresh token
+   * Request token refresh from parent
+   * ✅ SOLUTION: Ask parent to refresh and send us new token
+   * This ensures Portal is the single source of truth for token management
    */
-  const refreshAccessToken = async () => {
-    try {
-      const refreshToken = tokenStore.refreshToken || localStorage.getItem('refresh_token');
-
-      if (!refreshToken) {
-        console.error('[Update-Data] No refresh token available');
-        notifyParentTokenExpired();
-        return;
-      }
-
-      const response = await fetch(`${envConfig.API_BASE_URL}${envConfig.API_ENDPOINTS.AUTH.REFRESH}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          refresh_token: refreshToken
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error('Token refresh failed');
-      }
-
-      const data = await response.json();
-
-      if (data.access_token) {
-        saveTokens(
-          data.access_token,
-          data.refresh_token || refreshToken,
-          data.expires_in || 1800 // Default 30 minutes
-        );
-
-        console.log('[Update-Data] Token refreshed successfully');
-      }
-    } catch (error) {
-      console.error('[Update-Data] Token refresh error:', error);
-      notifyParentTokenExpired();
+  const requestTokenRefreshFromParent = () => {
+    if (window.parent !== window) {
+      console.log('[Update-Data] 🔄 Requesting token refresh from parent');
+      window.parent.postMessage({
+        type: 'REQUEST_TOKEN_REFRESH',
+        source: 'update-data',
+        timestamp: Date.now(),
+        data: {
+          reason: 'Token expiring soon',
+          current_expiry: tokenStore.tokenExpiry
+        }
+      }, getParentOrigin());
+    } else {
+      console.warn('[Update-Data] Not in iframe, cannot request refresh from parent');
     }
+  };
+
+  /**
+   * Refresh access token
+   * ✅ DEPRECATED: This redirects to parent-based refresh
+   * We don't call API directly to avoid race conditions
+   */
+  const refreshAccessToken = () => {
+    console.log('[Update-Data] ⚠️ Token refresh needed');
+    console.log('[Update-Data] Requesting refresh from parent to avoid race condition');
+    requestTokenRefreshFromParent();
   };
 
   /**
@@ -247,6 +239,7 @@ export default defineNuxtPlugin(() => {
 
   /**
    * Handle visibility change
+   * ✅ FIX: Request refresh from parent if needed
    */
   const handleVisibilityChange = () => {
     if (!document.hidden) {
@@ -255,8 +248,9 @@ export default defineNuxtPlugin(() => {
       const now = Date.now();
 
       if (expiryTime && (expiryTime - now) < envConfig.SECURITY.TOKEN_REFRESH_BUFFER) {
-        console.log('[Update-Data] Token near expiry, requesting refresh on visibility change');
-        refreshAccessToken();
+        console.log('[Update-Data] Token near expiry detected on visibility change');
+        console.log('[Update-Data] Requesting refresh from parent');
+        requestTokenRefreshFromParent();
       }
     }
   };
@@ -287,97 +281,58 @@ export default defineNuxtPlugin(() => {
 
     switch (type) {
       case 'AUTH_TOKEN':
-        // Receive token from parent
-        console.log('[Update-Data] 🔑 Received token from parent', {
-          hasAccessToken: !!data?.access_token,
-          hasUserData: !!data?.user,
-          expiresIn: data?.expires_in
-        });
-        if (data?.access_token) {
-          // Check if we already have this exact token to prevent reload loop
-          const currentToken = localStorage.getItem('access_token');
-          const isNewToken = currentToken !== data.access_token;
+      case 'TOKEN_REFRESH':
+        // ✅ FIX: Parent sends refreshed token or new token
+        // This handles both initial token and refresh scenarios
+        console.log('[Update-Data] 🔄 Received token from parent (refresh or update)');
 
+        if (data?.access_token) {
+          const isTokenUpdate = !!tokenStore.accessToken; // true if we already have a token (refresh scenario)
+
+          if (isTokenUpdate) {
+            console.log('[Update-Data] ✅ Token refresh received from parent');
+          } else {
+            console.log('[Update-Data] ✅ Initial token received from parent');
+          }
+
+          // Save the new/refreshed token
           saveTokens(
             data.access_token,
-            data.refresh_token,
+            data.refresh_token || tokenStore.refreshToken,
             data.expires_in || 1800
           );
 
-          // ✅ NEW: Save user data to localStorage
+          // Update user data if provided
           if (data?.user) {
             localStorage.setItem('user', JSON.stringify(data.user));
-            console.log('[Update-Data] ✅ User data saved', {
-              employeeName: data.user.employee_name || data.user.name,
-              email: data.user.email
-            });
+            console.log('[Update-Data] ✅ User data updated');
 
-            // Dispatch event to notify app about user data update
             window.dispatchEvent(new CustomEvent('user-data-updated', {
               detail: data.user
             }));
           }
 
-          // ✅ Save user_roles from message data
+          // Update roles and permissions if provided
           if (data?.user_roles && Array.isArray(data.user_roles)) {
             localStorage.setItem('user_roles', JSON.stringify(data.user_roles));
-            console.log('[Update-Data] ✅ User roles saved', {
-              rolesCount: data.user_roles.length,
-              roles: data.user_roles.map(r => r.role_name || r.name)
-            });
-          } else {
-            console.warn('[Update-Data] ⚠️ No user_roles in AUTH_TOKEN message');
           }
 
-          // ✅ Save user_permissions from message data
           if (data?.user_permissions && Array.isArray(data.user_permissions)) {
             localStorage.setItem('user_permissions', JSON.stringify(data.user_permissions));
-            console.log('[Update-Data] ✅ User permissions saved', {
-              permissionsCount: data.user_permissions.length
-            });
-          } else {
-            console.warn('[Update-Data] ⚠️ No user_permissions in AUTH_TOKEN message');
           }
 
-          console.log('[Update-Data] ✅ Token saved successfully', {
-            tokenLength: data.access_token.length,
-            isNewToken,
-            hasTokenStore: !!tokenStore.accessToken,
-            hasUserData: !!data?.user
-          });
-
-          // ✅ NEW: Set global auth state (replaces reload)
-          // This allows components to wait for auth before making API calls
+          // Update global auth state
           setAuthReady(
             data.access_token,
-            data?.user || null,
-            data?.user_roles || null,
-            data?.user_permissions || null
+            data?.user || JSON.parse(localStorage.getItem('user') || 'null'),
+            data?.user_roles || JSON.parse(localStorage.getItem('user_roles') || 'null'),
+            data?.user_permissions || JSON.parse(localStorage.getItem('user_permissions') || 'null')
           );
-          console.log('[Update-Data] 🔐 Global auth state set - components can now proceed');
 
-          // Legacy: Dispatch event for backwards compatibility
-          window.dispatchEvent(new CustomEvent('auth-ready', {
-            detail: {
-              token: data.access_token,
-              user: data?.user,
-              roles: data?.user_roles,
-              permissions: data?.user_permissions
-            }
-          }));
-
-          // ✅ REMOVED: No more page reload!
-          // Components will use waitForAuth() to wait for this state
-          console.log('[Update-Data] ℹ️ Token ready, no reload needed (using auth state)');
+          console.log('[Update-Data] 🔐 Token update complete');
         } else {
-          console.error('[Update-Data] ❌ No access_token in AUTH_TOKEN message', data);
+          console.error('[Update-Data] ❌ No access_token in message', data);
         }
-        break;
-
-      case 'TOKEN_REFRESH':
-        // Parent notified us to refresh
-        console.log('[Update-Data] 🔄 Parent requested token refresh');
-        refreshAccessToken();
         break;
 
       case 'LOGOUT':
@@ -539,6 +494,47 @@ export default defineNuxtPlugin(() => {
   // Initialize on plugin load
   initialize();
 
+  /**
+   * ✅ NEW: Activity Tracking and Sync with Portal
+   * Notify parent when user is active in iframe to keep session alive
+   */
+  const notifyParentActivity = () => {
+    if (window.parent !== window) {
+      window.parent.postMessage({
+        type: 'IFRAME_ACTIVITY',
+        source: 'update-data',
+        timestamp: Date.now()
+      }, getParentOrigin());
+    }
+  };
+
+  // Setup activity tracking
+  const ACTIVITY_EVENTS = [
+    'mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click',
+    'keydown', 'wheel', 'focus', 'input', 'change', 'touchmove'
+  ];
+
+  let activityThrottleTimer = null;
+  const ACTIVITY_THROTTLE = 2000; // Notify parent max once per 2 seconds
+
+  const handleActivity = () => {
+    // Throttle activity notifications to prevent spam
+    if (activityThrottleTimer) return;
+
+    activityThrottleTimer = setTimeout(() => {
+      activityThrottleTimer = null;
+    }, ACTIVITY_THROTTLE);
+
+    // Notify parent about user activity
+    notifyParentActivity();
+  };
+
+  // Setup activity listeners
+  ACTIVITY_EVENTS.forEach(event => {
+    document.addEventListener(event, handleActivity, { passive: true });
+  });
+
+  console.log('[Update-Data] ✅ Activity tracking initialized - will notify parent on user activity');
 
   // DEBUG: Log token status every 5 seconds
   if (process.dev) {

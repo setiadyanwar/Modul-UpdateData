@@ -86,7 +86,12 @@ const checkAppHealth = async () => {
     if (response.ok) {
       // Health check passed, redirect to app
       setTimeout(() => {
-        navigateTo(props.appPath);
+        const isAbsolute = /^https?:\/\//i.test(props.appPath);
+        if (isAbsolute) {
+          navigateTo(props.appPath, { external: true });
+        } else {
+          navigateTo(props.appPath);
+        }
       }, props.redirectDelay);
       
       isLoading.value = false;
