@@ -1,6 +1,5 @@
 import { defineNuxtRouteMiddleware, navigateTo } from '#app';
 import { createError } from 'h3';
-import envConfig from '~/config/environment';
 
 /**
  * RBAC Route Protection Middleware
@@ -90,12 +89,29 @@ export default defineNuxtRouteMiddleware((to) => {
     if (process.client && window.parent !== window) {
       console.log('[Update-Data RBAC] No token found, requesting from parent');
 
+      // ✅ FIX: Detect actual parent origin or use wildcard
+      const getParentOrigin = () => {
+        try {
+          // Try to get referrer (works for same-origin or with proper CORS)
+          if (document.referrer) {
+            return new URL(document.referrer).origin;
+          }
+        } catch (e) {
+          // Fallback
+        }
+        // Use wildcard for REQUEST_TOKEN (safe for requesting, not for sensitive data)
+        return '*';
+      };
+
+      const parentOrigin = getParentOrigin();
+      console.log('[Update-Data RBAC] Sending REQUEST_TOKEN to:', parentOrigin);
+
       // Request token from parent
       window.parent.postMessage({
         type: 'REQUEST_TOKEN',
         source: 'update-data',
         timestamp: Date.now()
-      }, envConfig.REMOTE_APP.HOST_ORIGIN);
+      }, parentOrigin);
 
       // Allow navigation to continue - token handler will manage authentication
       // Show loading state while waiting for token

@@ -42,27 +42,21 @@ export default defineNuxtPlugin(() => {
     }
   };
   
-  // Send ready signal after app is mounted
-  onMounted(() => {
-    console.log('[Iframe Ready] 📍 App mounted, sending ready signal...');
-    
-    // Send immediately
-    sendReadySignal();
-    
-    // Also send after a short delay to ensure parent is listening
-    setTimeout(sendReadySignal, 500);
-    setTimeout(sendReadySignal, 1000);
-  });
-  
-  // Also send on DOMContentLoaded as fallback
+  // Send ready signal after DOM is loaded
+  // Note: Can't use onMounted in plugins - it's for components only!
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
       console.log('[Iframe Ready] DOM loaded, sending ready signal...');
-      setTimeout(sendReadySignal, 100);
+      sendReadySignal();
+      setTimeout(sendReadySignal, 500);
+      setTimeout(sendReadySignal, 1000);
     });
   } else {
     // DOM already loaded
-    setTimeout(sendReadySignal, 100);
+    console.log('[Iframe Ready] DOM already loaded, sending ready signal...');
+    sendReadySignal();
+    setTimeout(sendReadySignal, 500);
+    setTimeout(sendReadySignal, 1000);
   }
 });
 

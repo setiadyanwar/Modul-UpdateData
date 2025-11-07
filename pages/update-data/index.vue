@@ -4337,6 +4337,20 @@ const handleManualRefresh = async () => {
 
 // Initialize data on mount
 onMounted(async () => {
+  // ✅ CRITICAL: Wait for auth to be ready before loading data
+  // This prevents race condition where API calls happen before token arrives
+  const { useAuthState } = await import('~/composables/useAuthState');
+  const { waitForAuth } = useAuthState(); // Call the composable
+  console.log('[Update-Data] ⏳ Waiting for auth before loading data...');
+
+  const authReady = await waitForAuth(5000); // Wait max 5 seconds
+
+  if (!authReady) {
+    console.warn('[Update-Data] ⚠️ Auth not ready after timeout, proceeding anyway');
+  } else {
+    console.log('[Update-Data] ✅ Auth ready, proceeding with data load');
+  }
+
   // Clean up old draft system localStorage
   try {
     localStorage.removeItem("personalDataDrafts");

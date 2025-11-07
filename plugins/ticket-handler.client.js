@@ -57,6 +57,9 @@ export default defineNuxtPlugin((nuxtApp) => {
         const expiresIn = response.token.expires_in || 1800;
         localStorage.setItem('token_expiry', (Date.now() + (expiresIn * 1000)).toString());
 
+        // ✅ CRITICAL: Store the ticket ID so we don't re-process on reload
+        localStorage.setItem('last_processed_ticket', ticket);
+
         console.log('[Ticket Handler] ✅ Tokens saved to localStorage');
 
         // Step 2a: Parse JWT to extract roles and permissions early
@@ -325,9 +328,62 @@ export default defineNuxtPlugin((nuxtApp) => {
     console.log('[Ticket Handler] Ticket from URLSearchParams:', ticket || '❌ NONE');
   }
 
-  // Clear old tokens if ticket found
+  // Clear old tokens if ticket found (but check if this ticket was already processed)
   if (ticket) {
     console.log('[Ticket Handler] ✅ Ticket FOUND:', ticket.substring(0, 20) + '...');
+
+    // ✅ CRITICAL FIX: Check if this exact ticket was already successfully processed
+    const lastProcessedTicket = localStorage.getItem('last_processed_ticket');
+    const hasValidToken = localStorage.getItem('access_token') && localStorage.getItem('token_expiry');
+    const tokenExpiry = hasValidToken ? parseInt(localStorage.getItem('token_expiry')) : 0;
+    const tokenStillValid = tokenExpiry > Date.now();
+
+    console.log('[Ticket Handler] 🔍 Checking if ticket was already processed:', {
+      currentTicket: ticket.substring(0, 20) + '...',
+      lastProcessedTicket: lastProcessedTicket ? lastProcessedTicket.substring(0, 20) + '...' : 'NONE',
+      hasValidToken,
+      tokenStillValid,
+      isSameTicket: ticket === lastProcessedTicket
+    });
+
+    // If same ticket and token still valid, DON'T clear and DON'T re-exchange
+    if (ticket === lastProcessedTicket && tokenStillValid) {
+      console.log('[Ticket Handler] ✅ Ticket already processed and token still valid - skipping exchange');
+      console.log('[Ticket Handler] 🎉 Using existing token from localStorage');
+
+      // ✅ Trigger auth state restore immediately (use IIFE for async)
+      (async () => {
+        try {
+          const { useAuthState } = await import('~/composables/useAuthState');
+          const { setAuthReady } = useAuthState();
+
+          const storedToken = localStorage.getItem('access_token');
+          const storedUser = localStorage.getItem('user');
+          const storedRoles = localStorage.getItem('user_roles');
+          const storedPermissions = localStorage.getItem('user_permissions');
+
+          const user = storedUser ? JSON.parse(storedUser) : null;
+          const roles = storedRoles ? JSON.parse(storedRoles) : null;
+          const permissions = storedPermissions ? JSON.parse(storedPermissions) : null;
+
+          setAuthReady(storedToken, user, roles, permissions);
+          console.log('[Ticket Handler] 🔐 Auth state restored from existing session');
+        } catch (error) {
+          console.error('[Ticket Handler] ❌ Error restoring auth state:', error);
+        }
+      })();
+
+      // Redirect to main app without processing ticket again
+      setTimeout(() => {
+        console.log('[Ticket Handler] Redirecting to /update-data with existing token...');
+        window.history.replaceState({}, document.title, '/update-data');
+        router.push('/update-data');
+      }, 100);
+
+      return; // STOP here - don't process ticket again!
+    }
+
+    // Different ticket or expired token - clear and re-exchange
     console.log('[Ticket Handler] 🗑️ Clearing old tokens before exchange...');
     localStorage.removeItem('access_token');
     localStorage.removeItem('refresh_token');
@@ -335,6 +391,7 @@ export default defineNuxtPlugin((nuxtApp) => {
     localStorage.removeItem('user');
     localStorage.removeItem('user_roles');
     localStorage.removeItem('user_permissions');
+    localStorage.removeItem('last_processed_ticket'); // Clear old ticket marker
     console.log('[Ticket Handler] ✅ Old tokens cleared');
   } else {
     console.log('[Ticket Handler] ❌ No ticket in URL');
