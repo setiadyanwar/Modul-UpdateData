@@ -268,11 +268,11 @@ export default defineNuxtPlugin((nuxtApp) => {
         console.log('  - user_roles:', localStorage.getItem('user_roles') ? '✅ EXISTS' : '⚠️ MISSING');
         console.log('  - user_permissions:', localStorage.getItem('user_permissions') ? '✅ EXISTS' : '⚠️ MISSING');
 
-        // Step 7: Redirect to main app (increased delay for localStorage sync)
+        // Step 7: Redirect to /update-data (new login should always start at default route)
         console.log('[Ticket Handler] ✅ All data saved, redirecting to /update-data in 1000ms...');
         setTimeout(() => {
           console.log('[Ticket Handler] Redirecting now!');
-          // Clean URL (remove ticket parameter)
+          // Clean URL (remove ticket parameter) and go to default route
           window.history.replaceState({}, document.title, '/update-data');
           router.push('/update-data');
         }, 1000); // Increased from 500ms to 1000ms
@@ -373,11 +373,12 @@ export default defineNuxtPlugin((nuxtApp) => {
         }
       })();
 
-      // Redirect to main app without processing ticket again
+      // ✅ Redirect to last visited route or fallback to /update-data
       setTimeout(() => {
-        console.log('[Ticket Handler] Redirecting to /update-data with existing token...');
-        window.history.replaceState({}, document.title, '/update-data');
-        router.push('/update-data');
+        const lastRoute = localStorage.getItem('last_visited_route') || '/update-data';
+        console.log('[Ticket Handler] Redirecting to last visited route:', lastRoute);
+        window.history.replaceState({}, document.title, lastRoute);
+        router.push(lastRoute);
       }, 100);
 
       return; // STOP here - don't process ticket again!
@@ -392,7 +393,8 @@ export default defineNuxtPlugin((nuxtApp) => {
     localStorage.removeItem('user_roles');
     localStorage.removeItem('user_permissions');
     localStorage.removeItem('last_processed_ticket'); // Clear old ticket marker
-    console.log('[Ticket Handler] ✅ Old tokens cleared');
+    localStorage.removeItem('last_visited_route'); // Clear old route (new login starts fresh)
+    console.log('[Ticket Handler] ✅ Old tokens and route history cleared');
   } else {
     console.log('[Ticket Handler] ❌ No ticket in URL');
   }

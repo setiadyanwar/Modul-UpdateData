@@ -1039,6 +1039,13 @@ const parseJWTPayload = (token) => {
       // Clear any other auth-related keys
       localStorage.removeItem('auth:login');
       localStorage.removeItem('auth:logout');
+      
+      // ✅ Clear route restoration data (reset for next login)
+      localStorage.removeItem('last_visited_route');
+      sessionStorage.removeItem('app_visited');
+      
+      // Clear all sessionStorage (like mango implementation)
+      sessionStorage.clear();
 
 
       // Show appropriate message
@@ -1055,11 +1062,37 @@ const parseJWTPayload = (token) => {
 
       // If we're in an iframe, notify parent to logout and redirect
       if (window.parent !== window) {
+        // ✅ FIX: Use dynamic origin detection or wildcard
+        const getParentOrigin = () => {
+          try {
+            if (document.referrer) {
+              return new URL(document.referrer).origin;
+            }
+          } catch (e) {}
+          return '*'; // Safe for logout notification
+        };
+
+        const parentOrigin = getParentOrigin();
+        console.log('[AUTH] 🚪 Sending LOGOUT_REQUEST to parent:', parentOrigin);
+
         window.parent.postMessage({
           type: 'LOGOUT_REQUEST',
           source: 'update-data',
+          app_name: 'Update Data',
+          timestamp: new Date().toISOString(),
           data: { reason }
-        }, envConfig.REMOTE_APP.HOST_ORIGIN);
+        }, parentOrigin);
+
+        // Send completion message after short delay
+        setTimeout(() => {
+          window.parent.postMessage({
+            type: 'UPDATE_DATA_LOGOUT_COMPLETE',
+            source: 'update-data',
+            app_name: 'Update Data',
+            timestamp: new Date().toISOString()
+          }, parentOrigin);
+          console.log('[AUTH] ✅ Sent LOGOUT_COMPLETE to parent');
+        }, 500);
       } else {
         // If not in iframe, redirect to login
         await navigateTo('/login');
