@@ -31,7 +31,7 @@ const globalPageLoadingState = reactive({
 export const useGlobalPageLoadingState = () => {
   /**
    * Show loading state with optional custom text
-   * 
+   *
    * @param {string} text - Custom loading text (default: 'Loading...')
    */
   const showLoading = (text = 'Loading...') => {

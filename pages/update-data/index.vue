@@ -106,7 +106,7 @@
 
     <!-- Family Section -->
     <UpdateDataFamilySection v-show="activeTab === 'family'" ref="familySectionRef" :model-value="familyData"
-      :edit-mode="safeEditMode" :is-loading="isLoadingFamily"
+      :edit-mode="safeEditMode" :is-loading="IsLoadingFamily"
       :is-tab-eligible="tabManagement.canEditTabCompletelySync(activeTab)" @update:model-value="val => familyData = val"
       @insert-request="handleInsertRequest" @edit-request="handleEditRequest"
       @open-change-request-modal="handleOpenChangeRequestModal" @field-touched="onFamilyFieldTouched"
@@ -114,7 +114,7 @@
 
     <!-- Education Section -->
     <UpdateDataEducationSection v-show="activeTab === 'education'" ref="educationSectionRef" :model-value="educationData"
-      :edit-mode="safeEditMode" :is-loading="isLoadingEducation"
+      :edit-mode="safeEditMode" :is-loading="IsLoadingEducation"
       :is-tab-eligible="tabManagement.canEditTabCompletelySync(activeTab)"
       :original-data="personalData.originalEducationData" :add-education-record="addEducationRecord"
       :remove-education-record="removeEducationRecord" @update:model-value="val => educationData = val"
@@ -122,18 +122,18 @@
 
     <!-- Benefit Section -->
     <UpdateDataSocialSecuritySection v-show="activeTab === 'social-security'" ref="socialSecuritySectionRef" :model-value="socialSecurityData"
-      :edit-mode="safeEditMode" :is-loading="isLoadingSocialSecurity"
+      :edit-mode="safeEditMode" :is-loading="IsLoadingSocialSecurity"
       @update:model-value="val => socialSecurityData = val"
       @files-changed="handleSocialSecurityFilesChanged" />
 
     <!-- Medical Record Section -->
     <UpdateDataMedicalRecordSection v-show="activeTab === 'medical-record'" :model-value="medicalRecordData"
-      :edit-mode="safeEditMode" :is-loading="isLoadingMedicalRecord" :blood-type-options="medicalBloodTypeOptions"
+      :edit-mode="safeEditMode" :is-loading="IsLoadingMedicalRecord" :blood-type-options="medicalBloodTypeOptions"
       :health-status-options="medicalHealthStatusOptions" @update:model-value="val => medicalRecordData = val" />
 
     <!-- Employment Information Section -->
     <UpdateDataEmploymentInfoSection v-show="activeTab === 'employment-information'" :model-value="employmentInfoData"
-      :is-loading="isLoadingEmploymentInfo" />
+      :is-loading="IsLoadingEmploymentInfo" />
 
     <!--
       Modals
@@ -252,6 +252,9 @@ const payrollAccountUploadedFiles = ref([]);
 const socialSecurityUploadedFiles = ref([]);
 const familyUploadedFiles = ref([]);
 
+// ✅ FIX: Track mount state to show skeleton immediately
+const isMounted = ref(false);
+
 // Use composables
 const route = useRoute();
 const personalData = usePersonalData();
@@ -333,6 +336,18 @@ const {
   removeEducationRecord,
   resetAllDataToOriginal,
 } = personalData;
+
+// ✅ FIX: Computed loading states that show skeleton IMMEDIATELY on page load
+// Before component is mounted, always show skeleton (prevents empty form flash)
+const computedIsLoadingBasicInfo = computed(() => !isMounted.value || isLoadingBasicInfo.value);
+const computedIsLoadingAddress = computed(() => !isMounted.value || isLoadingAddress.value);
+const computedIsLoadingEmergencyContact = computed(() => !isMounted.value || isLoadingEmergencyContact.value);
+const computedIsLoadingPayrollAccount = computed(() => !isMounted.value || isLoadingPayrollAccount.value);
+const computedIsLoadingFamily = computed(() => !isMounted.value || isLoadingFamily.value);
+const computedIsLoadingEducation = computed(() => !isMounted.value || isLoadingEducation.value);
+const computedIsLoadingSocialSecurity = computed(() => !isMounted.value || isLoadingSocialSecurity.value);
+const computedIsLoadingMedicalRecord = computed(() => !isMounted.value || isLoadingMedicalRecord.value);
+const computedIsLoadingEmploymentInfo = computed(() => !isMounted.value || isLoadingEmploymentInfo.value);
 
 // Tambahkan mapping snake_case ke camelCase untuk EmploymentInfoForm
 const employmentInfoFormData = computed(() => ({
@@ -4337,6 +4352,10 @@ const handleManualRefresh = async () => {
 
 // Initialize data on mount
 onMounted(async () => {
+  // ✅ FIX: Mark as mounted to trigger skeleton display
+  // This ensures skeleton shows immediately instead of empty form
+  isMounted.value = true;
+
   // ✅ CRITICAL: Wait for auth to be ready before loading data
   // This prevents race condition where API calls happen before token arrives
   const { useAuthState } = await import('~/composables/useAuthState');
