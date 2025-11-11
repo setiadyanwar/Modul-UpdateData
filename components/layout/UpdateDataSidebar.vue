@@ -4,6 +4,7 @@
       'bg-background border-r border-grey-200 dark:border-grey-800 flex flex-col transition-all duration-300 ease-in-out',
       isSidebarCollapsed ? 'w-14' : 'w-64',
     ]"
+    @contextmenu.prevent
   >
     <div
       :class="[
@@ -59,13 +60,14 @@
       <!-- Back to Dashboard -->
       <button
         @click="navigateToParentDashboard"
-        class="flex items-center rounded-md transition-all duration-200 overflow-hidden whitespace-nowrap text-grey-600 dark:text-grey-400 hover:bg-grey-100 dark:hover:bg-grey-800 relative group w-full"
+        class="flex items-center rounded-md transition-all duration-200 overflow-hidden whitespace-nowrap text-grey-600 dark:text-grey-400 hover:bg-grey-100 dark:hover:bg-grey-800 relative group w-full no-link-preview"
         :class="[
           isSidebarCollapsed
             ? 'w-10 h-10 justify-center mx-auto'
             : 'py-2.5 px-4'
         ]"
         :title="'Back to Dashboard'"
+        @contextmenu.prevent
       >
         <i :class="[
           'pi pi-home flex-shrink-0',
@@ -90,7 +92,7 @@
         v-for="item in regularNavigation"
         :key="item.name"
         :to="item.href"
-        class="flex items-center rounded-md transition-all duration-200 overflow-hidden whitespace-nowrap relative group"
+        class="flex items-center rounded-md transition-all duration-200 overflow-hidden whitespace-nowrap relative group no-link-preview"
         :class="[
           isSidebarCollapsed 
             ? 'w-10 h-10 justify-center mx-auto' 
@@ -100,6 +102,11 @@
             : 'text-grey-600 dark:text-grey-400 hover:bg-primary-50 dark:hover:bg-primary-900/50'
         ]"
         :title="item.name"
+        draggable="false"
+        @contextmenu.prevent
+        @click.middle.prevent
+        @auxclick.prevent
+        @dragstart.prevent
       >
         <i :class="[
           item.icon, 
@@ -136,7 +143,7 @@
           v-for="item in hcNavigation"
           :key="item.name"
           :to="item.href"
-          class="flex items-center rounded-md transition-all duration-200 overflow-hidden whitespace-nowrap relative group"
+          class="flex items-center rounded-md transition-all duration-200 overflow-hidden whitespace-nowrap relative group no-link-preview"
           :class="[
             isSidebarCollapsed 
               ? 'w-10 h-10 justify-center mx-auto' 
@@ -146,6 +153,11 @@
               : 'text-grey-600 dark:text-grey-400 hover:bg-orange-50 dark:hover:bg-orange-900/50'
           ]"
           :title="item.name"
+          draggable="false"
+          @contextmenu.prevent
+          @click.middle.prevent
+          @auxclick.prevent
+          @dragstart.prevent
         >
           <i :class="[
             item.icon, 
@@ -282,5 +294,24 @@ nav::-webkit-scrollbar-thumb {
 
 nav::-webkit-scrollbar-thumb:hover {
   @apply bg-gray-400 dark:bg-gray-500;
+}
+
+/* Prevent link preview and context menu */
+.no-link-preview {
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+}
+
+/* Prevent text selection on hover */
+nav a,
+nav button {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  -khtml-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
 }
 </style>

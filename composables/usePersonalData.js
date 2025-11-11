@@ -172,15 +172,17 @@ export const usePersonalData = () => {
   const originalEmploymentInfoData = ref({});
 
   // Loading states
-  const isLoadingBasicInfo = ref(false);
-  const isLoadingAddress = ref(false);
-  const isLoadingEmergencyContact = ref(false);
-  const isLoadingPayrollAccount = ref(false);
-  const isLoadingFamily = ref(false);
-  const isLoadingEducation = ref(false);
-  const isLoadingSocialSecurity = ref(false);
-  const isLoadingMedicalRecord = ref(false);
-  const isLoadingEmploymentInfo = ref(false);
+  // ✅ FIX: Start with TRUE to show skeleton immediately on page load
+  // Will be set to false after data is loaded in onMounted
+  const isLoadingBasicInfo = ref(true);
+  const isLoadingAddress = ref(true);
+  const isLoadingEmergencyContact = ref(true);
+  const isLoadingPayrollAccount = ref(true);
+  const isLoadingFamily = ref(true);
+  const isLoadingEducation = ref(true);
+  const isLoadingSocialSecurity = ref(true);
+  const isLoadingMedicalRecord = ref(true);
+  const isLoadingEmploymentInfo = ref(true);
   
   // Reset state to prevent infinite loops
   const isResetting = ref(false);
