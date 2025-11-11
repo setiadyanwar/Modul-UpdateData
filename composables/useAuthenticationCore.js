@@ -1062,14 +1062,13 @@ const parseJWTPayload = (token) => {
 
       // If we're in an iframe, notify parent to logout and redirect
       if (window.parent !== window) {
-        // ✅ FIX: Use dynamic origin detection or wildcard
         const getParentOrigin = () => {
           try {
             if (document.referrer) {
               return new URL(document.referrer).origin;
             }
           } catch (e) {}
-          return '*'; // Safe for logout notification
+          return '*';
         };
 
         const parentOrigin = getParentOrigin();
