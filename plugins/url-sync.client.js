@@ -57,11 +57,22 @@ export default defineNuxtPlugin((nuxtApp) => {
 
       // ✅ CRITICAL: Save last route to localStorage for restoration after parent reload
       // Only save app routes (not root or ticket-loading)
+      // ✅ FIX: Validate pathname to prevent saving malformed URLs (e.g., /https://domain.com/)
       if (currentUrl.pathname &&
           currentUrl.pathname !== '/' &&
           !currentUrl.pathname.includes('/ticket-loading')) {
-        localStorage.setItem('last_visited_route', currentUrl.pathname);
-        console.log('[URL Sync] 💾 Saved last route to localStorage:', currentUrl.pathname);
+
+        // ✅ Validate: pathname should not contain "http://" or "https://"
+        // This prevents saving malformed paths like "/https://updatedata-people-dev.telkomsigma.co.id/"
+        if (!currentUrl.pathname.includes('http://') && !currentUrl.pathname.includes('https://')) {
+          localStorage.setItem('last_visited_route', currentUrl.pathname);
+          console.log('[URL Sync] 💾 Saved last route to localStorage:', currentUrl.pathname);
+        } else {
+          console.warn('[URL Sync] ⚠️ Invalid pathname detected (contains full URL), not saving:', currentUrl.pathname);
+          console.warn('[URL Sync] 🔧 Using default route instead: /update-data');
+          // Save default route instead of malformed one
+          localStorage.setItem('last_visited_route', '/update-data');
+        }
       }
 
       if (window.parent && window.parent !== window) {

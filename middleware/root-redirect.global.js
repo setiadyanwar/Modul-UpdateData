@@ -8,7 +8,17 @@ export default defineNuxtRouteMiddleware((to) => {
     let targetPath = '/update-data'; // default for fresh login
 
     if (process.client) {
-      const lastVisitedRoute = localStorage.getItem('last_visited_route');
+      let lastVisitedRoute = localStorage.getItem('last_visited_route');
+
+      // ✅ FIX: Validate lastVisitedRoute to prevent malformed URLs
+      if (lastVisitedRoute && (lastVisitedRoute.includes('http://') || lastVisitedRoute.includes('https://'))) {
+        console.warn('[Root Redirect] ⚠️ Malformed route detected in localStorage:', lastVisitedRoute);
+        console.warn('[Root Redirect] 🔧 Resetting to default route: /update-data');
+        lastVisitedRoute = null; // Treat as invalid
+        // Clear malformed value from localStorage
+        localStorage.removeItem('last_visited_route');
+        localStorage.setItem('last_visited_route', '/update-data');
+      }
 
       // If there's a last visited route AND we have a ticket (reload scenario)
       if (lastVisitedRoute && to.query.ticket) {

@@ -270,7 +270,18 @@ export default defineNuxtPlugin((nuxtApp) => {
         console.log('  - user_permissions:', localStorage.getItem('user_permissions') ? '✅ EXISTS' : '⚠️ MISSING');
 
         // Step 7: Redirect to last visited route (if reload) or default /update-data (if fresh login)
-        const targetRoute = localStorage.getItem('last_visited_route') || '/update-data';
+        // ✅ FIX: Validate targetRoute to prevent malformed URLs from localStorage
+        let targetRoute = localStorage.getItem('last_visited_route') || '/update-data';
+
+        // ✅ Sanitize: Check if route contains full URL (e.g., /https://domain.com/)
+        if (targetRoute.includes('http://') || targetRoute.includes('https://')) {
+          console.warn('[Ticket Handler] ⚠️ Malformed route detected in localStorage:', targetRoute);
+          console.warn('[Ticket Handler] 🔧 Resetting to default route: /update-data');
+          targetRoute = '/update-data';
+          // Update localStorage with corrected value
+          localStorage.setItem('last_visited_route', '/update-data');
+        }
+
         const isReload = !!localStorage.getItem('last_visited_route');
 
         console.log('[Ticket Handler] ✅ All data saved, redirecting to', targetRoute, 'in 1000ms...');
@@ -393,7 +404,17 @@ export default defineNuxtPlugin((nuxtApp) => {
 
       // ✅ Redirect to last visited route or fallback to /update-data
       setTimeout(() => {
-        const lastRoute = localStorage.getItem('last_visited_route') || '/update-data';
+        let lastRoute = localStorage.getItem('last_visited_route') || '/update-data';
+
+        // ✅ FIX: Validate lastRoute to prevent malformed URLs
+        if (lastRoute.includes('http://') || lastRoute.includes('https://')) {
+          console.warn('[Ticket Handler] ⚠️ Malformed route detected in localStorage:', lastRoute);
+          console.warn('[Ticket Handler] 🔧 Resetting to default route: /update-data');
+          lastRoute = '/update-data';
+          // Update localStorage with corrected value
+          localStorage.setItem('last_visited_route', '/update-data');
+        }
+
         const hasLastRoute = !!localStorage.getItem('last_visited_route');
 
         console.log('[Ticket Handler] 🔍 Checking last visited route:', {
