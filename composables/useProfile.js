@@ -208,7 +208,7 @@ export const useUserRoles = () => {
         userRoles.value = JSON.parse(rolesString);
         return;
       } catch (error) {
-        console.error('[useUserRoles] Error parsing user_roles:', error);
+        // console.error('[useUserRoles] Error parsing user_roles:', error);
       }
     }
 
@@ -224,11 +224,11 @@ export const useUserRoles = () => {
           return;
         }
       } catch (error) {
-        console.error('[useUserRoles] Error parsing user:', error);
+        // console.error('[useUserRoles] Error parsing user:', error);
       }
     }
 
-    console.warn('[useUserRoles] No roles found in localStorage');
+    // console.warn('[useUserRoles] No roles found in localStorage');
   };
 
   // Auto-load on first access

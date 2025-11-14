@@ -21,7 +21,7 @@ export const useDocumentTypes = () => {
   try {
     response = await apiGet('/master-api/?category=emp_document')
   } catch (apiError) {
-    console.warn('⚠️ [useDocumentTypes] API call failed, using fallback data:', apiError.message);
+    // console.warn('⚠️ [useDocumentTypes] API call failed, using fallback data:', apiError.message);
     // Use fallback data instead of returning empty array
     documentTypes.value = [
       { code: '1', value: 'Professional Photo', id: 1, order: 7 },
@@ -108,12 +108,12 @@ export const useDocumentTypes = () => {
           if (!Array.isArray(dataArray)) {
             // Check if response is HTML (error page) instead of JSON
             if (typeof response.data === 'string' && response.data.includes('<html>')) {
-              console.error('❌ API returned HTML instead of JSON:', response.data.substring(0, 200) + '...');
+              // console.error('❌ API returned HTML instead of JSON:', response.data.substring(0, 200) + '...');
               // Return empty array instead of throwing error to prevent app crashes
               return [];
             }
             // If it's not an array and not HTML, return empty array
-            console.warn('⚠️ API response is not an array, returning empty array');
+            // console.warn('⚠️ API response is not an array, returning empty array');
             return [];
           }
         }
@@ -153,7 +153,7 @@ export const useDocumentTypes = () => {
         }} catch { /* noop */ }
         return documentTypes.value
       } else {
-        console.warn('⚠️ [useDocumentTypes] API response not successful, using fallback data');
+        // console.warn('⚠️ [useDocumentTypes] API response not successful, using fallback data');
         // Use fallback data when response is not successful
         documentTypes.value = [
           { code: '1', value: 'Professional Photo', id: 1, order: 7 },
@@ -168,7 +168,7 @@ export const useDocumentTypes = () => {
         return documentTypes.value;
       }
     } catch (err) {
-      console.error('Error fetching document types:', err)
+      // console.error('Error fetching document types:', err)
       error.value = err.message
 
       // Fallback: provide default document types if API fails - based on actual master data

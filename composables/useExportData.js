@@ -192,7 +192,7 @@ export const useExportData = () => {
              token = await getValidAccessToken();
            } catch (tokenError) {
              // Token refresh failed, continue with existing token
-             console.warn('Token refresh failed:', tokenError.message);
+             // console.warn('Token refresh failed:', tokenError.message);
            }
 
           if (!token) {
@@ -304,11 +304,11 @@ export const useExportData = () => {
           }
           
         } catch (fallbackError) {
-          console.warn('Fallback data loading failed:', fallbackError.message);
+          // console.warn('Fallback data loading failed:', fallbackError.message);
         }
       }
     } catch (err) {
-      console.error('Error loading preview data:', err);
+      // console.error('Error loading preview data:', err);
       error.value = "Gagal memuat data untuk preview";
     } finally {
       isLoading.value = false;
@@ -369,7 +369,7 @@ export const useExportData = () => {
       try {
         token = await getValidAccessToken();
       } catch (tokenError) {
-        console.warn('Token refresh failed during PDF export:', tokenError.message);
+        // console.warn('Token refresh failed during PDF export:', tokenError.message);
       }
 
       if (!token) {
