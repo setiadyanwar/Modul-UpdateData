@@ -48,14 +48,14 @@ export default defineNuxtRouteMiddleware((to) => {
             // Token valid, use JWT permissions
             const jwtPermissions = payload.access || [];
             if (jwtPermissions.length > 0) {
-              console.log('[RBAC] ✅ Using JWT permissions:', jwtPermissions);
+              // console.log('[RBAC] ✅ Using JWT permissions:', jwtPermissions);
               return jwtPermissions;
             }
           } else {
-            console.warn('[RBAC] ⚠️ JWT token expired, falling back to localStorage');
+            // console.warn('[RBAC] ⚠️ JWT token expired, falling back to localStorage');
           }
         } catch (jwtError) {
-          console.warn('[RBAC] ⚠️ Failed to parse JWT, falling back to localStorage:', jwtError);
+          // console.warn('[RBAC] ⚠️ Failed to parse JWT, falling back to localStorage:', jwtError);
         }
       }
 
@@ -66,17 +66,17 @@ export default defineNuxtRouteMiddleware((to) => {
           const permissions = JSON.parse(storedPermissions);
           // Extract permission codes from objects
           const permissionCodes = permissions.map(p => p.permission_code || p);
-          console.log('[RBAC] ✅ Using localStorage permissions:', permissionCodes);
+          // console.log('[RBAC] ✅ Using localStorage permissions:', permissionCodes);
           return permissionCodes;
         } catch (storageError) {
-          console.error('[RBAC] ❌ Failed to parse stored permissions:', storageError);
+          // console.error('[RBAC] ❌ Failed to parse stored permissions:', storageError);
         }
       }
 
-      console.warn('[RBAC] ⚠️ No permissions found in JWT or localStorage');
+      // console.warn('[RBAC] ⚠️ No permissions found in JWT or localStorage');
       return [];
     } catch (error) {
-      console.error('[RBAC] ❌ Error getting user permissions:', error);
+      // console.error('[RBAC] ❌ Error getting user permissions:', error);
       return [];
     }
   };
@@ -87,7 +87,7 @@ export default defineNuxtRouteMiddleware((to) => {
   if (userPermissions.length === 0) {
     // For iframe/remote app mode, request token from parent instead of redirecting to login
     if (process.client && window.parent !== window) {
-      console.log('[Update-Data RBAC] No token found, requesting from parent');
+      // console.log('[Update-Data RBAC] No token found, requesting from parent');
 
       // ✅ FIX: Detect actual parent origin or use wildcard
       const getParentOrigin = () => {
@@ -104,7 +104,7 @@ export default defineNuxtRouteMiddleware((to) => {
       };
 
       const parentOrigin = getParentOrigin();
-      console.log('[Update-Data RBAC] Sending REQUEST_TOKEN to:', parentOrigin);
+      // console.log('[Update-Data RBAC] Sending REQUEST_TOKEN to:', parentOrigin);
 
       // Request token from parent
       window.parent.postMessage({

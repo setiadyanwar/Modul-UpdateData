@@ -18,9 +18,12 @@
           alt="Logo"
           class="h-8 dark:invert dark:brightness-0 flex-shrink-0"
         />
-        <span
-          class="px-2 py-1 bg-primary text-white text-xs font-bold rounded-md whitespace-nowrap ml-2"
-        >ESS</span>
+        <img
+          src="@/assets/logo-ess-transparant.png"
+          alt="ESS Logo"
+          class="h-4 object-contain ml-2 flex-shrink-0"
+          draggable="false"
+        />
         <button
           @click="toggleSidebar"
           class="ml-auto p-2 rounded-md bg-background border border-grey-200 dark:border-grey-800 hover:bg-grey-200 dark:hover:bg-grey-700 transition-all duration-300 ease-in-out"
@@ -43,10 +46,13 @@
         </button>
       </template>
       <template v-else>
-        <div class="relative group">
-          <span
-            class="w-8 h-8 bg-primary text-white text-xs font-bold rounded-md flex items-center justify-center"
-          >ESS</span>
+        <div class="relative group flex items-center justify-center">
+          <img
+            src="@/assets/logo-ess-transparant.png"
+            alt="ESS Logo"
+            class="h-6 max-w-[32px] object-contain"
+            draggable="false"
+          />
           <div
             class="absolute left-full ml-2 top-1/2 transform -translate-y-1/2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50"
           >

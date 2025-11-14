@@ -25,13 +25,13 @@ export const useAuthState = () => {
   const waitForAuth = async (timeout = 5000) => {
     // If already ready, return immediately
     if (authReady.value) {
-      console.log('[useAuthState] ✅ Auth already ready');
+      // console.log('[useAuthState] ✅ Auth already ready');
       return true;
     }
 
     // If running in iframe, wait for parent to send token
     if (typeof window !== 'undefined' && window.parent !== window) {
-      console.log('[useAuthState] ⏳ Waiting for auth from parent (max:', timeout, 'ms)...');
+      // console.log('[useAuthState] ⏳ Waiting for auth from parent (max:', timeout, 'ms)...');
 
       return new Promise((resolve) => {
         const startTime = Date.now();
@@ -42,11 +42,11 @@ export const useAuthState = () => {
 
           if (authReady.value) {
             clearInterval(checkInterval);
-            console.log('[useAuthState] ✅ Auth ready after', elapsed, 'ms');
+            // console.log('[useAuthState] ✅ Auth ready after', elapsed, 'ms');
             resolve(true);
           } else if (elapsed >= timeout) {
             clearInterval(checkInterval);
-            console.warn('[useAuthState] ⏰ Auth timeout after', elapsed, 'ms');
+            // console.warn('[useAuthState] ⏰ Auth timeout after', elapsed, 'ms');
             // Don't fail completely - allow component to try anyway
             resolve(false);
           }
@@ -58,14 +58,14 @@ export const useAuthState = () => {
     if (typeof window !== 'undefined') {
       const token = localStorage.getItem('access_token');
       if (token && token !== 'null') {
-        console.log('[useAuthState] ✅ Token found in localStorage (standalone mode)');
+        // console.log('[useAuthState] ✅ Token found in localStorage (standalone mode)');
         authReady.value = true;
         authToken.value = token;
         return true;
       }
     }
 
-    console.warn('[useAuthState] ⚠️ No auth available');
+    // console.warn('[useAuthState] ⚠️ No auth available');
     return false;
   };
 
@@ -79,12 +79,12 @@ export const useAuthState = () => {
     authRoles.value = roles;
     authPermissions.value = permissions;
 
-    console.log('[useAuthState] 🔐 Auth state updated:', {
-      hasToken: !!token,
-      hasUser: !!user,
-      rolesCount: roles?.length || 0,
-      permissionsCount: permissions?.length || 0
-    });
+    // console.log('[useAuthState] 🔐 Auth state updated:', {
+    //   hasToken: !!token,
+    //   hasUser: !!user,
+    //   rolesCount: roles?.length || 0,
+    //   permissionsCount: permissions?.length || 0
+    // });
   };
 
   /**
@@ -97,7 +97,7 @@ export const useAuthState = () => {
     authRoles.value = null;
     authPermissions.value = null;
 
-    console.log('[useAuthState] 🔓 Auth state reset');
+    // console.log('[useAuthState] 🔓 Auth state reset');
   };
 
   /**

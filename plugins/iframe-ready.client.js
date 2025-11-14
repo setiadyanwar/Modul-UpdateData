@@ -16,11 +16,11 @@ export default defineNuxtPlugin(() => {
   }
   
   if (!isIframe) {
-    console.log('[Iframe Ready] Not running in iframe, skipping');
+    // console.log('[Iframe Ready] Not running in iframe, skipping');
     return;
   }
   
-  console.log('[Iframe Ready] 🔄 Plugin initialized, will send ready signal');
+  // console.log('[Iframe Ready] 🔄 Plugin initialized, will send ready signal');
   
   /**
    * Send ready signal to parent
@@ -35,10 +35,10 @@ export default defineNuxtPlugin(() => {
           timestamp: Date.now()
         }, '*');
         
-        console.log('[Iframe Ready] ✅ Sent IFRAME_READY to parent');
+        // console.log('[Iframe Ready] ✅ Sent IFRAME_READY to parent');
       }
     } catch (error) {
-      console.error('[Iframe Ready] ❌ Failed to send ready signal:', error);
+      // console.error('[Iframe Ready] ❌ Failed to send ready signal:', error);
     }
   };
   
@@ -46,14 +46,14 @@ export default defineNuxtPlugin(() => {
   // Note: Can't use onMounted in plugins - it's for components only!
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
-      console.log('[Iframe Ready] DOM loaded, sending ready signal...');
+      // console.log('[Iframe Ready] DOM loaded, sending ready signal...');
       sendReadySignal();
       setTimeout(sendReadySignal, 500);
       setTimeout(sendReadySignal, 1000);
     });
   } else {
     // DOM already loaded
-    console.log('[Iframe Ready] DOM already loaded, sending ready signal...');
+    // console.log('[Iframe Ready] DOM already loaded, sending ready signal...');
     sendReadySignal();
     setTimeout(sendReadySignal, 500);
     setTimeout(sendReadySignal, 1000);

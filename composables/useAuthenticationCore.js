@@ -149,7 +149,7 @@ export const useAuthenticationCore = () => {
 
 
       } catch (error) {
-        console.error('[AUTH DEBUG] Error:', error);
+        // console.error('[AUTH DEBUG] Error:', error);
       }
     }, 10000); // Every 10 seconds for better monitoring
   };
@@ -381,8 +381,8 @@ const parseJWTPayload = (token) => {
       // ✅ FIXED: Handle 503 network errors - DON'T force logout!
       if (error.status === 503 || error.statusCode === 503 ||
           (error.message && error.message.includes('Network error'))) {
-        console.warn('[AUTH] ⚠️ Network error saat refresh token (503) - TIDAK logout, keep session');
-        console.warn('[AUTH] Kemungkinan: VPN disconnect, koneksi tidak stabil, atau server maintenance');
+        // console.warn('[AUTH] ⚠️ Network error saat refresh token (503) - TIDAK logout, keep session');
+        // console.warn('[AUTH] Kemungkinan: VPN disconnect, koneksi tidak stabil, atau server maintenance');
 
         // Don't show warning toast - not user-friendly
         // Token will be refreshed automatically when connection is restored
@@ -401,7 +401,7 @@ const parseJWTPayload = (token) => {
       }
 
       // For other errors, return current token and log warning
-      console.warn('[AUTH] ⚠️ Refresh token failed with unknown error - keeping current token');
+      // console.warn('[AUTH] ⚠️ Refresh token failed with unknown error - keeping current token');
       const currentToken = localStorage.getItem('access_token');
       return currentToken;
     }
@@ -1072,7 +1072,7 @@ const parseJWTPayload = (token) => {
         };
 
         const parentOrigin = getParentOrigin();
-        console.log('[AUTH] 🚪 Sending LOGOUT_REQUEST to parent:', parentOrigin);
+        // console.log('[AUTH] 🚪 Sending LOGOUT_REQUEST to parent:', parentOrigin);
 
         window.parent.postMessage({
           type: 'LOGOUT_REQUEST',
@@ -1090,7 +1090,7 @@ const parseJWTPayload = (token) => {
             app_name: 'Update Data',
             timestamp: new Date().toISOString()
           }, parentOrigin);
-          console.log('[AUTH] ✅ Sent LOGOUT_COMPLETE to parent');
+          // console.log('[AUTH] ✅ Sent LOGOUT_COMPLETE to parent');
         }, 500);
       } else {
         // If not in iframe, redirect to login

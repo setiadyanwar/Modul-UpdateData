@@ -12,8 +12,8 @@ export default defineNuxtRouteMiddleware((to) => {
 
       // ✅ FIX: Validate lastVisitedRoute to prevent malformed URLs
       if (lastVisitedRoute && (lastVisitedRoute.includes('http://') || lastVisitedRoute.includes('https://'))) {
-        console.warn('[Root Redirect] ⚠️ Malformed route detected in localStorage:', lastVisitedRoute);
-        console.warn('[Root Redirect] 🔧 Resetting to default route: /update-data');
+        // console.warn('[Root Redirect] ⚠️ Malformed route detected in localStorage:', lastVisitedRoute);
+        // console.warn('[Root Redirect] 🔧 Resetting to default route: /update-data');
         lastVisitedRoute = null; // Treat as invalid
         // Clear malformed value from localStorage
         localStorage.removeItem('last_visited_route');
@@ -23,13 +23,13 @@ export default defineNuxtRouteMiddleware((to) => {
       // If there's a last visited route AND we have a ticket (reload scenario)
       if (lastVisitedRoute && to.query.ticket) {
         targetPath = lastVisitedRoute;
-        console.log('[Root Redirect] 🔄 Reload detected - redirecting to last visited route:', targetPath);
+        // console.log('[Root Redirect] 🔄 Reload detected - redirecting to last visited route:', targetPath);
       } else if (lastVisitedRoute) {
         // If there's a last visited route but NO ticket (direct visit to root)
         targetPath = lastVisitedRoute;
-        console.log('[Root Redirect] 📍 Restoring last visited route:', targetPath);
+        // console.log('[Root Redirect] 📍 Restoring last visited route:', targetPath);
       } else {
-        console.log('[Root Redirect] 🆕 Fresh login - redirecting to default:', targetPath);
+        // console.log('[Root Redirect] 🆕 Fresh login - redirecting to default:', targetPath);
       }
     }
 
