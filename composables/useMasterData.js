@@ -193,15 +193,15 @@ export const useMasterData = () => {
         const { apiGet } = useApi();
         const response = await apiGet(endpoint);
 
-        console.log(`[useMasterData] API Response for ${cacheKey}:`, {
-          endpoint,
-          hasResponse: !!response,
-          responseType: typeof response,
-          responseKeys: response ? Object.keys(response) : [],
-          responseData: response,
-          responseDataKeys: response?.data ? Object.keys(response.data) : [],
-          responseDataData: response?.data
-        });
+        // console.log(`[useMasterData] API Response for ${cacheKey}:`, {
+        //   endpoint,
+        //   hasResponse: !!response,
+        //   responseType: typeof response,
+        //   responseKeys: response ? Object.keys(response) : [],
+        //   responseData: response,
+        //   responseDataKeys: response?.data ? Object.keys(response.data) : [],
+        //   responseDataData: response?.data
+        // });
 
         // Helper to extract items from response
         const extractItems = (res) => {
@@ -232,11 +232,11 @@ export const useMasterData = () => {
 
         let raw = extractItems(response) || [];
 
-        console.log(`[useMasterData] Extracted raw items for ${cacheKey}:`, {
-          rawLength: raw.length,
-          firstRawItem: raw[0],
-          sampleRawItems: raw.slice(0, 3)
-        });
+        // console.log(`[useMasterData] Extracted raw items for ${cacheKey}:`, {
+        //   rawLength: raw.length,
+        //   firstRawItem: raw[0],
+        //   sampleRawItems: raw.slice(0, 3)
+        // });
 
         // If subcategory provided but backend returns unfiltered list, filter client-side by sub_category
         if (subcategory && Array.isArray(raw) && raw.length > 0) {
@@ -253,7 +253,7 @@ export const useMasterData = () => {
         // Raw items extracted
 
         if (raw.length === 0) {
-          console.warn(`[useMasterData] No data returned for ${cacheKey}`);
+          // console.warn(`[useMasterData] No data returned for ${cacheKey}`);
           return [];
         }
 
@@ -444,25 +444,25 @@ export const useMasterData = () => {
   const getOptions = async (category, subcategory = null) => {
     const cacheKey = subcategory ? `${category}_${subcategory}` : category;
 
-    console.log(`[useMasterData] getOptions called:`, {
-      category,
-      subcategory,
-      cacheKey,
-      masterDataKeys: Object.keys(masterData.value),
-      masterDataHasKey: !!masterData.value[cacheKey]
-    });
+    // console.log(`[useMasterData] getOptions called:`, {
+    //   category,
+    //   subcategory,
+    //   cacheKey,
+    //   masterDataKeys: Object.keys(masterData.value),
+    //   masterDataHasKey: !!masterData.value[cacheKey]
+    // });
 
     const data = await getMasterData(category, subcategory);
 
-    console.log(`[useMasterData] getMasterData returned:`, {
-      cacheKey,
-      dataType: Array.isArray(data) ? 'array' : typeof data,
-      dataLength: Array.isArray(data) ? data.length : 'N/A',
-      firstItem: Array.isArray(data) ? data[0] : null
-    });
+    // console.log(`[useMasterData] getMasterData returned:`, {
+    //   cacheKey,
+    //   dataType: Array.isArray(data) ? 'array' : typeof data,
+    //   dataLength: Array.isArray(data) ? data.length : 'N/A',
+    //   firstItem: Array.isArray(data) ? data[0] : null
+    // });
 
     if (!data || !Array.isArray(data)) {
-      console.warn(`[useMasterData] Invalid data for ${cacheKey}:`, data);
+      // console.warn(`[useMasterData] Invalid data for ${cacheKey}:`, data);
       return [];
     }
 
@@ -476,11 +476,11 @@ export const useMasterData = () => {
       };
     }).filter(Boolean).sort((a, b) => a.order - b.order);
 
-    console.log(`[useMasterData] Transformed options:`, {
-      cacheKey,
-      optionsCount: options.length,
-      firstOption: options[0]
-    });
+    // console.log(`[useMasterData] Transformed options:`, {
+    //   cacheKey,
+    //   optionsCount: options.length,
+    //   firstOption: options[0]
+    // });
 
     return options;
   };

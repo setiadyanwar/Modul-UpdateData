@@ -46,7 +46,7 @@ export default defineNuxtPlugin(() => {
     localStorage.setItem('refresh_token', refresh_token);
     localStorage.setItem('token_expiry', expiryTime.toString());
 
-    console.log('[Update-Data] Tokens saved successfully');
+    // console.log('[Update-Data] Tokens saved successfully');
 
     // Setup auto-refresh
     setupTokenRefresh(expires_in);
@@ -72,7 +72,7 @@ export default defineNuxtPlugin(() => {
       requestTokenRefreshFromParent();
     }, refreshTime);
 
-    console.log('[Update-Data] Token refresh check scheduled in', Math.floor(refreshTime / 1000), 'seconds');
+    // console.log('[Update-Data] Token refresh check scheduled in', Math.floor(refreshTime / 1000), 'seconds');
   };
 
   /**
@@ -82,7 +82,7 @@ export default defineNuxtPlugin(() => {
    */
   const requestTokenRefreshFromParent = () => {
     if (window.parent !== window) {
-      console.log('[Update-Data] 🔄 Requesting token refresh from parent');
+      // console.log('[Update-Data] 🔄 Requesting token refresh from parent');
       window.parent.postMessage({
         type: 'REQUEST_TOKEN_REFRESH',
         source: 'update-data',
@@ -93,7 +93,7 @@ export default defineNuxtPlugin(() => {
         }
       }, getParentOrigin());
     } else {
-      console.warn('[Update-Data] Not in iframe, cannot request refresh from parent');
+      // console.warn('[Update-Data] Not in iframe, cannot request refresh from parent');
     }
   };
 
@@ -103,8 +103,8 @@ export default defineNuxtPlugin(() => {
    * We don't call API directly to avoid race conditions
    */
   const refreshAccessToken = () => {
-    console.log('[Update-Data] ⚠️ Token refresh needed');
-    console.log('[Update-Data] Requesting refresh from parent to avoid race condition');
+    // console.log('[Update-Data] ⚠️ Token refresh needed');
+    // console.log('[Update-Data] Requesting refresh from parent to avoid race condition');
     requestTokenRefreshFromParent();
   };
 
@@ -165,7 +165,7 @@ export default defineNuxtPlugin(() => {
       const essPermissions = localStorage.getItem('user_permissions');
 
       if (!essToken || !essUser) {
-        console.log('[Update-Data] No ESSHost auth data found');
+        // console.log('[Update-Data] No ESSHost auth data found');
         return false;
       }
 
@@ -214,10 +214,10 @@ export default defineNuxtPlugin(() => {
         localStorage.setItem('user_permissions', JSON.stringify(permissions));
       }
 
-      console.log('[Update-Data] ✅ Synced from ESSHost successfully');
+      // console.log('[Update-Data] ✅ Synced from ESSHost successfully');
       return true;
     } catch (error) {
-      console.error('[Update-Data] ❌ Failed to sync from ESSHost:', error);
+      // console.error('[Update-Data] ❌ Failed to sync from ESSHost:', error);
       return false;
     }
   };
@@ -232,7 +232,7 @@ export default defineNuxtPlugin(() => {
         source: 'update-data',
         timestamp: Date.now()
       }, getParentOrigin());
-      console.log('[Update-Data] Ready message sent to parent');
+      // console.log('[Update-Data] Ready message sent to parent');
     }
   };
 
@@ -248,8 +248,8 @@ export default defineNuxtPlugin(() => {
       const now = Date.now();
 
       if (expiryTime && (expiryTime - now) < envConfig.SECURITY.TOKEN_REFRESH_BUFFER) {
-        console.log('[Update-Data] Token near expiry detected on visibility change');
-        console.log('[Update-Data] Requesting refresh from parent');
+        // console.log('[Update-Data] Token near expiry detected on visibility change');
+        // console.log('[Update-Data] Requesting refresh from parent');
         requestTokenRefreshFromParent();
       }
     }
@@ -261,38 +261,38 @@ export default defineNuxtPlugin(() => {
   window.addEventListener('message', (event) => {
     // Validate origin for security
     if (!isValidOrigin(event.origin)) {
-      console.warn('[Update-Data] ⚠️ Invalid origin:', event.origin);
+      // console.warn('[Update-Data] ⚠️ Invalid origin:', event.origin);
       return;
     }
 
     const { type, data, source } = event.data;
 
     // Log all messages for debugging
-    console.log('[Update-Data] 📩 Received message:', { type, source, origin: event.origin });
+    // console.log('[Update-Data] 📩 Received message:', { type, source, origin: event.origin });
 
     // Accept messages from known sources (flexible for different parent apps)
     const validSources = ['ess-sigma', 'people', 'host', 'portal', 'mango'];
     if (source && !validSources.includes(source)) {
-      console.log('[Update-Data] Ignoring message from unknown source:', source);
+      // console.log('[Update-Data] Ignoring message from unknown source:', source);
       return;
     }
 
-    console.log('[Update-Data] ✅ Processing message:', type);
+    // console.log('[Update-Data] ✅ Processing message:', type);
 
     switch (type) {
       case 'AUTH_TOKEN':
       case 'TOKEN_REFRESH':
         // ✅ FIX: Parent sends refreshed token or new token
         // This handles both initial token and refresh scenarios
-        console.log('[Update-Data] 🔄 Received token from parent (refresh or update)');
+        // console.log('[Update-Data] 🔄 Received token from parent (refresh or update)');
 
         if (data?.access_token) {
           const isTokenUpdate = !!tokenStore.accessToken; // true if we already have a token (refresh scenario)
 
           if (isTokenUpdate) {
-            console.log('[Update-Data] ✅ Token refresh received from parent');
+            // console.log('[Update-Data] ✅ Token refresh received from parent');
           } else {
-            console.log('[Update-Data] ✅ Initial token received from parent');
+            // console.log('[Update-Data] ✅ Initial token received from parent');
           }
 
           // Save the new/refreshed token
@@ -305,7 +305,7 @@ export default defineNuxtPlugin(() => {
           // Update user data if provided
           if (data?.user) {
             localStorage.setItem('user', JSON.stringify(data.user));
-            console.log('[Update-Data] ✅ User data updated');
+            // console.log('[Update-Data] ✅ User data updated');
 
             window.dispatchEvent(new CustomEvent('user-data-updated', {
               detail: data.user
@@ -329,15 +329,15 @@ export default defineNuxtPlugin(() => {
             data?.user_permissions || JSON.parse(localStorage.getItem('user_permissions') || 'null')
           );
 
-          console.log('[Update-Data] 🔐 Token update complete');
+          // console.log('[Update-Data] 🔐 Token update complete');
         } else {
-          console.error('[Update-Data] ❌ No access_token in message', data);
+          // console.error('[Update-Data] ❌ No access_token in message', data);
         }
         break;
 
       case 'LOGOUT':
         // Parent initiated logout
-        console.log('[Update-Data] 🚪 Parent initiated logout');
+        // console.log('[Update-Data] 🚪 Parent initiated logout');
 
         // Clear all tokens and auth data locally
         clearTokens();
@@ -354,27 +354,27 @@ export default defineNuxtPlugin(() => {
           }, getParentOrigin());
         }
 
-        console.log('[Update-Data] ✅ Logout completed, all tokens cleared');
+        // console.log('[Update-Data] ✅ Logout completed, all tokens cleared');
         break;
 
       case 'HOST_READY':
         // Parent is ready, we can request token if needed
-        console.log('[Update-Data] ✅ Parent is ready');
+        // console.log('[Update-Data] ✅ Parent is ready');
         if (!getAccessToken()) {
-          console.log('[Update-Data] 🔑 No token found, requesting from parent');
+          // console.log('[Update-Data] 🔑 No token found, requesting from parent');
           requestTokenFromParent();
         }
         break;
 
       case 'PARENT_VISIBLE':
         // Parent became visible, check token status
-        console.log('[Update-Data] 👁️ Parent became visible');
+        // console.log('[Update-Data] 👁️ Parent became visible');
         handleVisibilityChange();
         break;
 
       default:
         // Unknown message type
-        console.log('[Update-Data] ❓ Unknown message type:', type);
+        // console.log('[Update-Data] ❓ Unknown message type:', type);
         break;
     }
   });
@@ -412,14 +412,14 @@ export default defineNuxtPlugin(() => {
     localStorage.removeItem('user_roles');
     localStorage.removeItem('user_permissions');
 
-    console.log('[Update-Data] All tokens and auth data cleared');
+    // console.log('[Update-Data] All tokens and auth data cleared');
   };
 
   /**
    * Initialize: Try to load from storage first, then request from parent
    */
   const initialize = () => {
-    console.log('[Update-Data] 🚀 Initializing iframe token handler...');
+    // console.log('[Update-Data] 🚀 Initializing iframe token handler...');
 
     // Try to sync from ESSHost first
     syncFromESSHost();
@@ -429,11 +429,13 @@ export default defineNuxtPlugin(() => {
     const storedToken = localStorage.getItem('access_token');
     const storedExpiry = localStorage.getItem('token_expiry');
 
+    /*
     console.log('[Update-Data] 📦 Token check on init:', {
       hasStoredToken: !!storedToken,
       tokenLength: storedToken?.length,
       hasExpiry: !!storedExpiry
     });
+    */
 
     if (storedToken && storedExpiry) {
       const expiryTime = parseInt(storedExpiry);
@@ -459,14 +461,16 @@ export default defineNuxtPlugin(() => {
           // Restore global auth state (same as when receiving from parent)
           setAuthReady(storedToken, user, roles, permissions);
 
+          /*
           console.log('[Update-Data] ✅ Full auth state restored from localStorage', {
             hasToken: true,
             hasUser: !!user,
             hasRoles: !!roles,
             hasPermissions: !!permissions
           });
+          */
         } catch (error) {
-          console.error('[Update-Data] ❌ Error restoring auth state from localStorage:', error);
+          // console.error('[Update-Data] ❌ Error restoring auth state from localStorage:', error);
           // Still have token, so continue
         }
 
@@ -481,13 +485,13 @@ export default defineNuxtPlugin(() => {
           refreshAccessToken();
         }
 
-        console.log('[Update-Data] Token loaded from storage and auth state restored');
+        // console.log('[Update-Data] Token loaded from storage and auth state restored');
         return;
       }
     }
 
     // No valid token in storage, request from parent IMMEDIATELY
-    console.log('[Update-Data] Requesting token from parent');
+    // console.log('[Update-Data] Requesting token from parent');
     requestTokenFromParent();
   };
 
@@ -534,19 +538,19 @@ export default defineNuxtPlugin(() => {
     document.addEventListener(event, handleActivity, { passive: true });
   });
 
-  console.log('[Update-Data] ✅ Activity tracking initialized - will notify parent on user activity');
+  // console.log('[Update-Data] ✅ Activity tracking initialized - will notify parent on user activity');
 
   // DEBUG: Log token status every 5 seconds
   if (process.dev) {
     setInterval(() => {
       const token = localStorage.getItem('access_token');
       const expiry = localStorage.getItem('token_expiry');
-      console.log('[Update-Data Token Status]', {
-        hasToken: !!token,
-        tokenLength: token?.length,
-        expiryTime: expiry ? new Date(parseInt(expiry)).toLocaleTimeString() : 'N/A',
-        tokenStoreHasToken: !!tokenStore.accessToken
-      });
+      // console.log('[Update-Data Token Status]', {
+      //   hasToken: !!token,
+      //   tokenLength: token?.length,
+      //   expiryTime: expiry ? new Date(parseInt(expiry)).toLocaleTimeString() : 'N/A',
+      //   tokenStoreHasToken: !!tokenStore.accessToken
+      // });
     }, 5000);
   }
 

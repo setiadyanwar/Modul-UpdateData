@@ -268,7 +268,7 @@ export const usePersonalData = () => {
         }
 
         if (!localStorage.getItem('access_token')) {
-          console.error('[loadBasicInformation] ❌ No token available after waiting');
+          // console.error('[loadBasicInformation] ❌ No token available after waiting');
           throw new Error('Authentication token not available. Please refresh the page.');
         }
 
@@ -335,7 +335,7 @@ export const usePersonalData = () => {
       employeeData.value = mergedData;
       originalData.value = JSON.parse(JSON.stringify(employeeData.value));
     } catch (error) {
-      console.error('Failed to load basic information:', error);
+      // console.error('Failed to load basic information:', error);
       // Don't throw the error - continue with existing data to prevent app crash
     } finally {
       isLoadingBasicInfo.value = false;

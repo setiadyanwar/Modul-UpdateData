@@ -35,7 +35,7 @@ apiService.interceptors.request.use(
           config.headers.Authorization = `Bearer ${token}`;
         } else {
           // No token available, request from parent
-          console.warn('[Update-Data API] No access token available, requesting from parent');
+          // console.warn('[Update-Data API] No access token available, requesting from parent');
           if (window.$nuxt?.$updateDataAuth) {
             window.$nuxt.$updateDataAuth.requestTokenFromParent();
           }
@@ -55,7 +55,7 @@ apiService.interceptors.request.use(
       }
 
     } catch (error) {
-      console.error('[Update-Data API] Request interceptor error:', error);
+      // console.error('[Update-Data API] Request interceptor error:', error);
     }
 
     return config;
@@ -71,13 +71,13 @@ apiService.interceptors.response.use(
     return response;
   },
   async (error) => {
-    console.error(
-      "API Error:",
-      error.config?.url,
-      error.response?.status,
-      error.response?.data,
-      error.message
-    );
+    // console.error(
+    //   "API Error:",
+    //   error.config?.url,
+    //   error.response?.status,
+    //   error.response?.data,
+    //   error.message
+    // );
 
     // Handle 401 Unauthorized errors - notify parent (ESS-Sigma)
     const isTokenExpired = error.response?.status === 401 ||
@@ -89,7 +89,7 @@ apiService.interceptors.response.use(
                           (error.response?.data?.action === 'refresh_token');
 
     if (isTokenExpired && process.client) {
-      console.warn('[Update-Data API] Token expired, notifying parent');
+      // console.warn('[Update-Data API] Token expired, notifying parent');
 
       // Clear local tokens
       localStorage.removeItem("access_token");

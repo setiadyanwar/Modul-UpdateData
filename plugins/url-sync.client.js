@@ -21,11 +21,11 @@ export default defineNuxtPlugin((nuxtApp) => {
   }
   
   if (!isIframe) {
-    console.log('[URL Sync] Not running in iframe, skipping URL sync');
+    // console.log('[URL Sync] Not running in iframe, skipping URL sync');
     return;
   }
   
-  console.log('[URL Sync] 🔄 Initializing URL sync plugin for update-data app');
+  // console.log('[URL Sync] 🔄 Initializing URL sync plugin for update-data app');
   
   /**
    * Get parent origin dynamically
@@ -66,10 +66,10 @@ export default defineNuxtPlugin((nuxtApp) => {
         // This prevents saving malformed paths like "/https://updatedata-people-dev.telkomsigma.co.id/"
         if (!currentUrl.pathname.includes('http://') && !currentUrl.pathname.includes('https://')) {
           localStorage.setItem('last_visited_route', currentUrl.pathname);
-          console.log('[URL Sync] 💾 Saved last route to localStorage:', currentUrl.pathname);
+          // console.log('[URL Sync] 💾 Saved last route to localStorage:', currentUrl.pathname);
         } else {
-          console.warn('[URL Sync] ⚠️ Invalid pathname detected (contains full URL), not saving:', currentUrl.pathname);
-          console.warn('[URL Sync] 🔧 Using default route instead: /update-data');
+          // console.warn('[URL Sync] ⚠️ Invalid pathname detected (contains full URL), not saving:', currentUrl.pathname);
+          // console.warn('[URL Sync] 🔧 Using default route instead: /update-data');
           // Save default route instead of malformed one
           localStorage.setItem('last_visited_route', '/update-data');
         }
@@ -84,16 +84,16 @@ export default defineNuxtPlugin((nuxtApp) => {
           timestamp: Date.now()
         }, parentOrigin);
 
-        console.log('[URL Sync] 📤 Sent URL update to parent:', currentUrl.pathname);
+        // console.log('[URL Sync] 📤 Sent URL update to parent:', currentUrl.pathname);
       }
     } catch (error) {
-      console.error('[URL Sync] ❌ Failed to send URL update:', error);
+      // console.error('[URL Sync] ❌ Failed to send URL update:', error);
     }
   };
   
   // Listen to browser back/forward button
   window.addEventListener('popstate', () => {
-    console.log('[URL Sync] 🔙 Popstate detected');
+    // console.log('[URL Sync] 🔙 Popstate detected');
     sendUrlUpdate();
   });
   
@@ -103,13 +103,13 @@ export default defineNuxtPlugin((nuxtApp) => {
   
   history.pushState = function(...args) {
     originalPushState.apply(this, args);
-    console.log('[URL Sync] 🔀 pushState detected');
+    // console.log('[URL Sync] 🔀 pushState detected');
     sendUrlUpdate();
   };
   
   history.replaceState = function(...args) {
     originalReplaceState.apply(this, args);
-    console.log('[URL Sync] 🔀 replaceState detected');
+    // console.log('[URL Sync] 🔀 replaceState detected');
     sendUrlUpdate();
   };
   
@@ -117,7 +117,7 @@ export default defineNuxtPlugin((nuxtApp) => {
   setInterval(() => {
     if (window.location.href !== lastUrl) {
       lastUrl = window.location.href;
-      console.log('[URL Sync] 🔍 URL change detected via polling');
+      // console.log('[URL Sync] 🔍 URL change detected via polling');
       sendUrlUpdate();
     }
   }, 500);
@@ -125,14 +125,14 @@ export default defineNuxtPlugin((nuxtApp) => {
   // Listen for parent's request for initial URL
   window.addEventListener('message', (event) => {
     if (event.data?.type === 'PARENT_URL_REQUEST') {
-      console.log('[URL Sync] 📥 Parent requested initial URL');
+      // console.log('[URL Sync] 📥 Parent requested initial URL');
       sendUrlUpdate();
     }
   });
   
   // Send initial URL after app is fully loaded
   setTimeout(() => {
-    console.log('[URL Sync] 📍 Sending initial URL');
+    // console.log('[URL Sync] 📍 Sending initial URL');
     sendUrlUpdate();
   }, 1000);
 
@@ -140,18 +140,18 @@ export default defineNuxtPlugin((nuxtApp) => {
   const router = nuxtApp.$router;
   if (router) {
     router.afterEach((to, from) => {
-      console.log('[URL Sync] 🧭 Vue Router navigation detected:', {
-        from: from.path,
-        to: to.path
-      });
+      // console.log('[URL Sync] 🧭 Vue Router navigation detected:', {
+      //   from: from.path,
+      //   to: to.path
+      // });
       // Small delay to ensure URL is fully updated
       setTimeout(() => {
         sendUrlUpdate();
       }, 50);
     });
-    console.log('[URL Sync] ✅ Vue Router hook installed');
+    // console.log('[URL Sync] ✅ Vue Router hook installed');
   }
 
-  console.log('[URL Sync] ✅ URL sync plugin initialized');
+  // console.log('[URL Sync] ✅ URL sync plugin initialized');
 });
 

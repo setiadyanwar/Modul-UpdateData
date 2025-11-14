@@ -8,38 +8,38 @@ import { nextTick } from 'vue';
 export default defineNuxtPlugin((nuxtApp) => {
   if (process.server) return;
 
-  console.log('=== [Update-Data Ticket Handler] Initializing ===');
-  console.log('[Ticket Handler] Environment:', process.client ? 'CLIENT ✅' : 'SERVER');
-  console.log('[Ticket Handler] Current URL:', window.location.href);
-  console.log('[Ticket Handler] Is iframe?', window.parent !== window);
-  console.log('[Ticket Handler] Parent origin:', document.referrer || 'NONE');
+  // console.log('=== [Update-Data Ticket Handler] Initializing ===');
+  // console.log('[Ticket Handler] Environment:', process.client ? 'CLIENT ✅' : 'SERVER');
+  // console.log('[Ticket Handler] Current URL:', window.location.href);
+  // console.log('[Ticket Handler] Is iframe?', window.parent !== window);
+  // console.log('[Ticket Handler] Parent origin:', document.referrer || 'NONE');
 
   const route = useRoute();
   const router = useRouter();
 
-  console.log('[Ticket Handler] Route path:', route.path);
-  console.log('[Ticket Handler] Route query:', route.query);
-  console.log('[Ticket Handler] Route fullPath:', route.fullPath);
+  // console.log('[Ticket Handler] Route path:', route.path);
+  // console.log('[Ticket Handler] Route query:', route.query);
+  // console.log('[Ticket Handler] Route fullPath:', route.fullPath);
 
   /**
    * Process ticket exchange
    * Exchanges SSO ticket directly with essbe API (POST /auth/ticket/login)
    */
   const processTicket = async (ticket) => {
-    console.log('[Ticket Handler] Processing ticket:', ticket.substring(0, 20) + '...');
+    // console.log('[Ticket Handler] Processing ticket:', ticket.substring(0, 20) + '...');
 
     try {
       // Step 1: Exchange ticket for JWT token via essbe API
-      console.log('[Ticket Handler] Step 1: POST /auth/ticket/login to essbe API');
+      // console.log('[Ticket Handler] Step 1: POST /auth/ticket/login to essbe API');
 
       // Import API client dynamically
       const { apiPost } = await import('~/axios/api.client');
 
       const response = await apiPost('/auth/ticket/login', { ticket });
-      console.log('[Ticket Handler] Response:', response);
-      console.log('[Ticket Handler] Response.status:', response.status);
-      console.log('[Ticket Handler] Response.token:', response.token);
-      console.log('[Ticket Handler] Response.data:', response.data);
+      // console.log('[Ticket Handler] Response:', response);
+      // console.log('[Ticket Handler] Response.status:', response.status);
+      // console.log('[Ticket Handler] Response.token:', response.token);
+      // console.log('[Ticket Handler] Response.data:', response.data);
 
       // Handle response based on essbe API format:
       // { status: true, message: "...", data: {...}, token: { access_token: "...", ... } }
@@ -47,7 +47,7 @@ export default defineNuxtPlugin((nuxtApp) => {
         const accessToken = response.token.access_token;
         const refreshToken = response.token.refresh_token || '';
 
-        console.log('[Ticket Handler] ✅ Access token received:', accessToken.substring(0, 30) + '...');
+        // console.log('[Ticket Handler] ✅ Access token received:', accessToken.substring(0, 30) + '...');
 
         // Step 2: Store tokens IMMEDIATELY
         localStorage.setItem('access_token', accessToken);
@@ -59,9 +59,9 @@ export default defineNuxtPlugin((nuxtApp) => {
 
         // ✅ CRITICAL: Store the ticket ID so we don't re-process on reload
         localStorage.setItem('last_processed_ticket', ticket);
-        console.log('[Ticket Handler] ✅ Saved last_processed_ticket:', ticket.substring(0, 20) + '...');
+        // console.log('[Ticket Handler] ✅ Saved last_processed_ticket:', ticket.substring(0, 20) + '...');
 
-        console.log('[Ticket Handler] ✅ Tokens saved to localStorage');
+        // console.log('[Ticket Handler] ✅ Tokens saved to localStorage');
 
         // Step 2a: Parse JWT to extract roles and permissions early
         try {
@@ -99,18 +99,18 @@ export default defineNuxtPlugin((nuxtApp) => {
             })();
             if (normRoles.length) {
               localStorage.setItem('user_roles', JSON.stringify(normRoles));
-              console.log('[Ticket Handler] ✅ User roles saved from JWT payload:', normRoles);
+              // console.log('[Ticket Handler] ✅ User roles saved from JWT payload:', normRoles);
             }
 
             // Direct permissions from payload.access (array of strings) → normalize to objects
             if (Array.isArray(payload.access) && payload.access.length) {
               const perms = payload.access.map((p) => ({ permission_code: p }));
               localStorage.setItem('user_permissions', JSON.stringify(perms));
-              console.log('[Ticket Handler] ✅ Permissions saved from JWT payload.access');
+              // console.log('[Ticket Handler] ✅ Permissions saved from JWT payload.access');
             }
           }
         } catch (e) {
-          console.warn('[Ticket Handler] ⚠️ Failed to parse JWT for roles/permissions:', e?.message);
+          // console.warn('[Ticket Handler] ⚠️ Failed to parse JWT for roles/permissions:', e?.message);
         }
 
         // Step 2b: Initialize user data via Authentication Core (ensures roles from JWT/profile)
@@ -125,18 +125,18 @@ export default defineNuxtPlugin((nuxtApp) => {
           // Let auth core read tokens and user from localStorage
           await auth.checkAuth();
           const initResult = await auth.initializeUserData();
-          console.log('[Ticket Handler] Auth core initializeUserData result:', initResult?.success);
+          // console.log('[Ticket Handler] Auth core initializeUserData result:', initResult?.success);
         } catch (e) {
-          console.warn('[Ticket Handler] ⚠️ Failed to initialize auth core user data:', e?.message);
+          // console.warn('[Ticket Handler] ⚠️ Failed to initialize auth core user data:', e?.message);
         }
-        console.log('[Ticket Handler] Token check:', localStorage.getItem('access_token') ? 'EXISTS' : 'NOT FOUND');
+        // console.log('[Ticket Handler] Token check:', localStorage.getItem('access_token') ? 'EXISTS' : 'NOT FOUND');
 
         // Step 3: Store user data
         if (response.data) {
           localStorage.setItem('user', JSON.stringify(response.data));
-          console.log('[Ticket Handler] ✅ User data saved:', response.data);
+          // console.log('[Ticket Handler] ✅ User data saved:', response.data);
         } else {
-          console.warn('[Ticket Handler] ⚠️ No user data in response!');
+          // console.warn('[Ticket Handler] ⚠️ No user data in response!');
         }
 
         // Utility: normalize permissions to [{ permission_code: string }]
@@ -183,7 +183,7 @@ export default defineNuxtPlugin((nuxtApp) => {
         // Step 4: Try to fetch user detail, roles & permissions (like mango does)
         // This is needed because ticket login might not return full user detail
         try {
-          console.log('[Ticket Handler] Step 4: Fetching user detail with token...');
+          // console.log('[Ticket Handler] Step 4: Fetching user detail with token...');
 
           // Set Authorization header temporarily for this request
           const { apiService } = await import('~/axios/api.client');
@@ -195,14 +195,14 @@ export default defineNuxtPlugin((nuxtApp) => {
           try {
             // Try /employees/profile first (matches config/environment.js)
             userDetailResponse = await apiService.get('/employees/profile');
-            console.log('[Ticket Handler] User detail response:', userDetailResponse.data);
+            // console.log('[Ticket Handler] User detail response:', userDetailResponse.data);
           } catch (profileError) {
-            console.warn('[Ticket Handler] /employee/profile failed, trying /auth/me...', profileError.message);
+            // console.warn('[Ticket Handler] /employee/profile failed, trying /auth/me...', profileError.message);
             try {
               userDetailResponse = await apiService.get('/auth/me');
-              console.log('[Ticket Handler] Auth/me response:', userDetailResponse.data);
+              // console.log('[Ticket Handler] Auth/me response:', userDetailResponse.data);
             } catch (meError) {
-              console.warn('[Ticket Handler] ⚠️ Failed to fetch user detail:', meError.message);
+              // console.warn('[Ticket Handler] ⚠️ Failed to fetch user detail:', meError.message);
               // Continue anyway with data from ticket login
             }
           }
@@ -214,14 +214,14 @@ export default defineNuxtPlugin((nuxtApp) => {
               : userDetailResponse.data;
             if (payload && typeof payload === 'object') {
               localStorage.setItem('user', JSON.stringify(payload));
-              console.log('[Ticket Handler] ✅ Full user data updated');
+              // console.log('[Ticket Handler] ✅ Full user data updated');
 
               // Store roles if available (normalized to array of { role_id?, role_name })
               const rawRoles = payload.user_roles || payload.roles || payload.role_list || payload.userRoles;
               const roles = normalizeRoles(rawRoles);
               if (roles.length) {
                 localStorage.setItem('user_roles', JSON.stringify(roles));
-                console.log('[Ticket Handler] ✅ User roles saved (normalized objects):', roles);
+                // console.log('[Ticket Handler] ✅ User roles saved (normalized objects):', roles);
               }
 
               // Store permissions if available (normalize shape)
@@ -229,13 +229,13 @@ export default defineNuxtPlugin((nuxtApp) => {
               if (rawPerms) {
                 const permissions = normalizePermissions(rawPerms);
                 localStorage.setItem('user_permissions', JSON.stringify(permissions));
-                console.log('[Ticket Handler] ✅ User permissions saved (normalized):', permissions);
+                // console.log('[Ticket Handler] ✅ User permissions saved (normalized):', permissions);
               }
             }
           }
 
         } catch (detailError) {
-          console.warn('[Ticket Handler] ⚠️ Could not fetch user detail:', detailError.message);
+          // console.warn('[Ticket Handler] ⚠️ Could not fetch user detail:', detailError.message);
           // Continue anyway - we have basic user data from ticket login
         }
 
@@ -244,30 +244,30 @@ export default defineNuxtPlugin((nuxtApp) => {
           const roles = normalizeRoles(response.user_roles || response.roles);
           if (roles.length) {
             localStorage.setItem('user_roles', JSON.stringify(roles));
-            console.log('[Ticket Handler] ✅ User roles from ticket response saved (normalized objects)');
+            // console.log('[Ticket Handler] ✅ User roles from ticket response saved (normalized objects)');
           }
         }
 
         if (response.user_permissions) {
           const permissions = normalizePermissions(response.user_permissions);
           localStorage.setItem('user_permissions', JSON.stringify(permissions));
-          console.log('[Ticket Handler] ✅ User permissions from ticket response saved (normalized)');
+          // console.log('[Ticket Handler] ✅ User permissions from ticket response saved (normalized)');
         }
 
         // Map permissions/roles from ticket response if present
         if (Array.isArray(response.access) && response.access.length) {
           const permissions = normalizePermissions(response.access);
           localStorage.setItem('user_permissions', JSON.stringify(permissions));
-          console.log('[Ticket Handler] ✅ Permissions from ticket response saved (normalized from response.access)');
+          // console.log('[Ticket Handler] ✅ Permissions from ticket response saved (normalized from response.access)');
         }
 
         // Step 6: Final verification before redirect
-        console.log('[Ticket Handler] 📋 Final localStorage check:');
-        console.log('  - access_token:', localStorage.getItem('access_token') ? '✅ EXISTS' : '❌ MISSING');
-        console.log('  - refresh_token:', localStorage.getItem('refresh_token') ? '✅ EXISTS' : '❌ MISSING');
-        console.log('  - user:', localStorage.getItem('user') ? '✅ EXISTS' : '❌ MISSING');
-        console.log('  - user_roles:', localStorage.getItem('user_roles') ? '✅ EXISTS' : '⚠️ MISSING');
-        console.log('  - user_permissions:', localStorage.getItem('user_permissions') ? '✅ EXISTS' : '⚠️ MISSING');
+        // console.log('[Ticket Handler] 📋 Final localStorage check:');
+        // console.log('  - access_token:', localStorage.getItem('access_token') ? '✅ EXISTS' : '❌ MISSING');
+        // console.log('  - refresh_token:', localStorage.getItem('refresh_token') ? '✅ EXISTS' : '❌ MISSING');
+        // console.log('  - user:', localStorage.getItem('user') ? '✅ EXISTS' : '❌ MISSING');
+        // console.log('  - user_roles:', localStorage.getItem('user_roles') ? '✅ EXISTS' : '⚠️ MISSING');
+        // console.log('  - user_permissions:', localStorage.getItem('user_permissions') ? '✅ EXISTS' : '⚠️ MISSING');
 
         // Step 7: Redirect to last visited route (if reload) or default /update-data (if fresh login)
         // ✅ FIX: Validate targetRoute to prevent malformed URLs from localStorage
@@ -275,8 +275,8 @@ export default defineNuxtPlugin((nuxtApp) => {
 
         // ✅ Sanitize: Check if route contains full URL (e.g., /https://domain.com/)
         if (targetRoute.includes('http://') || targetRoute.includes('https://')) {
-          console.warn('[Ticket Handler] ⚠️ Malformed route detected in localStorage:', targetRoute);
-          console.warn('[Ticket Handler] 🔧 Resetting to default route: /update-data');
+          // console.warn('[Ticket Handler] ⚠️ Malformed route detected in localStorage:', targetRoute);
+          // console.warn('[Ticket Handler] 🔧 Resetting to default route: /update-data');
           targetRoute = '/update-data';
           // Update localStorage with corrected value
           localStorage.setItem('last_visited_route', '/update-data');
@@ -284,11 +284,11 @@ export default defineNuxtPlugin((nuxtApp) => {
 
         const isReload = !!localStorage.getItem('last_visited_route');
 
-        console.log('[Ticket Handler] ✅ All data saved, redirecting to', targetRoute, 'in 1000ms...');
-        console.log('[Ticket Handler] 📍 Route type:', isReload ? 'RELOAD (restored route)' : 'FRESH LOGIN (default route)');
+        // console.log('[Ticket Handler] ✅ All data saved, redirecting to', targetRoute, 'in 1000ms...');
+        // console.log('[Ticket Handler] 📍 Route type:', isReload ? 'RELOAD (restored route)' : 'FRESH LOGIN (default route)');
 
         setTimeout(() => {
-          console.log('[Ticket Handler] Redirecting now to:', targetRoute);
+          // console.log('[Ticket Handler] Redirecting now to:', targetRoute);
           // Clean URL (remove ticket parameter) and go to target route
           window.history.replaceState({}, document.title, targetRoute);
           router.push(targetRoute);
@@ -302,12 +302,12 @@ export default defineNuxtPlugin((nuxtApp) => {
       // Improve diagnostics
       const status = error?.response?.status;
       const data = error?.response?.data;
-      console.error('[Ticket Handler] ❌ Error exchanging ticket', {
-        url: '/auth/ticket/login',
-        status,
-        data,
-        message: error?.message
-      });
+      // console.error('[Ticket Handler] ❌ Error exchanging ticket', {
+      //   url: '/auth/ticket/login',
+      //   status,
+      //   data,
+      //   message: error?.message
+      // });
 
       // Show error toast if available
       if (window.$toast) {
@@ -334,28 +334,28 @@ export default defineNuxtPlugin((nuxtApp) => {
 
   // Check for ticket in URL
   let ticket = route.query.ticket;
-  console.log('[Ticket Handler] 🔍 Checking for ticket...');
-  console.log('[Ticket Handler] route.query:', JSON.stringify(route.query));
-  console.log('[Ticket Handler] Ticket from route.query:', ticket || '❌ NONE');
+  // console.log('[Ticket Handler] 🔍 Checking for ticket...');
+  // console.log('[Ticket Handler] route.query:', JSON.stringify(route.query));
+  // console.log('[Ticket Handler] Ticket from route.query:', ticket || '❌ NONE');
 
   // ✅ DEBUG: Log current localStorage state BEFORE any processing
-  console.log('[Ticket Handler] 📊 Current localStorage state:', {
-    last_processed_ticket: localStorage.getItem('last_processed_ticket')?.substring(0, 20) + '...' || 'NONE',
-    last_visited_route: localStorage.getItem('last_visited_route') || 'NONE',
-    access_token: localStorage.getItem('access_token') ? 'EXISTS' : 'NONE',
-    token_expiry: localStorage.getItem('token_expiry') || 'NONE'
-  });
+  // console.log('[Ticket Handler] 📊 Current localStorage state:', {
+  //   last_processed_ticket: localStorage.getItem('last_processed_ticket')?.substring(0, 20) + '...' || 'NONE',
+  //   last_visited_route: localStorage.getItem('last_visited_route') || 'NONE',
+  //   access_token: localStorage.getItem('access_token') ? 'EXISTS' : 'NONE',
+  //   token_expiry: localStorage.getItem('token_expiry') || 'NONE'
+  // });
 
   // Also try to get from URL directly (fallback)
   if (!ticket) {
     const urlParams = new URLSearchParams(window.location.search);
     ticket = urlParams.get('ticket');
-    console.log('[Ticket Handler] Ticket from URLSearchParams:', ticket || '❌ NONE');
+    // console.log('[Ticket Handler] Ticket from URLSearchParams:', ticket || '❌ NONE');
   }
 
   // Clear old tokens if ticket found (but check if this ticket was already processed)
   if (ticket) {
-    console.log('[Ticket Handler] ✅ Ticket FOUND:', ticket.substring(0, 20) + '...');
+    // console.log('[Ticket Handler] ✅ Ticket FOUND:', ticket.substring(0, 20) + '...');
 
     // ✅ CRITICAL FIX: Check if this exact ticket was already successfully processed
     const lastProcessedTicket = localStorage.getItem('last_processed_ticket');
@@ -363,22 +363,22 @@ export default defineNuxtPlugin((nuxtApp) => {
     const tokenExpiry = hasValidToken ? parseInt(localStorage.getItem('token_expiry')) : 0;
     const tokenStillValid = tokenExpiry > Date.now();
 
-    console.log('[Ticket Handler] 🔍 Checking if ticket was already processed:', {
-      currentTicket: ticket.substring(0, 20) + '...',
-      lastProcessedTicket: lastProcessedTicket ? lastProcessedTicket.substring(0, 20) + '...' : 'NONE',
-      hasValidToken,
-      tokenStillValid,
-      isSameTicket: ticket === lastProcessedTicket
-    });
+    // console.log('[Ticket Handler] 🔍 Checking if ticket was already processed:', {
+    //   currentTicket: ticket.substring(0, 20) + '...',
+    //   lastProcessedTicket: lastProcessedTicket ? lastProcessedTicket.substring(0, 20) + '...' : 'NONE',
+    //   hasValidToken,
+    //   tokenStillValid,
+    //   isSameTicket: ticket === lastProcessedTicket
+    // });
 
     // If same ticket and token still valid, DON'T clear and DON'T re-exchange
     if (ticket === lastProcessedTicket && tokenStillValid) {
-      console.log('');
-      console.log('═══════════════════════════════════════════════════════════');
-      console.log('[Ticket Handler] ✅ CACHED TICKET PATH - RESTORING SESSION');
-      console.log('═══════════════════════════════════════════════════════════');
-      console.log('[Ticket Handler] ✅ Ticket already processed and token still valid - skipping exchange');
-      console.log('[Ticket Handler] 🎉 Using existing token from localStorage');
+      // console.log('');
+      // console.log('═══════════════════════════════════════════════════════════');
+      // console.log('[Ticket Handler] ✅ CACHED TICKET PATH - RESTORING SESSION');
+      // console.log('═══════════════════════════════════════════════════════════');
+      // console.log('[Ticket Handler] ✅ Ticket already processed and token still valid - skipping exchange');
+      // console.log('[Ticket Handler] 🎉 Using existing token from localStorage');
 
       // ✅ Trigger auth state restore immediately (use IIFE for async)
       (async () => {
@@ -396,9 +396,9 @@ export default defineNuxtPlugin((nuxtApp) => {
           const permissions = storedPermissions ? JSON.parse(storedPermissions) : null;
 
           setAuthReady(storedToken, user, roles, permissions);
-          console.log('[Ticket Handler] 🔐 Auth state restored from existing session');
+          // console.log('[Ticket Handler] 🔐 Auth state restored from existing session');
         } catch (error) {
-          console.error('[Ticket Handler] ❌ Error restoring auth state:', error);
+          // console.error('[Ticket Handler] ❌ Error restoring auth state:', error);
         }
       })();
 
@@ -408,8 +408,8 @@ export default defineNuxtPlugin((nuxtApp) => {
 
         // ✅ FIX: Validate lastRoute to prevent malformed URLs
         if (lastRoute.includes('http://') || lastRoute.includes('https://')) {
-          console.warn('[Ticket Handler] ⚠️ Malformed route detected in localStorage:', lastRoute);
-          console.warn('[Ticket Handler] 🔧 Resetting to default route: /update-data');
+          // console.warn('[Ticket Handler] ⚠️ Malformed route detected in localStorage:', lastRoute);
+          // console.warn('[Ticket Handler] 🔧 Resetting to default route: /update-data');
           lastRoute = '/update-data';
           // Update localStorage with corrected value
           localStorage.setItem('last_visited_route', '/update-data');
@@ -417,20 +417,20 @@ export default defineNuxtPlugin((nuxtApp) => {
 
         const hasLastRoute = !!localStorage.getItem('last_visited_route');
 
-        console.log('[Ticket Handler] 🔍 Checking last visited route:', {
-          lastRoute,
-          hasLastRoute,
-          willRedirectTo: lastRoute,
-          isDefaultFallback: !hasLastRoute
-        });
+        // console.log('[Ticket Handler] 🔍 Checking last visited route:', {
+        //   lastRoute,
+        //   hasLastRoute,
+        //   willRedirectTo: lastRoute,
+        //   isDefaultFallback: !hasLastRoute
+        // });
 
         if (!hasLastRoute) {
-          console.warn('[Ticket Handler] ⚠️ No last_visited_route found in localStorage - using default /update-data');
+          // console.warn('[Ticket Handler] ⚠️ No last_visited_route found in localStorage - using default /update-data');
         } else {
-          console.log('[Ticket Handler] ✅ Found last_visited_route in localStorage:', lastRoute);
+          // console.log('[Ticket Handler] ✅ Found last_visited_route in localStorage:', lastRoute);
         }
 
-        console.log('[Ticket Handler] 🚀 Redirecting to:', lastRoute);
+        // console.log('[Ticket Handler] 🚀 Redirecting to:', lastRoute);
         window.history.replaceState({}, document.title, lastRoute);
         router.push(lastRoute);
       }, 100);
@@ -439,11 +439,11 @@ export default defineNuxtPlugin((nuxtApp) => {
     }
 
     // Different ticket or expired token - clear and re-exchange
-    console.log('');
-    console.log('═══════════════════════════════════════════════════════════');
-    console.log('[Ticket Handler] 🔄 NEW TICKET PATH - EXCHANGING TICKET');
-    console.log('═══════════════════════════════════════════════════════════');
-    console.log('[Ticket Handler] 🗑️ Clearing old tokens before exchange...');
+    // console.log('');
+    // console.log('═══════════════════════════════════════════════════════════');
+    // console.log('[Ticket Handler] 🔄 NEW TICKET PATH - EXCHANGING TICKET');
+    // console.log('═══════════════════════════════════════════════════════════');
+    // console.log('[Ticket Handler] 🗑️ Clearing old tokens before exchange...');
 
     // ✅ CRITICAL: Check if this is a RELOAD scenario (parent refresh)
     // If we have last_visited_route AND access_token, this is likely a reload with new ticket
@@ -452,9 +452,9 @@ export default defineNuxtPlugin((nuxtApp) => {
     const savedRouteForReload = isReloadScenario ? localStorage.getItem('last_visited_route') : null;
 
     if (isReloadScenario) {
-      console.log('[Ticket Handler] 🔄 Reload scenario detected - will preserve last_visited_route:', savedRouteForReload);
+      // console.log('[Ticket Handler] 🔄 Reload scenario detected - will preserve last_visited_route:', savedRouteForReload);
     } else {
-      console.log('[Ticket Handler] 🆕 Fresh login scenario - will start at /update-data');
+      // console.log('[Ticket Handler] 🆕 Fresh login scenario - will start at /update-data');
     }
 
     localStorage.removeItem('access_token');
@@ -465,21 +465,21 @@ export default defineNuxtPlugin((nuxtApp) => {
     localStorage.removeItem('user_permissions');
     localStorage.removeItem('last_processed_ticket'); // Clear old ticket marker
     localStorage.removeItem('last_visited_route'); // Temporarily clear (will restore if reload)
-    console.log('[Ticket Handler] ✅ Old tokens cleared');
+    // console.log('[Ticket Handler] ✅ Old tokens cleared');
 
     // ✅ Restore last_visited_route if this was a reload scenario
     if (savedRouteForReload) {
       localStorage.setItem('last_visited_route', savedRouteForReload);
-      console.log('[Ticket Handler] ✅ Restored last_visited_route for reload:', savedRouteForReload);
+      // console.log('[Ticket Handler] ✅ Restored last_visited_route for reload:', savedRouteForReload);
     }
   } else {
-    console.log('[Ticket Handler] ❌ No ticket in URL');
+    // console.log('[Ticket Handler] ❌ No ticket in URL');
   }
 
   // If no ticket in URL, check if in iframe
   if (!ticket && window.parent !== window) {
-    console.log('[Ticket Handler] 📦 Running in IFRAME - waiting for ticket via postMessage...');
-    console.log('[Ticket Handler] Parent window:', window.parent !== window ? 'EXISTS' : 'NONE');
+    // console.log('[Ticket Handler] 📦 Running in IFRAME - waiting for ticket via postMessage...');
+    // console.log('[Ticket Handler] Parent window:', window.parent !== window ? 'EXISTS' : 'NONE');
 
     // Get host origin for postMessage
     const getHostOrigin = () => {
@@ -501,10 +501,10 @@ export default defineNuxtPlugin((nuxtApp) => {
 
     // Listen for postMessage from parent
     const messageHandler = (event) => {
-      console.log('[Ticket Handler] Received postMessage:', event.data?.type);
+      // console.log('[Ticket Handler] Received postMessage:', event.data?.type);
 
       if (event.data?.type === 'TICKET_AUTH' && event.data.ticket) {
-        console.log('[Ticket Handler] ✅ Received ticket via postMessage:', event.data.ticket.substring(0, 20) + '...');
+        // console.log('[Ticket Handler] ✅ Received ticket via postMessage:', event.data.ticket.substring(0, 20) + '...');
         window.removeEventListener('message', messageHandler);
 
         // Redirect to loading page with ticket
@@ -516,7 +516,7 @@ export default defineNuxtPlugin((nuxtApp) => {
 
     // Request ticket from parent
     const hostOrigin = getHostOrigin();
-    console.log('[Ticket Handler] Requesting ticket from parent (origin:', hostOrigin, ')...');
+    // console.log('[Ticket Handler] Requesting ticket from parent (origin:', hostOrigin, ')...');
     window.parent.postMessage({
       type: 'REQUEST_TICKET',
       source: 'update-data'
@@ -524,14 +524,14 @@ export default defineNuxtPlugin((nuxtApp) => {
 
     // Timeout warning
     setTimeout(() => {
-      console.log('[Ticket Handler] ⚠️ Still waiting for ticket after 2s...');
+      // console.log('[Ticket Handler] ⚠️ Still waiting for ticket after 2s...');
     }, 2000);
 
     return;
   }
 
   if (ticket) {
-    console.log('[Ticket Handler] ✅ Ticket detected! Processing silently...');
+    // console.log('[Ticket Handler] ✅ Ticket detected! Processing silently...');
 
     // Process ticket immediately without showing an extra page
     // Run after small delay to ensure app is ready
@@ -539,11 +539,11 @@ export default defineNuxtPlugin((nuxtApp) => {
       try {
         await processTicket(ticket);
       } catch (e) {
-        console.error('[Ticket Handler] Ticket processing failed:', e?.message || e);
+        // console.error('[Ticket Handler] Ticket processing failed:', e?.message || e);
       }
     }, 50);
   } else {
-    console.log('[Ticket Handler] ❌ No ticket found - normal page load');
+    // console.log('[Ticket Handler] ❌ No ticket found - normal page load');
   }
 
   // Provide processTicket function
@@ -553,5 +553,5 @@ export default defineNuxtPlugin((nuxtApp) => {
     }
   };
 
-  console.log('=== [Ticket Handler] Initialization Complete ===\n');
+  // console.log('=== [Ticket Handler] Initialization Complete ===\n');
 });
