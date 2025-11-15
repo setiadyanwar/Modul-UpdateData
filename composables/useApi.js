@@ -210,12 +210,12 @@ export const useApi = () => {
         ? "Authentication temporarily blocked. Please wait before trying again."
         : "Server sedang tidak tersedia. Silakan coba lagi dalam beberapa menit.";
 
-      console.error('[Update-Data API] 🚫 REQUEST BLOCKED', {
-        endpoint,
-        circuitBreakerState: circuitBreaker.state,
-        authFailureCount,
-        timeSinceAuthFailure: lastAuthFailure ? Date.now() - lastAuthFailure : 0
-      });
+      // console.error('[Update-Data API] 🚫 REQUEST BLOCKED', {
+      //   endpoint,
+      //   circuitBreakerState: circuitBreaker.state,
+      //   authFailureCount,
+      //   timeSinceAuthFailure: lastAuthFailure ? Date.now() - lastAuthFailure : 0
+      // });
       throw new Error(errorMessage);
     }
     
@@ -263,12 +263,12 @@ export const useApi = () => {
           status: 200,
         };
       } catch (error) {
-        console.error('[Update-Data API GET] ❌ Error', endpoint, {
-          status: error.status,
-          statusText: error.statusText,
-          message: error.message,
-          data: error.data
-        });
+        // console.error('[Update-Data API GET] ❌ Error', endpoint, {
+        //   status: error.status,
+        //   statusText: error.statusText,
+        //   message: error.message,
+        //   data: error.data
+        // });
 
         if (error.status === 401) {
           recordFailure('auth');

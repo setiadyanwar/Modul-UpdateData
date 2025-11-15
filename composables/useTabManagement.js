@@ -167,7 +167,7 @@ const reloadWarningBanner = async (force = false) => {
     await updateTabStatusCache(activeTab.value);
     
   } catch (error) {
-    console.warn('Failed to reload warning banner:', error);
+    // console.warn('Failed to reload warning banner:', error);
   }
 };
 
