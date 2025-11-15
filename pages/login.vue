@@ -80,8 +80,6 @@ import envConfig from '~/config/environment';
 
 // App info
 const appVersion = ref(envConfig.APP.VERSION || '1.0.0');
-const isDevelopment = computed(() => envConfig.IS_DEVELOPMENT);
-const hostOrigin = ref(envConfig.REMOTE_APP.HOST_ORIGIN || 'http://localhost:3000');
 
 // Access steps
 const accessSteps = [
@@ -90,12 +88,11 @@ const accessSteps = [
   'The application will load automatically in the iframe'
 ];
 
-// Main app URL
+// Main app URL - Always redirect to ESS Portal
 const mainAppUrl = computed(() => {
-  if (isDevelopment.value) {
-    return hostOrigin.value;
-  }
-  return 'https://ess.telkomsigma.co.id';
+  return envConfig.IS_PRODUCTION
+    ? envConfig.FRONTEND_URLS.PRODUCTION.ESS_HOST
+    : envConfig.FRONTEND_URLS.DEVELOPMENT.ESS_HOST;
 });
 
 // Set page title

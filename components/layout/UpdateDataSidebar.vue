@@ -206,14 +206,21 @@ const getParentOrigin = () => {
       if (origin) return origin;
     }
   } catch (e) {}
-  return envConfig.REMOTE_APP.HOST_ORIGIN;
+  // Use ESS Host as default parent origin
+  return envConfig.IS_PRODUCTION
+    ? envConfig.FRONTEND_URLS.PRODUCTION.ESS_HOST
+    : envConfig.FRONTEND_URLS.DEVELOPMENT.ESS_HOST;
 };
 
 /**
  * Navigate to parent dashboard (for iframe mode)
  */
 const navigateToParentDashboard = () => {
-  const externalUrl = 'https://people-dev.telkomsigma.co.id/';
+  // Navigate to ESS Portal dashboard
+  const externalUrl = envConfig.IS_PRODUCTION
+    ? envConfig.FRONTEND_URLS.PRODUCTION.ESS_HOST + '/'
+    : envConfig.FRONTEND_URLS.DEVELOPMENT.ESS_HOST + '/';
+
   if (typeof window !== 'undefined' && window.parent && window.parent !== window) {
     try {
       window.parent.postMessage({ type: 'NAVIGATE', source: 'update-data', path: '/' }, getParentOrigin());

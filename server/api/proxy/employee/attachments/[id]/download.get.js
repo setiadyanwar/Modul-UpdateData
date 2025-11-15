@@ -36,7 +36,7 @@ export default defineEventHandler(async (event) => {
       throw createError({ statusCode: 401, statusMessage: 'Authorization header is required' })
     }
 
-    const apiBaseUrl = envConfig.API_BASE_URL || process.env.API_BASE_URL || 'https://apigwsand.telkomsigma.co.id/essbe'
+    const apiBaseUrl = envConfig.API_BASE_URL || process.env.API_BASE_URL
     const endpointTemplate = envConfig.API_ENDPOINTS?.EMPLOYEE?.ATTACHMENTS?.DOWNLOAD || '/employee/attachments/{id}/download'
     const targetUrl = `${apiBaseUrl}${endpointTemplate.replace('{id}', attachmentId)}`
 

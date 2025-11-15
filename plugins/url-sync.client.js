@@ -38,7 +38,7 @@ export default defineNuxtPlugin((nuxtApp) => {
         if (origin) return origin;
       }
     } catch (e) {}
-    return envConfig.REMOTE_APP.HOST_ORIGIN;
+    return envConfig.IS_PRODUCTION ? envConfig.FRONTEND_URLS.PRODUCTION.ESS_HOST : envConfig.FRONTEND_URLS.DEVELOPMENT.ESS_HOST;
   };
   
   /**

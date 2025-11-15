@@ -25,7 +25,7 @@ export default defineEventHandler(async (event) => {
       return { success: false, message: 'Authorization header is required', status: 401 }
     }
 
-    const apiBaseUrl = envConfig?.API_BASE_URL || process.env.API_BASE_URL || 'https://apigwsand.telkomsigma.co.id/essbe'
+    const apiBaseUrl = envConfig?.API_BASE_URL || process.env.API_BASE_URL
     const searchParams = new URLSearchParams()
     Object.entries(query).forEach(([k, v]) => {
       if (v != null) searchParams.append(k, String(v))

@@ -101,10 +101,11 @@ apiService.interceptors.response.use(
         window.$nuxt.$updateDataAuth.requestTokenFromParent();
 
         // Also send direct message to parent
+        const parentOrigin = envConfig.IS_PRODUCTION ? envConfig.FRONTEND_URLS.PRODUCTION.ESS_HOST : envConfig.FRONTEND_URLS.DEVELOPMENT.ESS_HOST;
         window.parent.postMessage({
           type: 'TOKEN_EXPIRED',
           source: 'update-data'
-        }, envConfig.REMOTE_APP.HOST_ORIGIN);
+        }, parentOrigin);
       }
       
       return Promise.reject(error);

@@ -75,8 +75,18 @@
     });
 
     // Send ticket dengan target origin spesifik untuk security
-    // Di production, ganti '*' dengan origin spesifik Update-Data
-    const targetOrigin = '*'; // TODO: Ganti dengan origin spesifik, misal 'http://localhost:3001' atau 'https://people-dev.telkomsigma.co.id'
+    // Get iframe URL origin for secure postMessage
+    let targetOrigin = '*';
+    try {
+      const iframeSrc = iframe.src;
+      if (iframeSrc) {
+        const url = new URL(iframeSrc);
+        targetOrigin = url.origin;
+        console.log('[Parent Ticket Sender] Using iframe origin:', targetOrigin);
+      }
+    } catch (e) {
+      console.warn('[Parent Ticket Sender] Could not determine iframe origin, using wildcard');
+    }
 
     iframe.contentWindow.postMessage({
       type: 'TICKET_AUTH',

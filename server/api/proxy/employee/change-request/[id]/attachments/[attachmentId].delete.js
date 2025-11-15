@@ -51,7 +51,7 @@ export default defineEventHandler(async (event) => {
 
 
     // Forward to actual API
-    const apiBaseUrl = envConfig?.API_BASE_URL || process.env.API_BASE_URL || 'https://apigwsand.telkomsigma.co.id/essbe';
+    const apiBaseUrl = envConfig?.API_BASE_URL || process.env.API_BASE_URL;
     const targetUrl = `${apiBaseUrl}/employee/attachments/${attachmentId}/delete`;
 
     console.log('[Change Request Attachment DELETE] Calling API', {
