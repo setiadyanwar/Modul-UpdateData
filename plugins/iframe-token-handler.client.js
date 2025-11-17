@@ -27,7 +27,7 @@ export default defineNuxtPlugin(() => {
    * Validate origin untuk keamanan
    */
   const isValidOrigin = (origin) => {
-    return envConfig.REMOTE_APP.ALLOWED_ORIGINS.includes(origin);
+    return envConfig.CORS_ORIGINS.PRODUCTION.includes(origin);
   };
 
   /**
@@ -119,7 +119,7 @@ export default defineNuxtPlugin(() => {
         if (origin) return origin;
       }
     } catch (e) {}
-    return envConfig.REMOTE_APP.HOST_ORIGIN;
+    return envConfig.IS_PRODUCTION ? envConfig.FRONTEND_URLS.PRODUCTION.ESS_HOST : envConfig.FRONTEND_URLS.DEVELOPMENT.ESS_HOST;
   };
 
   /**

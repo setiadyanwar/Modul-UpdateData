@@ -40,7 +40,7 @@ export default defineEventHandler(async (event) => {
       return '';
     }
 
-    const apiBaseUrl = envConfig.API_BASE_URL || process.env.API_BASE_URL || 'https://apigwsand.telkomsigma.co.id/essbe';
+    const apiBaseUrl = envConfig.API_BASE_URL || process.env.API_BASE_URL;
 
     // Build query string if present
     const queryString = new URLSearchParams(query).toString();

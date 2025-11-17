@@ -29,7 +29,7 @@ export default defineNuxtPlugin(() => {
 			// Fallback ke konfigurasi environment
 			if (process.client) {
 				const env = require('~/config/environment').default;
-				return env.REMOTE_APP?.HOST_ORIGIN || 'http://localhost:3000';
+				return env.IS_PRODUCTION ? env.FRONTEND_URLS.PRODUCTION.ESS_HOST : env.FRONTEND_URLS.DEVELOPMENT.ESS_HOST;
 			}
 
 			return '*';

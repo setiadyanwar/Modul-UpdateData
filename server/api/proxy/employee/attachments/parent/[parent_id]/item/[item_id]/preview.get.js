@@ -50,7 +50,7 @@ export default defineEventHandler(async (event) => {
     }
 
     // Forward to actual API
-    const apiBaseUrl = envConfig.API_BASE_URL || process.env.API_BASE_URL || 'https://apigwsand.telkomsigma.co.id/essbe';
+    const apiBaseUrl = envConfig.API_BASE_URL || process.env.API_BASE_URL;
     const endpointTemplate = envConfig.API_ENDPOINTS?.EMPLOYEE?.ATTACHMENTS?.PREVIEW_PARENT_ITEM || '/employee/attachments/parent/{parent_id}/item/{item_id}/preview';
     const targetUrl = `${apiBaseUrl}${endpointTemplate.replace('{parent_id}', parentId).replace('{item_id}', itemId)}`;
 

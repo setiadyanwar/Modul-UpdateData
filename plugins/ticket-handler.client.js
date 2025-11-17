@@ -493,7 +493,7 @@ export default defineNuxtPlugin((nuxtApp) => {
 
         // Fallback to environment config
         const envConfig = require('~/config/environment').default;
-        return envConfig.REMOTE_APP?.HOST_ORIGIN || 'http://localhost:3000';
+        return envConfig.IS_PRODUCTION ? envConfig.FRONTEND_URLS.PRODUCTION.ESS_HOST : envConfig.FRONTEND_URLS.DEVELOPMENT.ESS_HOST;
       } catch {
         return '*';
       }

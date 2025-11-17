@@ -1,4 +1,5 @@
 import { $fetch } from 'ofetch';
+import envConfig from '~/config/environment';
 
 /**
  * Ticket Exchange API
@@ -22,8 +23,8 @@ export default defineEventHandler(async (event) => {
 
     console.log('[Ticket Exchange API] Ticket:', ticket.substring(0, 20) + '...');
 
-    // Get API base URL from environment
-    const apiBaseUrl = process.env.API_BASE_URL || 'https://apigwsand.telkomsigma.co.id/essbe';
+    // Get API base URL from environment config
+    const apiBaseUrl = envConfig.API_BASE_URL;
 
     // Exchange ticket with backend
     console.log('[Ticket Exchange API] Calling backend:', `${apiBaseUrl}/auth/ticket-exchange`);

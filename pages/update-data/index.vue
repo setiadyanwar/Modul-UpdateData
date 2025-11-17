@@ -413,7 +413,8 @@ const medicalHealthStatusOptions = ref([])
 // Notify parent host that the iframe/app is ready as soon as this page mounts
 onMounted(() => {
   if (typeof window !== 'undefined' && window.parent !== window) {
-    window.parent.postMessage({ type: 'IFRAME_READY', source: 'update-data' }, envConfig.REMOTE_APP.HOST_ORIGIN);
+    const parentOrigin = envConfig.IS_PRODUCTION ? envConfig.FRONTEND_URLS.PRODUCTION.ESS_HOST : envConfig.FRONTEND_URLS.DEVELOPMENT.ESS_HOST;
+    window.parent.postMessage({ type: 'IFRAME_READY', source: 'update-data' }, parentOrigin);
   }
 });
 
@@ -4523,6 +4524,7 @@ onMounted(async () => {
   if (process.client && window.parent !== window) {
     try {
       const envConfig = await import('~/config/environment.js');
+      const parentOrigin = envConfig.default.IS_PRODUCTION ? envConfig.default.FRONTEND_URLS.PRODUCTION.ESS_HOST : envConfig.default.FRONTEND_URLS.DEVELOPMENT.ESS_HOST;
       window.parent.postMessage({
         type: 'IFRAME_READY',
         source: 'update-data',
@@ -4531,7 +4533,7 @@ onMounted(async () => {
           page: 'update-data',
           loaded: true
         }
-      }, envConfig.default.REMOTE_APP.HOST_ORIGIN);
+      }, parentOrigin);
       console.log('[Update-Data] ✅ Content fully loaded - notified parent');
     } catch (error) {
       console.error('[Update-Data] ❌ Failed to notify parent:', error);

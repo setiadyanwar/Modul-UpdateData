@@ -1,5 +1,10 @@
 import { resolve } from 'path';
 import Aura from '@primeuix/themes/aura';
+import envConfig from './config/environment';
+
+// Build CSP dynamically based on environment
+const cspFrameAncestors = envConfig.CORS_ORIGINS.PRODUCTION.join(' ');
+const cspConnectSrc = `${envConfig.API_BASE_URL} ${envConfig.CORS_ORIGINS.PRODUCTION.join(' ')}`;
 
 export default defineNuxtConfig({
   compatibilityDate: "2025-05-15",
@@ -40,14 +45,14 @@ export default defineNuxtConfig({
         headers: {
           // Modern CSP with frame-ancestors (replaces deprecated X-Frame-Options ALLOW-FROM)
           'Content-Security-Policy': [
-            'frame-ancestors https://people-dev.telkomsigma.co.id http://localhost:3000 http://localhost:8001',
+            `frame-ancestors ${cspFrameAncestors}`,
             "default-src 'self'",
             "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com https://cdn.jsdelivr.net",
             "style-src 'self' 'unsafe-inline' https://unpkg.com",
             "img-src 'self' data: blob: https:",
             "font-src 'self' data: https://fonts.gstatic.com",
             "frame-src 'self' https://sigmacoid.sharepoint.com",
-            "connect-src 'self' blob: https://apigwsand.telkomsigma.co.id https://people-dev.telkomsigma.co.id"
+            `connect-src 'self' blob: ${cspConnectSrc}`
           ].join('; '),
           // X-Frame-Options for older browsers (CSP takes precedence in modern browsers)
           'X-Frame-Options': 'SAMEORIGIN',
