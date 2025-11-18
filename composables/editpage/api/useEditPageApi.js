@@ -85,7 +85,7 @@ export function useEditPageApi() {
 
       return null
     } catch (error) {
-      console.error('❌ Error loading request detail:', error)
+      // console.error('❌ Error loading request detail:', error)
 
       // Use global error handler with network error detection
       await handleNetworkError(error, 'Loading request detail')
@@ -110,7 +110,7 @@ export function useEditPageApi() {
 
       return null
     } catch (error) {
-      console.error(`❌ Error loading ${category} data:`, error)
+      // console.error(`❌ Error loading ${category} data:`, error)
 
       // Use global error handler with network error detection
       await handleNetworkError(error, `Loading ${category} data`)
@@ -139,7 +139,7 @@ export function useEditPageApi() {
 
       throw new Error(response?.message || 'Failed to save draft')
     } catch (error) {
-      console.error('❌ Error saving draft:', error)
+      // console.error('❌ Error saving draft:', error)
 
       // Use global error handler for network issues
       const handled = await handleNetworkError(error, 'Saving draft')
@@ -172,7 +172,7 @@ export function useEditPageApi() {
 
       throw new Error(response?.message || 'Failed to submit request')
     } catch (error) {
-      console.error('❌ Error submitting request:', error)
+      // console.error('❌ Error submitting request:', error)
       toastError(error.message || 'Failed to submit request')
       throw error
     } finally {
@@ -193,7 +193,7 @@ export function useEditPageApi() {
 
       throw new Error(response?.message || 'Failed to submit change request')
     } catch (error) {
-      console.error('❌ Error submitting change request:', error)
+      // console.error('❌ Error submitting change request:', error)
       toastError(error.message || 'Failed to submit change request')
       throw error
     } finally {
@@ -214,7 +214,7 @@ export function useEditPageApi() {
 
       throw new Error(response?.message || 'Failed to insert request')
     } catch (error) {
-      console.error('❌ Error inserting request:', error)
+      // console.error('❌ Error inserting request:', error)
       toastError(error.message || 'Failed to insert request')
       throw error
     } finally {
@@ -235,7 +235,7 @@ export function useEditPageApi() {
 
       throw new Error(response?.message || 'Failed to update request')
     } catch (error) {
-      console.error('❌ Error updating request:', error)
+      // console.error('❌ Error updating request:', error)
       toastError(error.message || 'Failed to update request')
       throw error
     } finally {
@@ -256,7 +256,7 @@ export function useEditPageApi() {
 
       throw new Error(response?.message || 'Failed to delete document')
     } catch (error) {
-      console.error('❌ Error deleting document:', error)
+      // console.error('❌ Error deleting document:', error)
       toastError(error.message || 'Failed to delete document')
       throw error
     }

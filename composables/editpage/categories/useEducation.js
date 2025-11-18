@@ -40,7 +40,7 @@ export function useEducation() {
         }
       })
     } catch (error) {
-      console.error('❌ Error enriching education data with labels:', error)
+      // console.error('❌ Error enriching education data with labels:', error)
     }
   }
 

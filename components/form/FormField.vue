@@ -1291,19 +1291,19 @@ const loadMasterOptions = async () => {
       // ✅ GLOBAL CACHE: Store in global cache for other FormFields
       globalOptionsCache.set(cacheKey, masterOptions.value);
 
-      console.log(`[FormField] Loaded from masterData cache:`, {
-        cacheKey,
-        itemsCount: masterOptions.value.length,
-        firstItem: masterOptions.value[0]
-      });
+      // console.log(`[FormField] Loaded from masterData cache:`, {
+      //   cacheKey,
+      //   itemsCount: masterOptions.value.length,
+      //   firstItem: masterOptions.value[0]
+      // });
 
     } else {
       // If somehow preload didn't include this category, load it now
-      console.log(`[FormField] Cache miss, fetching from API:`, {
-        cacheKey,
-        masterDataKeys: masterData.value ? Object.keys(masterData.value) : [],
-        masterDataReady: masterDataReady.value
-      });
+      // console.log(`[FormField] Cache miss, fetching from API:`, {
+      //   cacheKey,
+      //   masterDataKeys: masterData.value ? Object.keys(masterData.value) : [],
+      //   masterDataReady: masterDataReady.value
+      // });
 
       masterOptions.value = await getOptions(props.masterDataCategory, props.masterDataSubCategory || null);
       optionsLoaded.value = true;
@@ -1311,14 +1311,14 @@ const loadMasterOptions = async () => {
       // ✅ GLOBAL CACHE: Store in global cache for other FormFields
       globalOptionsCache.set(cacheKey, masterOptions.value);
 
-      console.log(`[FormField] Fetched from API:`, {
-        cacheKey,
-        itemsCount: masterOptions.value.length,
-        firstItem: masterOptions.value[0]
-      });
+      // console.log(`[FormField] Fetched from API:`, {
+      //   cacheKey,
+      //   itemsCount: masterOptions.value.length,
+      //   firstItem: masterOptions.value[0]
+      // });
     }
   } catch (error) {
-    console.error(`[FormField] Error loading master options for ${props.masterDataCategory}:`, error);
+    // console.error(`[FormField] Error loading master options for ${props.masterDataCategory}:`, error);
     masterOptions.value = [];
   }
 };
@@ -1381,15 +1381,15 @@ const finalOptions = computed(() => {
 
   // Debug logging for troubleshooting
   if (props.masterDataCategory && typeof window !== 'undefined') {
-    console.log(`[FormField] finalOptions for ${props.masterDataCategory}:`, {
-      category: props.masterDataCategory,
-      subcategory: props.masterDataSubCategory,
-      masterOptionsLength: masterOptions.value?.length || 0,
-      propsOptionsLength: props.options?.length || 0,
-      finalOptionsLength: options.length,
-      optionsLoaded: optionsLoaded.value,
-      sample: options.slice(0, 2)
-    });
+    // console.log(`[FormField] finalOptions for ${props.masterDataCategory}:`, {
+    //   category: props.masterDataCategory,
+    //   subcategory: props.masterDataSubCategory,
+    //   masterOptionsLength: masterOptions.value?.length || 0,
+    //   propsOptionsLength: props.options?.length || 0,
+    //   finalOptionsLength: options.length,
+    //   optionsLoaded: optionsLoaded.value,
+    //   sample: options.slice(0, 2)
+    // });
   }
 
   // Apply filtering if filterBy prop is provided
