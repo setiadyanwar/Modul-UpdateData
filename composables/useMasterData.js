@@ -145,44 +145,47 @@ export const useMasterData = () => {
           }
         } else {
           // Direct endpoints for collection resources
+          // NOTE: Backend no longer provides default limit, so we must explicitly set limit parameter
+          const DEFAULT_LIMIT = 1000; // Set high limit to ensure all data is retrieved
+          
           switch (category) {
             case 'PROVINCE':
-              endpoint = `/master-api/provinces`;
+              endpoint = `/master-api/provinces?limit=${DEFAULT_LIMIT}`;
               break;
             case 'CITY':
-              endpoint = `/master-api/cities`;
+              endpoint = `/master-api/cities?limit=${DEFAULT_LIMIT}`;
               break;
             case 'BANK':
-              endpoint = `/master-api/banks`;
+              endpoint = `/master-api/banks?limit=${DEFAULT_LIMIT}`;
               break;
             case 'TAX_STATUS':
-              endpoint = `/master-api/tax-statuses`;
+              endpoint = `/master-api/tax-statuses?limit=${DEFAULT_LIMIT}`;
               break;
             case 'NATIONALITY':
-              endpoint = `/master-api/nations`;
+              endpoint = `/master-api/nations?limit=${DEFAULT_LIMIT}`;
               break;
             case 'EDU_INSTITUTIONS':
-              endpoint = `/master-api/edu-institutions`;
+              endpoint = `/master-api/edu-institutions?limit=${DEFAULT_LIMIT}`;
               break;
             case 'EDU_LEVELS':
-              endpoint = `/master-api/edu-levels`;
+              endpoint = `/master-api/edu-levels?limit=${DEFAULT_LIMIT}`;
               break;
             case 'EDU_MAJORS':
-              endpoint = `/master-api/edu-majors`;
+              endpoint = `/master-api/edu-majors?limit=${DEFAULT_LIMIT}`;
               break;
             case 'EDUCATION_INSTITUTION':
-              endpoint = `/master-api/edu-institutions`;
+              endpoint = `/master-api/edu-institutions?limit=${DEFAULT_LIMIT}`;
               break;
             case 'EDUCATION_LEVEL':
-              endpoint = `/master-api/edu-levels`;
+              endpoint = `/master-api/edu-levels?limit=${DEFAULT_LIMIT}`;
               break;
             case 'EDUCATION_MAJOR':
-              endpoint = `/master-api/edu-majors`;
+              endpoint = `/master-api/edu-majors?limit=${DEFAULT_LIMIT}`;
               break;
 
             default:
               // Generic master endpoint with optional sub_category support (correct param name)
-              endpoint = `/master-api/?category=${category.toLowerCase()}${subcategory ? `&sub_category=${subcategory}` : ''}`;
+              endpoint = `/master-api/?category=${category.toLowerCase()}${subcategory ? `&sub_category=${subcategory}` : ''}&limit=${DEFAULT_LIMIT}`;
           }
         }
 

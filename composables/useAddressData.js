@@ -28,7 +28,7 @@ export const useAddressData = () => {
     error.value = null;
     
     try {
-      const response = await apiGet('/master-api/provinces');
+      const response = await apiGet('/master-api/provinces?limit=1000');
       
       if (response?.data?.items) {
         const provinceOptions = response.data.items.map(province => ({
@@ -70,7 +70,7 @@ export const useAddressData = () => {
     error.value = null;
     
     try {
-      const response = await apiGet(`/master-api/cities?id_province=${provinceId}`);
+      const response = await apiGet(`/master-api/cities?id_province=${provinceId}&limit=1000`);
       
       if (response?.data?.items) {
         const cityOptions = response.data.items.map(city => ({
@@ -110,7 +110,7 @@ export const useAddressData = () => {
     error.value = null;
     
     try {
-      const response = await apiGet(`/master-api/cities?id_city=${cityId}`);
+      const response = await apiGet(`/master-api/cities?id_city=${cityId}&limit=1000`);
       
       if (response?.data?.items) {
         const cityOptions = response.data.items.map(city => ({
@@ -140,7 +140,7 @@ export const useAddressData = () => {
     error.value = null;
     
     try {
-      const response = await apiGet(`/master-api/provinces?id_city=${cityId}`);
+      const response = await apiGet(`/master-api/provinces?id_city=${cityId}&limit=1000`);
       
       if (response?.data?.items) {
         const provinceOptions = response.data.items.map(province => ({

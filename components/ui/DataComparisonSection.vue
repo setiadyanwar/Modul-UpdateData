@@ -237,7 +237,7 @@ onMounted(async () => {
       await Promise.all(ids.map(async (id) => {
         try {
           if (type === 'CITY') {
-            const res = await apiGet(`/master-api/cities?id_city=${encodeURIComponent(id)}`);
+            const res = await apiGet(`/master-api/cities?id_city=${encodeURIComponent(id)}&limit=1000`);
             const items = res?.data?.items || res?.data?.data || res?.items || [];
             if (items.length) {
               const it = items[0];
@@ -247,7 +247,7 @@ onMounted(async () => {
               if (!arr.some(x => String(x.code) === normalized.code)) masterData.value[key] = [...arr, normalized];
             }
           } else {
-            const res = await apiGet(`/master-api/provinces?id_province=${encodeURIComponent(id)}`);
+            const res = await apiGet(`/master-api/provinces?id_province=${encodeURIComponent(id)}&limit=1000`);
             const items = res?.data?.items || res?.data?.data || res?.items || [];
             if (items.length) {
               const it = items[0];
@@ -765,7 +765,7 @@ const getMasterValue = (fieldName, code) => {
   // If still not found, attempt on-demand fetch by ID and merge into cache, then UI will re-compute
   try {
     if (masterDataCategory === 'CITY' && codeStr) {
-      const url = `/master-api/cities?id_city=${encodeURIComponent(codeStr)}`;
+      const url = `/master-api/cities?id_city=${encodeURIComponent(codeStr)}&limit=1000`;
       apiGet(url).then(res => {
         const items = res?.data?.items || res?.data?.data || res?.items || [];
         if (Array.isArray(items) && items.length > 0) {
@@ -786,7 +786,7 @@ const getMasterValue = (fieldName, code) => {
         }
       }).catch(() => {});
     } else if (masterDataCategory === 'PROVINCE' && codeStr) {
-      const url = `/master-api/provinces?id_province=${encodeURIComponent(codeStr)}`;
+      const url = `/master-api/provinces?id_province=${encodeURIComponent(codeStr)}&limit=1000`;
       apiGet(url).then(res => {
         const items = res?.data?.items || res?.data?.data || res?.items || [];
         if (Array.isArray(items) && items.length > 0) {

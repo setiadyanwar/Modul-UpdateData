@@ -22,11 +22,11 @@ export default defineEventHandler(async (event) => {
       path = path.join('/');
     }
 
-    console.log('[Master-API Collection Proxy] Request:', {
-      method,
-      path,
-      query
-    });
+    // console.log('[Master-API Collection Proxy] Request:', {
+    //   method,
+    //   path,
+    //   query
+    // });
 
     // Handle CORS preflight requests
     if (method === 'OPTIONS') {
@@ -49,7 +49,7 @@ export default defineEventHandler(async (event) => {
     // Construct the full URL to Real API
     const apiUrl = `${apiBaseUrl}/${fullPath}`;
 
-    console.log('[Master-API Collection Proxy] Forwarding to:', apiUrl);
+    // console.log('[Master-API Collection Proxy] Forwarding to:', apiUrl);
 
     // Prepare headers for real API
     const headers = {
@@ -73,11 +73,11 @@ export default defineEventHandler(async (event) => {
     // Make the request
     const response = await fetch(apiUrl, fetchOptions);
 
-    console.log('[Master-API Collection Proxy] Response:', {
-      status: response.status,
-      statusText: response.statusText,
-      contentType: response.headers.get('content-type')
-    });
+    // console.log('[Master-API Collection Proxy] Response:', {
+    //   status: response.status,
+    //   statusText: response.statusText,
+    //   contentType: response.headers.get('content-type')
+    // });
 
     // Get response data
     let responseData;
@@ -88,11 +88,11 @@ export default defineEventHandler(async (event) => {
     } else {
       // If not JSON, get as text
       const text = await response.text();
-      console.warn('[Master-API Collection Proxy] ⚠️ Non-JSON response received:', {
-        path,
-        contentType: responseContentType,
-        textPreview: text.substring(0, 200)
-      });
+      // console.warn('[Master-API Collection Proxy] ⚠️ Non-JSON response received:', {
+      //   path,
+      //   contentType: responseContentType,
+      //   textPreview: text.substring(0, 200)
+      // });
 
       // Try to parse as JSON anyway
       try {
@@ -120,10 +120,10 @@ export default defineEventHandler(async (event) => {
     return responseData;
 
   } catch (error) {
-    console.error('[Master-API Collection Proxy] ❌ Error:', {
-      message: error.message,
-      statusCode: error.statusCode || error.status
-    });
+    // console.error('[Master-API Collection Proxy] ❌ Error:', {
+    //   message: error.message,
+    //   statusCode: error.statusCode || error.status
+    // });
 
     throw createError({
       statusCode: error.statusCode || error.status || 500,

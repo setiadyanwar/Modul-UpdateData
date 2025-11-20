@@ -26,46 +26,136 @@
       <!-- Right Side - Content Card -->
       <div class="content-section">
         <div class="main-card">
-          <!-- Warning Header -->
-          <div class="warning-header">
-            <div class="warning-icon-wrapper">
-              <i class="pi pi-exclamation-triangle"></i>
-            </div>
-            <div class="warning-content">
-              <h2 class="warning-title">Access Restricted</h2>
-              <p class="warning-description">
-                Remote module. Please access via the main ESS Sigma app.
-              </p>
-            </div>
-          </div>
-
-          <!-- Steps Section -->
-          <div class="steps-section">
-            <h3 class="steps-title">
-              <i class="pi pi-info-circle"></i>
-              How to Access
-            </h3>
-            <div class="steps-list">
-              <div 
-                v-for="(step, index) in accessSteps" 
-                :key="index"
-                class="step-item"
-              >
-                <div class="step-number">{{ index + 1 }}</div>
-                <div class="step-text">{{ step }}</div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Action Button -->
-          <div class="action-section">
-            <a
-              :href="mainAppUrl"
-              class="action-button"
+          <!-- Login Mode Toggle -->
+          <div class="login-mode-toggle">
+            <button
+              :class="['mode-button', { active: loginMode === 'standalone' }]"
+              @click="loginMode = 'standalone'"
+            >
+              <i class="pi pi-sign-in"></i>
+              <span>Standalone Login</span>
+            </button>
+            <button
+              :class="['mode-button', { active: loginMode === 'portal' }]"
+              @click="loginMode = 'portal'"
             >
               <i class="pi pi-external-link"></i>
-              <span>Go to Main Application</span>
-            </a>
+              <span>Via Portal</span>
+            </button>
+          </div>
+
+          <!-- Standalone Login Form -->
+          <div v-if="loginMode === 'standalone'" class="login-form-section">
+            <div class="form-header">
+              <h2 class="form-title">Login</h2>
+              <p class="form-subtitle">Enter your credentials to access</p>
+            </div>
+
+            <form @submit.prevent="handleLogin" class="login-form">
+              <div class="form-group">
+                <label for="email" class="form-label">
+                  <i class="pi pi-envelope"></i>
+                  Email
+                </label>
+                <InputText
+                  id="email"
+                  v-model="formData.email"
+                  type="email"
+                  placeholder="Enter your email"
+                  class="form-input"
+                  :class="{ 'p-invalid': errors.email }"
+                  :disabled="isLoggingIn"
+                  required
+                />
+                <small v-if="errors.email" class="error-message">{{ errors.email }}</small>
+              </div>
+
+              <div class="form-group">
+                <label for="password" class="form-label">
+                  <i class="pi pi-lock"></i>
+                  Password
+                </label>
+                <div class="password-input-wrapper">
+                  <InputText
+                    id="password"
+                    v-model="formData.password"
+                    :type="showPassword ? 'text' : 'password'"
+                    placeholder="Enter your password"
+                    class="form-input"
+                    :class="{ 'p-invalid': errors.password }"
+                    :disabled="isLoggingIn"
+                    required
+                  />
+                  <button
+                    type="button"
+                    @click="showPassword = !showPassword"
+                    class="password-toggle"
+                    :disabled="isLoggingIn"
+                  >
+                    <i :class="showPassword ? 'pi pi-eye-slash' : 'pi pi-eye'"></i>
+                  </button>
+                </div>
+                <small v-if="errors.password" class="error-message">{{ errors.password }}</small>
+              </div>
+
+              <div v-if="loginError" class="error-alert">
+                <i class="pi pi-exclamation-circle"></i>
+                <span>{{ loginError }}</span>
+              </div>
+
+              <Button
+                type="submit"
+                :label="isLoggingIn ? 'Logging in...' : 'Login'"
+                :icon="isLoggingIn ? 'pi pi-spin pi-spinner' : 'pi pi-sign-in'"
+                :disabled="isLoggingIn || !formData.email || !formData.password"
+                class="login-button"
+              />
+            </form>
+          </div>
+
+          <!-- Portal Access Section -->
+          <div v-if="loginMode === 'portal'" class="portal-section">
+            <!-- Warning Header -->
+            <div class="warning-header">
+              <div class="warning-icon-wrapper">
+                <i class="pi pi-exclamation-triangle"></i>
+              </div>
+              <div class="warning-content">
+                <h2 class="warning-title">Access Restricted</h2>
+                <p class="warning-description">
+                  Remote module. Please access via the main ESS Sigma app.
+                </p>
+              </div>
+            </div>
+
+            <!-- Steps Section -->
+            <div class="steps-section">
+              <h3 class="steps-title">
+                <i class="pi pi-info-circle"></i>
+                How to Access
+              </h3>
+              <div class="steps-list">
+                <div 
+                  v-for="(step, index) in accessSteps" 
+                  :key="index"
+                  class="step-item"
+                >
+                  <div class="step-number">{{ index + 1 }}</div>
+                  <div class="step-text">{{ step }}</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Action Button -->
+            <div class="action-section">
+              <a
+                :href="mainAppUrl"
+                class="action-button"
+              >
+                <i class="pi pi-external-link"></i>
+                <span>Go to Main Application</span>
+              </a>
+            </div>
           </div>
 
         </div>
@@ -75,11 +165,41 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import envConfig from '~/config/environment';
+import { useAuthenticationCore } from '~/composables/useAuthenticationCore';
+import { useToast } from '~/composables/useToast';
+
+const router = useRouter();
+const { login: authLogin, isLoading: authLoading } = useAuthenticationCore();
+const { success: toastSuccess, error: toastError } = useToast();
 
 // App info
 const appVersion = ref(envConfig.APP.VERSION || '1.0.0');
+
+// Login mode: 'standalone' or 'portal'
+const loginMode = ref('standalone');
+
+// Form data
+const formData = ref({
+  email: '',
+  password: ''
+});
+
+// Form errors
+const errors = ref({
+  email: '',
+  password: ''
+});
+
+// Login error message
+const loginError = ref('');
+
+// Password visibility
+const showPassword = ref(false);
+
+// Loading state
+const isLoggingIn = computed(() => authLoading.value);
 
 // Access steps
 const accessSteps = [
@@ -95,11 +215,78 @@ const mainAppUrl = computed(() => {
     : envConfig.FRONTEND_URLS.DEVELOPMENT.ESS_HOST;
 });
 
+// Validate form
+const validateForm = () => {
+  errors.value = {
+    email: '',
+    password: ''
+  };
+
+  let isValid = true;
+
+  if (!formData.value.email) {
+    errors.value.email = 'Email is required';
+    isValid = false;
+  } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.value.email)) {
+    errors.value.email = 'Please enter a valid email address';
+    isValid = false;
+  }
+
+  if (!formData.value.password) {
+    errors.value.password = 'Password is required';
+    isValid = false;
+  } else if (formData.value.password.length < 6) {
+    errors.value.password = 'Password must be at least 6 characters';
+    isValid = false;
+  }
+
+  return isValid;
+};
+
+// Handle login
+const handleLogin = async () => {
+  loginError.value = '';
+
+  if (!validateForm()) {
+    return;
+  }
+
+  try {
+    const result = await authLogin(formData.value.email, formData.value.password);
+
+    if (result.success) {
+      toastSuccess('Login successful! Redirecting...');
+      
+      // Redirect to update-data page after successful login
+      setTimeout(() => {
+        router.push('/update-data');
+      }, 500);
+    } else {
+      loginError.value = result.message || 'Login failed. Please check your credentials.';
+      toastError(loginError.value);
+    }
+  } catch (error) {
+    loginError.value = error.message || 'An error occurred during login. Please try again.';
+    toastError(loginError.value);
+  }
+};
+
+// Check if user is already authenticated
+onMounted(() => {
+  if (process.client) {
+    const token = localStorage.getItem('access_token') || localStorage.getItem('auth._token.local');
+    if (token) {
+      // User is already logged in, redirect to update-data
+      router.push('/update-data');
+    }
+  }
+});
+
 // Set page title
 useHead({
-  title: 'Access Restricted - Update Data ESS Sigma',
+  title: 'Login - Update Data ESS Sigma',
   meta: [
-    { name: 'description', content: 'This is a remote application module that must be accessed through the main ESS Sigma application.' }
+    { name: 'description', content: 'Login to Update Data ESS Sigma application.' }
   ]
 });
 </script>
@@ -383,6 +570,221 @@ useHead({
 
 .action-button i {
   font-size: 1.125rem;
+}
+
+/* Login Mode Toggle */
+.login-mode-toggle {
+  display: flex;
+  gap: 0.5rem;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid #e2e8f0;
+  background: #f8fafc;
+}
+
+.dark .login-mode-toggle {
+  background: #1e293b;
+  border-bottom-color: #334155;
+}
+
+.mode-button {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background: transparent;
+  border: 2px solid transparent;
+  border-radius: 8px;
+  color: #64748b;
+  font-weight: 600;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.dark .mode-button {
+  color: #94a3b8;
+}
+
+.mode-button:hover {
+  background: rgba(37, 99, 235, 0.1);
+  color: #2563eb;
+}
+
+.dark .mode-button:hover {
+  background: rgba(59, 130, 246, 0.2);
+  color: #60a5fa;
+}
+
+.mode-button.active {
+  background: #2563eb;
+  color: white;
+  border-color: #2563eb;
+}
+
+.dark .mode-button.active {
+  background: #3b82f6;
+  border-color: #3b82f6;
+}
+
+.mode-button i {
+  font-size: 1rem;
+}
+
+/* Login Form Section */
+.login-form-section {
+  padding: 2rem;
+}
+
+.form-header {
+  margin-bottom: 2rem;
+  text-align: center;
+}
+
+.form-title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin-bottom: 0.5rem;
+}
+
+.dark .form-title {
+  color: #f1f5f9;
+}
+
+.form-subtitle {
+  font-size: 0.875rem;
+  color: #64748b;
+}
+
+.dark .form-subtitle {
+  color: #94a3b8;
+}
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.form-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.dark .form-label {
+  color: #f1f5f9;
+}
+
+.form-label i {
+  font-size: 0.875rem;
+  color: #64748b;
+}
+
+.dark .form-label i {
+  color: #94a3b8;
+}
+
+.form-input {
+  width: 100%;
+}
+
+.password-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.password-input-wrapper .form-input {
+  padding-right: 3rem;
+}
+
+.password-toggle {
+  position: absolute;
+  right: 0.75rem;
+  background: transparent;
+  border: none;
+  color: #64748b;
+  cursor: pointer;
+  padding: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s;
+}
+
+.dark .password-toggle {
+  color: #94a3b8;
+}
+
+.password-toggle:hover:not(:disabled) {
+  color: #2563eb;
+}
+
+.dark .password-toggle:hover:not(:disabled) {
+  color: #60a5fa;
+}
+
+.password-toggle:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.password-toggle i {
+  font-size: 1rem;
+}
+
+.error-message {
+  color: #ef4444;
+  font-size: 0.75rem;
+  margin-top: 0.25rem;
+}
+
+.error-alert {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  color: #dc2626;
+  font-size: 0.875rem;
+}
+
+.dark .error-alert {
+  background: #7f1d1d;
+  border-color: #991b1b;
+  color: #fca5a5;
+}
+
+.error-alert i {
+  font-size: 1.125rem;
+}
+
+.login-button {
+  width: 100%;
+  padding: 0.875rem;
+  font-size: 1rem;
+  font-weight: 600;
+  margin-top: 0.5rem;
+}
+
+/* Portal Section */
+.portal-section {
+  display: flex;
+  flex-direction: column;
 }
 
 @keyframes slideInLeft {
