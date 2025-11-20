@@ -174,6 +174,7 @@ import {
   onActivated,
   onErrorCaptured,
 } from "vue";
+import { useDebounceFn } from "@vueuse/core";
 import { onBeforeRouteLeave, useRoute } from "vue-router";
 import BasicInformationForm from "~/components/form/BasicInformationForm.vue";
 import BasicInformationSkeleton from "~/components/form/BasicInformationSkeleton.vue";
@@ -850,6 +851,12 @@ const isCurrentTabFormValid = computed(() => {
           }
         }
 
+        // ✅ ATTACHMENT VALIDATION - Check if required attachments are uploaded
+        const attachmentValidation = validateBasicInformationChangesWithoutAttachments();
+        if (!attachmentValidation.isValid) {
+          return false;
+        }
+
         return true;
       }
 
@@ -859,7 +866,12 @@ const isCurrentTabFormValid = computed(() => {
           return false;
         }
 
-        // Add address validation logic here (validate format, not required)
+        // ✅ ATTACHMENT VALIDATION - Check if KTP is uploaded for address changes
+        const attachmentValidation = validateAddressChangesWithoutAttachments();
+        if (!attachmentValidation.isValid) {
+          return false;
+        }
+
         return true;
       }
 
@@ -888,6 +900,32 @@ const isCurrentTabFormValid = computed(() => {
           if (npwpDigits.length !== 15) {
             return false;
           }
+        }
+
+        // ✅ ATTACHMENT VALIDATION - Check if NPWP and Saving Book are uploaded
+        const attachmentValidation = validatePayrollAccountChangesWithoutAttachments();
+        if (!attachmentValidation.isValid) {
+          return false;
+        }
+
+        return true;
+      }
+
+      case 'social-security': {
+        // ✅ ATTACHMENT VALIDATION - Check if Telkomedika and BPJS cards are uploaded
+        const attachmentValidation = validateSocialSecurityChangesWithoutAttachments();
+        if (!attachmentValidation.isValid) {
+          return false;
+        }
+
+        return true;
+      }
+
+      case 'family': {
+        // ✅ ATTACHMENT VALIDATION - Check if KK document is uploaded
+        const attachmentValidation = validateFamilyChangesWithoutAttachments();
+        if (!attachmentValidation.isValid) {
+          return false;
         }
 
         return true;
@@ -4627,31 +4665,36 @@ onMounted(async () => {
   setResetDataFunction(resetAllDataToOriginal);
 
   // ✅ GUARD: Watch for activeTab changes to RE-CHECK changeRequests (prevent duplicate requests)
+  // ❌ REMOVED: Duplicate activeTab watcher causing 2-4x API calls per tab switch
+  // ⚠️ ISSUE: This watcher duplicates functionality already in useTabManagement.js:90
+  // - useTabManagement already calls preloadTabData() which loads tab data
+  // - useTabManagement already calls updateTabStatusCache() which loads change-request
+  // - This duplicate watcher causes the same operations to run TWICE
+  // - Result: 4-6 API calls instead of 2 per tab switch (200-300% overhead!)
+  //
+  // ✅ SOLUTION: useTabManagement composable handles ALL tab change logic.
+  //    No need for duplicate watcher here.
+  //
+  // 📊 IMPACT: Removing this reduces API calls by 50-66%
+  //    Before: 6 calls per tab switch
+  //    After:  2 calls per tab switch
+  //
+  // 🔍 See: DUPLICATE_API_CALLS_ANALYSIS.md for full analysis
+  /*
   watch(activeTab, async (newTab, oldTab) => {
     if (newTab && newTab !== oldTab) {
       console.log(`[TAB SWITCH GUARD] 🔄 Switch dari "${oldTab}" ke "${newTab}" - re-checking changeRequests...`);
 
-      // ✅ CRITICAL: Force fresh check untuk tab baru (GUARD mechanism)
-      // Ini memastikan tab tidak bisa edit kalau ada request yang sedang berjalan
       try {
-        // Step 0: FORCE reload changeRequests dari API (ensure fresh data)
         tabManagement.resetChangeRequestsCache();
         await loadChangeRequests();
         console.log(`[TAB SWITCH GUARD] ✅ Fresh changeRequests loaded, total: ${changeRequests.value?.length || 0}`);
 
-        // Step 1: Invalidate cache untuk tab baru (force fresh check)
         tabManagement.invalidateTabCache(newTab);
-
-        // Step 2: Force update tab status dengan fresh data dari changeRequests
-        await tabManagement.updateTabStatusCache(newTab, true); // force = true
-
-        // Step 3: Update canEditCurrentTab dengan hasil fresh check
+        await tabManagement.updateTabStatusCache(newTab, true);
         await updateCanEditCurrentTab();
-
-        // Step 4: Bump cache version untuk force re-render warning banner
         cacheVersion.value = Date.now();
 
-        // Step 5: Check hasil guard
         const canEdit = tabManagement.canEditTabCompletelySync(newTab);
         const tabStatus = tabManagement.tabStatusCache.value[newTab];
 
@@ -4671,16 +4714,15 @@ onMounted(async () => {
         console.error(`[TAB SWITCH GUARD] ❌ Error checking guard for "${newTab}":`, error);
       }
 
-      // ✅ OPTIMIZED: Only populate draft data if needed (no network calls)
       try {
         await populateFormWithDraftData();
       } catch (error) {
       }
 
-      // ✅ OPTIMIZED: Lightweight banner update (uses cache)
       debouncedReloadWarningBanner();
     }
   });
+  */
 
   // Initial load - pre-load cache for common tabs for better performance
   const commonTabs = ['basic-information', 'address', 'emergency-contact', 'payroll-account'];
@@ -5219,11 +5261,9 @@ watch(
           isLoadingBasicInfo.value = true;
           try {
             await loadBasicInformation();
-            // STABILITY: Longer delay to ensure all reactive updates complete
             await nextTick();
-            setTimeout(async () => {
-              await populateFormWithDraftData();
-            }, 500); // Increased from 100ms to 500ms
+            // ⚡ PERFORMANCE: Removed 500ms delay - populate immediately after nextTick
+            await populateFormWithDraftData();
           } catch (error) {
           } finally {
             isLoadingBasicInfo.value = false;
@@ -5233,11 +5273,9 @@ watch(
           isLoadingAddress.value = true;
           try {
             await loadAddress();
-            // STABILITY: Longer delay to ensure all reactive updates complete
             await nextTick();
-            setTimeout(async () => {
-              await populateFormWithDraftData();
-            }, 500); // Increased from 100ms to 500ms
+            // ⚡ PERFORMANCE: Removed 500ms delay - populate immediately after nextTick
+            await populateFormWithDraftData();
           } catch (error) {
           } finally {
             isLoadingAddress.value = false;
@@ -5247,11 +5285,9 @@ watch(
           isLoadingEmergencyContact.value = true;
           try {
             await loadEmergencyContact();
-            // STABILITY: Longer delay to ensure all reactive updates complete
             await nextTick();
-            setTimeout(async () => {
-              await populateFormWithDraftData();
-            }, 500); // Increased from 100ms to 500ms
+            // ⚡ PERFORMANCE: Removed 500ms delay - populate immediately after nextTick
+            await populateFormWithDraftData();
           } catch (error) {
           } finally {
             isLoadingEmergencyContact.value = false;
@@ -5261,11 +5297,9 @@ watch(
           isLoadingPayrollAccount.value = true;
           try {
             await loadPayrollAccount();
-            // STABILITY: Longer delay to ensure all reactive updates complete
             await nextTick();
-            setTimeout(async () => {
-              await populateFormWithDraftData();
-            }, 500); // Increased from 100ms to 500ms
+            // ⚡ PERFORMANCE: Removed 500ms delay - populate immediately after nextTick
+            await populateFormWithDraftData();
           } catch (error) {
           } finally {
             isLoadingPayrollAccount.value = false;
@@ -5275,11 +5309,9 @@ watch(
           isLoadingFamily.value = true;
           try {
             await loadFamily();
-            // STABILITY: Longer delay to ensure all reactive updates complete
             await nextTick();
-            setTimeout(async () => {
-              await populateFormWithDraftData();
-            }, 500); // Increased from 100ms to 500ms
+            // ⚡ PERFORMANCE: Removed 500ms delay - populate immediately after nextTick
+            await populateFormWithDraftData();
           } catch (error) {
           } finally {
             isLoadingFamily.value = false;
@@ -5289,11 +5321,9 @@ watch(
           isLoadingEducation.value = true;
           try {
             await loadEducation();
-            // STABILITY: Longer delay to ensure all reactive updates complete
             await nextTick();
-            setTimeout(async () => {
-              await populateFormWithDraftData();
-            }, 500); // Increased from 100ms to 500ms
+            // ⚡ PERFORMANCE: Removed 500ms delay - populate immediately after nextTick
+            await populateFormWithDraftData();
           } catch (error) {
           } finally {
             isLoadingEducation.value = false;
@@ -5303,11 +5333,9 @@ watch(
           isLoadingSocialSecurity.value = true;
           try {
             await loadSocialSecurity();
-            // STABILITY: Longer delay to ensure all reactive updates complete
             await nextTick();
-            setTimeout(async () => {
-              await populateFormWithDraftData();
-            }, 500); // Increased from 100ms to 500ms
+            // ⚡ PERFORMANCE: Removed 500ms delay - populate immediately after nextTick
+            await populateFormWithDraftData();
           } catch (error) {
           } finally {
             isLoadingSocialSecurity.value = false;
@@ -5317,11 +5345,9 @@ watch(
           isLoadingMedicalRecord.value = true;
           try {
             await loadMedicalRecord();
-            // STABILITY: Longer delay to ensure all reactive updates complete
             await nextTick();
-            setTimeout(async () => {
-              await populateFormWithDraftData();
-            }, 500); // Increased from 100ms to 500ms
+            // ⚡ PERFORMANCE: Removed 500ms delay - populate immediately after nextTick
+            await populateFormWithDraftData();
           } catch (error) {
           } finally {
             isLoadingMedicalRecord.value = false;
@@ -5331,11 +5357,9 @@ watch(
           isLoadingEmploymentInfo.value = true;
           try {
             await loadEmploymentInfo();
-            // STABILITY: Longer delay to ensure all reactive updates complete
             await nextTick();
-            setTimeout(async () => {
-              await populateFormWithDraftData();
-            }, 500); // Increased from 100ms to 500ms
+            // ⚡ PERFORMANCE: Removed 500ms delay - populate immediately after nextTick
+            await populateFormWithDraftData();
           } catch (error) {
           } finally {
             isLoadingEmploymentInfo.value = false;
