@@ -26,10 +26,10 @@ export default defineEventHandler(async (event) => {
     const parentId = getRouterParam(event, 'parent_id');
     const itemId = getRouterParam(event, 'item_id');
 
-    console.log('[Attachment Preview Parent] Request:', {
-      parentId,
-      itemId
-    });
+    // console.log('[Attachment Preview Parent] Request:', {
+    //   parentId,
+    //   itemId
+    // });
 
     if (!parentId || !itemId) {
       throw createError({
@@ -54,7 +54,7 @@ export default defineEventHandler(async (event) => {
     const endpointTemplate = envConfig.API_ENDPOINTS?.EMPLOYEE?.ATTACHMENTS?.PREVIEW_PARENT_ITEM || '/employee/attachments/parent/{parent_id}/item/{item_id}/preview';
     const targetUrl = `${apiBaseUrl}${endpointTemplate.replace('{parent_id}', parentId).replace('{item_id}', itemId)}`;
 
-    console.log('[Attachment Preview Parent] Forwarding to:', targetUrl);
+    // console.log('[Attachment Preview Parent] Forwarding to:', targetUrl);
 
     const response = await fetch(targetUrl, {
       method: 'GET',
@@ -64,16 +64,16 @@ export default defineEventHandler(async (event) => {
       }
     });
 
-    console.log('[Attachment Preview Parent] Response:', {
-      status: response.status,
-      statusText: response.statusText,
-      contentType: response.headers.get('content-type')
-    });
+    // console.log('[Attachment Preview Parent] Response:', {
+    //   status: response.status,
+    //   statusText: response.statusText,
+    //   contentType: response.headers.get('content-type')
+    // });
 
     // Check if API request was successful
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('[Attachment Preview Parent] API Error:', errorText);
+      // console.error('[Attachment Preview Parent] API Error:', errorText);
 
       throw createError({
         statusCode: response.status,
@@ -103,7 +103,7 @@ export default defineEventHandler(async (event) => {
     }
 
   } catch (error) {
-    console.error('[Attachment Preview Parent] Error:', error);
+    // console.error('[Attachment Preview Parent] Error:', error);
 
     // If it's already a createError, re-throw it
     if (error.statusCode) {
