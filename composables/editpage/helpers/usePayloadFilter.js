@@ -128,12 +128,13 @@ export function usePayloadFilter() {
       const currentNormalized = currentValue === null || currentValue === undefined ? '' : String(currentValue)
       const originalNormalized = originalValue === null || originalValue === undefined ? '' : String(originalValue)
 
-        currentValue,
-        originalValue,
-        currentNormalized,
-        originalNormalized,
-        hasChanged: currentNormalized !== originalNormalized
-      })
+      // console.log({
+      //   currentValue,
+      //   originalValue,
+      //   currentNormalized,
+      //   originalNormalized,
+      //   hasChanged: currentNormalized !== originalNormalized
+      // })
 
       if (currentNormalized !== originalNormalized &&
           currentValue !== undefined &&
@@ -369,7 +370,7 @@ export function usePayloadFilter() {
         return filterPayrollAccountPayload(currentData, originalData)
 
       default:
-        console.warn('🚨 Unknown category for payload filtering:', category)
+        // console.warn('🚨 Unknown category for payload filtering:', category)
         return { newData: {}, oldData: {} }
     }
   }
@@ -390,11 +391,12 @@ export function usePayloadFilter() {
       attachments = []
     } = options
 
-      filteredData,
-      category,
-      requestType,
-      options
-    })
+    // console.log('buildSubmitPayload called with:', {
+    //   filteredData,
+    //   category,
+    //   requestType,
+    //   options
+    // })
 
     // Prepare new_data structure - HANYA field yang berubah
     const newData = {

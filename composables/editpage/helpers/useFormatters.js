@@ -13,7 +13,7 @@ export function useFormatters() {
         day: 'numeric'
       }).format(date)
     } catch (error) {
-      console.error('Error formatting date:', error)
+      // console.error('Error formatting date:', error)
       return dateString
     }
   }
@@ -31,7 +31,7 @@ export function useFormatters() {
         hour12: false
       }).format(date)
     } catch (error) {
-      console.error('Error formatting time:', error)
+      // console.error('Error formatting time:', error)
       return timeString
     }
   }
@@ -52,7 +52,7 @@ export function useFormatters() {
         hour12: false
       }).format(date)
     } catch (error) {
-      console.error('Error formatting datetime:', error)
+      // console.error('Error formatting datetime:', error)
       return dateTimeString
     }
   }
@@ -78,7 +78,7 @@ export function useFormatters() {
         maximumFractionDigits: 0
       }).format(amount)
     } catch (error) {
-      console.error('Error formatting currency:', error)
+      // console.error('Error formatting currency:', error)
       return amount.toString()
     }
   }
@@ -89,7 +89,7 @@ export function useFormatters() {
     try {
       return new Intl.NumberFormat('id-ID').format(number)
     } catch (error) {
-      console.error('Error formatting number:', error)
+      // console.error('Error formatting number:', error)
       return number.toString()
     }
   }

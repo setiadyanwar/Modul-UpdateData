@@ -1472,30 +1472,30 @@ const handleBasicInfoFilesChanged = (files) => {
 
 // Address KTP files (mirrors basic info flow but scoped to address)
 const handleAddressFilesChanged = (files) => {
-  console.log('🏠 Address files changed:', files);
+  // console.log('🏠 Address files changed:', files);
   addressUploadedFiles.value = files || [];
-  console.log('🏠 addressUploadedFiles updated:', addressUploadedFiles.value);
+  // console.log('🏠 addressUploadedFiles updated:', addressUploadedFiles.value);
 };
 
 // Payroll Account files (NPWP Document + Saving Book Document)
 const handlePayrollAccountFilesChanged = (files) => {
-  console.log('💰 Payroll account files changed:', files);
+  // console.log('💰 Payroll account files changed:', files);
   payrollAccountUploadedFiles.value = files || [];
-  console.log('💰 payrollAccountUploadedFiles updated:', payrollAccountUploadedFiles.value);
+  // console.log('💰 payrollAccountUploadedFiles updated:', payrollAccountUploadedFiles.value);
 };
 
 // Social Security files (Telkomedika Card + BPJS Card)
 const handleSocialSecurityFilesChanged = (files) => {
-  console.log('🏥 Social security files changed:', files);
+  // console.log('🏥 Social security files changed:', files);
   socialSecurityUploadedFiles.value = files || [];
-  console.log('🏥 socialSecurityUploadedFiles updated:', socialSecurityUploadedFiles.value);
+  // console.log('🏥 socialSecurityUploadedFiles updated:', socialSecurityUploadedFiles.value);
 };
 
 // Family files (KK document)
 const handleFamilyFilesChanged = (files) => {
-  console.log('👪 Family files changed:', files);
+  // console.log('👪 Family files changed:', files);
   familyUploadedFiles.value = files || [];
-  console.log('👪 familyUploadedFiles updated:', familyUploadedFiles.value);
+  // console.log('👪 familyUploadedFiles updated:', familyUploadedFiles.value);
 };
 
 // Handle professional photo from PhotoUpload component
@@ -1814,20 +1814,20 @@ if (process.client) {
         const submitTab = event.detail.tab || activeTab.value;
         const uploadPromises = [];
 
-        console.log('📁 Starting attachment uploads for submit on tab:', submitTab);
+        // console.log('📁 Starting attachment uploads for submit on tab:', submitTab);
 
         // Handle basic information attachments (KTP documents and professional photo)
         if (submitTab === 'basic-information') {
           // Upload KTP documents (document type code: '3') - Basic Information
           if (basicInfoUploadedFiles.value.length > 0) {
-            console.log('📄 Uploading basic info KTP files for submit:', basicInfoUploadedFiles.value);
+            // console.log('📄 Uploading basic info KTP files for submit:', basicInfoUploadedFiles.value);
             for (const fileData of basicInfoUploadedFiles.value) {
               const uploadPromise = uploadAttachment(
                 event.detail.id,
                 fileData.file,
                 ['3'] // KTP document type code
               ).catch(error => {
-                console.error('KTP upload failed:', error);
+                // console.error('KTP upload failed:', error);
                 showError(`Failed to upload KTP document: ${error.message}`);
                 return null;
               });
@@ -1837,13 +1837,13 @@ if (process.client) {
 
           // Upload Professional Photo (document type code: '1')
           if (basicInfoProfessionalPhoto.value) {
-            console.log('📷 Uploading professional photo for submit');
+            // console.log('📷 Uploading professional photo for submit');
             const photoUploadPromise = uploadAttachment(
               event.detail.id,
               basicInfoProfessionalPhoto.value,
               ['1'] // Professional Photo document type code
             ).catch(error => {
-              console.error('Professional photo upload failed:', error);
+              // console.error('Professional photo upload failed:', error);
               showError(`Failed to upload professional photo: ${error.message}`);
               return null;
             });
@@ -1853,37 +1853,37 @@ if (process.client) {
 
         // Handle address attachments (KTP documents)
         if (submitTab === 'address') {
-          console.log('🏠 Checking address files for submit:', {
-            addressUploadedFiles: addressUploadedFiles.value,
-            length: addressUploadedFiles.value?.length
-          });
+          // console.log('🏠 Checking address files for submit:', {
+          //   addressUploadedFiles: addressUploadedFiles.value,
+          //   length: addressUploadedFiles.value?.length
+          // });
 
           if (addressUploadedFiles.value && addressUploadedFiles.value.length > 0) {
-            console.log('🏠 Uploading address files for submit:', addressUploadedFiles.value);
+            // console.log('🏠 Uploading address files for submit:', addressUploadedFiles.value);
             for (const fileData of addressUploadedFiles.value) {
-              console.log('🏠 Uploading address file for submit:', fileData);
+              // console.log('🏠 Uploading address file for submit:', fileData);
               const uploadPromise = uploadAttachment(
                 event.detail.id,
                 fileData.file,
                 ['3'] // Document type code: '3' for KTP
               ).catch(error => {
-                console.error('Address KTP upload failed:', error);
+                // console.error('Address KTP upload failed:', error);
                 showError(`Failed to upload Address KTP document: ${error.message}`);
                 return null;
               });
               uploadPromises.push(uploadPromise);
             }
           } else {
-            console.log('🏠 No address files to upload for submit');
+            // console.log('🏠 No address files to upload for submit');
           }
         }
 
         // Handle payroll account attachments (NPWP Document + Saving Book Document)
         if (submitTab === 'payroll-account') {
           if (payrollAccountUploadedFiles.value && payrollAccountUploadedFiles.value.length > 0) {
-            console.log('💰 Uploading payroll account files for submit:', payrollAccountUploadedFiles.value);
+            // console.log('💰 Uploading payroll account files for submit:', payrollAccountUploadedFiles.value);
             for (const fileData of payrollAccountUploadedFiles.value) {
-              console.log('💰 Uploading payroll account file for submit:', fileData);
+              // console.log('💰 Uploading payroll account file for submit:', fileData);
               // Document type codes from selected type in MultiDocumentUpload
               const docTypeCode = fileData.documentType;
               const uploadPromise = uploadAttachment(
@@ -1891,23 +1891,23 @@ if (process.client) {
                 fileData.file,
                 [docTypeCode]
               ).catch(error => {
-                console.error('Payroll account file upload failed:', error);
+                // console.error('Payroll account file upload failed:', error);
                 showError(`Failed to upload document: ${error.message}`);
                 return null;
               });
               uploadPromises.push(uploadPromise);
             }
           } else {
-            console.log('💰 No payroll account files to upload for submit');
+            // console.log('💰 No payroll account files to upload for submit');
           }
         }
 
         // Handle social security attachments (Telkomedika Card + BPJS Card)
         if (submitTab === 'social-security') {
           if (socialSecurityUploadedFiles.value && socialSecurityUploadedFiles.value.length > 0) {
-            console.log('🏥 Uploading social security files for submit:', socialSecurityUploadedFiles.value);
+            // console.log('🏥 Uploading social security files for submit:', socialSecurityUploadedFiles.value);
             for (const fileData of socialSecurityUploadedFiles.value) {
-              console.log('🏥 Uploading social security file for submit:', fileData);
+              // console.log('🏥 Uploading social security file for submit:', fileData);
               // Document type codes from selected type in MultiDocumentUpload
               const docTypeCode = fileData.documentType;
               const uploadPromise = uploadAttachment(
@@ -1915,21 +1915,21 @@ if (process.client) {
                 fileData.file,
                 [docTypeCode]
               ).catch(error => {
-                console.error('Social security file upload failed:', error);
+                // console.error('Social security file upload failed:', error);
                 showError(`Failed to upload document: ${error.message}`);
                 return null;
               });
               uploadPromises.push(uploadPromise);
             }
           } else {
-            console.log('🏥 No social security files to upload for submit');
+            // console.log('🏥 No social security files to upload for submit');
           }
         }
 
         // Handle family attachments (KK document)
         if (submitTab === 'family') {
           if (familyUploadedFiles.value && familyUploadedFiles.value.length > 0) {
-            console.log('👪 Uploading family files for submit:', familyUploadedFiles.value);
+            // console.log('👪 Uploading family files for submit:', familyUploadedFiles.value);
             for (const fileData of familyUploadedFiles.value) {
               const docTypeCode = fileData.documentType || '2';
               const uploadPromise = uploadAttachment(
@@ -1937,28 +1937,28 @@ if (process.client) {
                 fileData.file,
                 [docTypeCode]
               ).catch(error => {
-                console.error('Family KK file upload failed (submit):', error);
+                // console.error('Family KK file upload failed (submit):', error);
                 showError(`Failed to upload KK document: ${error.message}`);
                 return null;
               });
               uploadPromises.push(uploadPromise);
             }
           } else {
-            console.log('👪 No family files to upload for submit');
+            // console.log('👪 No family files to upload for submit');
           }
         }
 
         // Wait for all uploads to complete
         if (uploadPromises.length > 0) {
           try {
-            console.log(`🚀 Starting ${uploadPromises.length} file uploads for submit on ${submitTab}`);
+            // console.log(`🚀 Starting ${uploadPromises.length} file uploads for submit on ${submitTab}`);
             await Promise.allSettled(uploadPromises);
-            console.log('✅ All file uploads completed for submit');
+            // console.log('✅ All file uploads completed for submit');
           } catch (error) {
-            console.error("❌ Error during attachments upload for submit request:", error);
+            // console.error("❌ Error during attachments upload for submit request:", error);
           }
         } else {
-          console.log('📁 No files to upload for submit on', submitTab);
+          // console.log('📁 No files to upload for submit on', submitTab);
         }
       }
 
@@ -2018,7 +2018,7 @@ if (process.client) {
         }
 
         // ✅ FIXED: Force refresh change requests with proper cache invalidation
-        console.log('[SUBMIT SUCCESS] Starting comprehensive refresh for tab:', tab);
+        // console.log('[SUBMIT SUCCESS] Starting comprehensive refresh for tab:', tab);
 
         // Step 1: Reset all caches
         tabManagement.resetChangeRequestsCache();
@@ -2026,7 +2026,7 @@ if (process.client) {
 
         // Step 2: Bump cache version to force component re-render
         cacheVersion.value = Date.now();
-        console.log('[SUBMIT SUCCESS] Cache version bumped:', cacheVersion.value);
+        // console.log('[SUBMIT SUCCESS] Cache version bumped:', cacheVersion.value);
 
         // Step 3: Load fresh change requests from API
         await loadChangeRequests();
@@ -2052,7 +2052,7 @@ if (process.client) {
         // Step 8: Refresh tab management to update all tab statuses
         await tabManagement.smartRefresh(true);
 
-        console.log('[SUBMIT SUCCESS] Comprehensive refresh completed');
+        // console.log('[SUBMIT SUCCESS] Comprehensive refresh completed');
 
         // Force additional refresh to ensure all reactive states are updated
         await nextTick();
@@ -2091,7 +2091,7 @@ if (process.client) {
             break;
         }
       } catch (error) {
-        console.error('Error refreshing data after submit:', error);
+        // console.error('Error refreshing data after submit:', error);
       }
     }
   });
@@ -3404,7 +3404,7 @@ const getChangedFieldsOnly = () => {
 
     // Fallback should never be reached now
     default:
-      console.warn(`[getChangedFieldsOnly] Unhandled tab: ${currentTab}`);
+      // console.warn(`[getChangedFieldsOnly] Unhandled tab: ${currentTab}`);
       return { newData: {} };
   }
 };
@@ -3697,7 +3697,7 @@ const handleSaveAsDraft = async () => {
     // Get only changed fields
     const changedData = getChangedFieldsOnly();
 
-    console.log('🔍 [INDEX] handleSaveAsDraft - changedData for tab:', activeTab.value, changedData);
+    // console.log('🔍 [INDEX] handleSaveAsDraft - changedData for tab:', activeTab.value, changedData);
 
     // Check if there are actual changes (handle object/array)
     const hasChangesPayload = Array.isArray(changedData.newData)
@@ -3782,20 +3782,20 @@ const handleSaveAsDraft = async () => {
       if (changeRequestId) {
         const uploadPromises = [];
 
-        console.log('📁 Starting attachment uploads for tab:', activeTab.value);
+        // console.log('📁 Starting attachment uploads for tab:', activeTab.value);
 
         // Handle basic information attachments (KTP documents and professional photo)
         if (activeTab.value === 'basic-information') {
           // Upload KTP documents (document type code: '3') - Basic Information
           if (basicInfoUploadedFiles.value.length > 0) {
-            console.log('📄 Uploading basic info KTP files:', basicInfoUploadedFiles.value);
+            // console.log('📄 Uploading basic info KTP files:', basicInfoUploadedFiles.value);
             for (const fileData of basicInfoUploadedFiles.value) {
               const uploadPromise = uploadAttachment(
                 changeRequestId,
                 fileData.file,
                 ['3'] // KTP document type code
               ).catch(error => {
-                console.error('KTP upload failed:', error);
+                // console.error('KTP upload failed:', error);
                 showError(`Failed to upload KTP document: ${error.message}`);
                 return null;
               });
@@ -3805,13 +3805,13 @@ const handleSaveAsDraft = async () => {
 
           // Upload Professional Photo (document type code: '1')
           if (basicInfoProfessionalPhoto.value) {
-            console.log('📷 Uploading professional photo');
+            // console.log('📷 Uploading professional photo');
             const photoUploadPromise = uploadAttachment(
               changeRequestId,
               basicInfoProfessionalPhoto.value,
               ['1'] // Professional Photo document type code
             ).catch(error => {
-              console.error('Professional photo upload failed:', error);
+              // console.error('Professional photo upload failed:', error);
               showError(`Failed to upload professional photo: ${error.message}`);
               return null;
             });
@@ -3821,37 +3821,37 @@ const handleSaveAsDraft = async () => {
 
         // Handle address attachments (KTP documents)
         if (activeTab.value === 'address') {
-          console.log('🏠 Checking address files for draft:', {
-            addressUploadedFiles: addressUploadedFiles.value,
-            length: addressUploadedFiles.value?.length
-          });
+          // console.log('🏠 Checking address files for draft:', {
+          //   addressUploadedFiles: addressUploadedFiles.value,
+          //   length: addressUploadedFiles.value?.length
+          // });
 
           if (addressUploadedFiles.value && addressUploadedFiles.value.length > 0) {
-            console.log('🏠 Uploading address files for draft:', addressUploadedFiles.value);
+            // console.log('🏠 Uploading address files for draft:', addressUploadedFiles.value);
             for (const fileData of addressUploadedFiles.value) {
-              console.log('🏠 Uploading address file for draft:', fileData);
+              // console.log('🏠 Uploading address file for draft:', fileData);
               const uploadPromise = uploadAttachment(
                 changeRequestId,
                 fileData.file,
                 ['3'] // Document type code: '3' for KTP
               ).catch(error => {
-                console.error('Address KTP upload failed:', error);
+                // console.error('Address KTP upload failed:', error);
                 showError(`Failed to upload Address KTP document: ${error.message}`);
                 return null;
               });
               uploadPromises.push(uploadPromise);
             }
           } else {
-            console.log('🏠 No address files to upload for draft');
+            // console.log('🏠 No address files to upload for draft');
           }
         }
 
         // Handle payroll account attachments (NPWP Document + Saving Book Document)
         if (activeTab.value === 'payroll-account') {
           if (payrollAccountUploadedFiles.value && payrollAccountUploadedFiles.value.length > 0) {
-            console.log('💰 Uploading payroll account files for draft:', payrollAccountUploadedFiles.value);
+            // console.log('💰 Uploading payroll account files for draft:', payrollAccountUploadedFiles.value);
             for (const fileData of payrollAccountUploadedFiles.value) {
-              console.log('💰 Uploading payroll account file for draft:', fileData);
+              // console.log('💰 Uploading payroll account file for draft:', fileData);
               // Document type codes from selected type in MultiDocumentUpload
               const docTypeCode = fileData.documentType;
               const uploadPromise = uploadAttachment(
@@ -3859,23 +3859,23 @@ const handleSaveAsDraft = async () => {
                 fileData.file,
                 [docTypeCode]
               ).catch(error => {
-                console.error('Payroll account file upload failed:', error);
+                // console.error('Payroll account file upload failed:', error);
                 showError(`Failed to upload document: ${error.message}`);
                 return null;
               });
               uploadPromises.push(uploadPromise);
             }
           } else {
-            console.log('💰 No payroll account files to upload for draft');
+            // console.log('💰 No payroll account files to upload for draft');
           }
         }
 
         // Handle social security attachments (Telkomedika Card + BPJS Card)
         if (activeTab.value === 'social-security') {
           if (socialSecurityUploadedFiles.value && socialSecurityUploadedFiles.value.length > 0) {
-            console.log('🏥 Uploading social security files for draft:', socialSecurityUploadedFiles.value);
+            // console.log('🏥 Uploading social security files for draft:', socialSecurityUploadedFiles.value);
             for (const fileData of socialSecurityUploadedFiles.value) {
-              console.log('🏥 Uploading social security file for draft:', fileData);
+              // console.log('🏥 Uploading social security file for draft:', fileData);
               // Document type codes from selected type in MultiDocumentUpload
               const docTypeCode = fileData.documentType;
               const uploadPromise = uploadAttachment(
@@ -3883,21 +3883,21 @@ const handleSaveAsDraft = async () => {
                 fileData.file,
                 [docTypeCode]
               ).catch(error => {
-                console.error('Social security file upload failed:', error);
+                // console.error('Social security file upload failed:', error);
                 showError(`Failed to upload document: ${error.message}`);
                 return null;
               });
               uploadPromises.push(uploadPromise);
             }
           } else {
-            console.log('🏥 No social security files to upload for draft');
+            // console.log('🏥 No social security files to upload for draft');
           }
         }
 
         // Handle family attachments (KK document)
         if (activeTab.value === 'family') {
           if (familyUploadedFiles.value && familyUploadedFiles.value.length > 0) {
-            console.log('👪 Uploading family files for draft:', familyUploadedFiles.value);
+            // console.log('👪 Uploading family files for draft:', familyUploadedFiles.value);
             for (const fileData of familyUploadedFiles.value) {
               const docTypeCode = fileData.documentType || '2';
               const uploadPromise = uploadAttachment(
@@ -3905,23 +3905,23 @@ const handleSaveAsDraft = async () => {
                 fileData.file,
                 [docTypeCode]
               ).catch(error => {
-                console.error('Family KK file upload failed:', error);
+                // console.error('Family KK file upload failed:', error);
                 showError(`Failed to upload KK document: ${error.message}`);
                 return null;
               });
               uploadPromises.push(uploadPromise);
             }
           } else {
-            console.log('👪 No family files to upload for draft');
+            // console.log('👪 No family files to upload for draft');
           }
         }
 
         // Wait for all uploads to complete
         if (uploadPromises.length > 0) {
           try {
-            console.log(`🚀 Starting ${uploadPromises.length} file uploads for ${activeTab.value}`);
+            // console.log(`🚀 Starting ${uploadPromises.length} file uploads for ${activeTab.value}`);
             await Promise.allSettled(uploadPromises);
-            console.log('✅ All file uploads completed');
+            // console.log('✅ All file uploads completed');
 
             // Clear files after successful upload based on tab
             if (activeTab.value === 'basic-information') {
@@ -3936,10 +3936,10 @@ const handleSaveAsDraft = async () => {
               familyUploadedFiles.value = [];
             }
           } catch (error) {
-            console.error("❌ Error during attachments upload:", error);
+            // console.error("❌ Error during attachments upload:", error);
           }
         } else {
-          console.log('📁 No files to upload for', activeTab.value);
+          // console.log('📁 No files to upload for', activeTab.value);
         }
       }
 
@@ -3947,7 +3947,7 @@ const handleSaveAsDraft = async () => {
       showSuccessToast('Draft saved successfully. You can continue editing.');
 
       // ✅ FIXED: Force refresh change requests and ALL tabs cache setelah save draft
-      console.log('[SAVE DRAFT SUCCESS] Starting comprehensive refresh for tab:', activeTab.value);
+      // console.log('[SAVE DRAFT SUCCESS] Starting comprehensive refresh for tab:', activeTab.value);
 
       try {
         // Step 1: Reset all caches
@@ -3956,7 +3956,7 @@ const handleSaveAsDraft = async () => {
 
         // Step 2: Bump cache version to force component re-render
         cacheVersion.value = Date.now();
-        console.log('[SAVE DRAFT SUCCESS] Cache version bumped:', cacheVersion.value);
+        // console.log('[SAVE DRAFT SUCCESS] Cache version bumped:', cacheVersion.value);
 
         // Step 3: Load fresh change requests from API
         await loadChangeRequests();
@@ -3967,9 +3967,9 @@ const handleSaveAsDraft = async () => {
         // Step 5: Refresh tab management to update all tab statuses
         await tabManagement.smartRefresh(true);
 
-        console.log('[SAVE DRAFT SUCCESS] ✅ Comprehensive refresh completed');
+        // console.log('[SAVE DRAFT SUCCESS] ✅ Comprehensive refresh completed');
       } catch (error) {
-        console.error('[SAVE DRAFT SUCCESS] ❌ Error during refresh:', error);
+        // console.error('[SAVE DRAFT SUCCESS] ❌ Error during refresh:', error);
       }
 
       // Reset data and exit edit mode since we're going to history page
@@ -4035,9 +4035,9 @@ const handleSaveAsDraft = async () => {
         try {
           await loadChangeRequests();
           await tabManagement.forceUpdateAllTabsCache();
-          console.log('[SAVE DRAFT FINALLY] ✅ Safety refresh completed');
+          // console.log('[SAVE DRAFT FINALLY] ✅ Safety refresh completed');
         } catch (e) {
-          console.error('[SAVE DRAFT FINALLY] ❌ Safety refresh failed:', e);
+          // console.error('[SAVE DRAFT FINALLY] ❌ Safety refresh failed:', e);
         }
       }, 500);
     } catch (e) {
@@ -4315,7 +4315,7 @@ const preloadTabData = async (tabId) => {
     }
 
   } catch (error) {
-    console.warn(`Failed to preload tab data for ${tabId}:`, error);
+    // console.warn(`Failed to preload tab data for ${tabId}:`, error);
   } finally {
     tabDataCache.setLoading(tabId, 'data', false);
   }
@@ -4344,7 +4344,7 @@ const handleManualRefresh = async () => {
     showSuccessToast('Data refreshed successfully');
 
   } catch (error) {
-    console.error('Manual refresh failed:', error);
+    // console.error('Manual refresh failed:', error);
     showError('Failed to refresh data. Please try again.');
   } finally {
     isRefreshing.value = false;
@@ -4361,14 +4361,14 @@ onMounted(async () => {
   // This prevents race condition where API calls happen before token arrives
   const { useAuthState } = await import('~/composables/useAuthState');
   const { waitForAuth } = useAuthState(); // Call the composable
-  console.log('[Update-Data] ⏳ Waiting for auth before loading data...');
+  // console.log('[Update-Data] ⏳ Waiting for auth before loading data...');
 
   const authReady = await waitForAuth(5000); // Wait max 5 seconds
 
   if (!authReady) {
-    console.warn('[Update-Data] ⚠️ Auth not ready after timeout, proceeding anyway');
+    // console.warn('[Update-Data] ⚠️ Auth not ready after timeout, proceeding anyway');
   } else {
-    console.log('[Update-Data] ✅ Auth ready, proceeding with data load');
+    // console.log('[Update-Data] ✅ Auth ready, proceeding with data load');
   }
 
   // Clean up old draft system localStorage
@@ -4385,7 +4385,6 @@ onMounted(async () => {
     loadMedicalOptions().catch(() => { });
   }, 2000);
 
-  // ✅ FIXED BUG #1: Load change requests AND basic info in PARALLEL
   // This makes skeleton loading appear simultaneously for warning banner AND form
 
   // Promise 1: Load change requests + REAL-TIME check untuk re-validate tabs
@@ -4393,7 +4392,7 @@ onMounted(async () => {
     (async () => {
       try {
         isLoadingChangeRequests.value = true;
-        console.log('[MOUNT] 🔄 Loading fresh change requests untuk validasi tabs...');
+        // console.log('[MOUNT] 🔄 Loading fresh change requests untuk validasi tabs...');
 
         // Step 1: Clear semua cache untuk force fresh check
         tabManagement.invalidateAllCache();
@@ -4401,7 +4400,7 @@ onMounted(async () => {
 
         // Step 2: Load change requests dari API (FRESH DATA)
         await loadChangeRequests();
-        console.log('[MOUNT] ✅ Change requests loaded, total:', changeRequests.value?.length || 0);
+        // console.log('[MOUNT] ✅ Change requests loaded, total:', changeRequests.value?.length || 0);
 
         // Step 3: Force update ALL tabs cache untuk real-time check
         // Ini akan check setiap tab apakah ada draft/waiting/need-revision
@@ -4410,9 +4409,9 @@ onMounted(async () => {
         // Step 4: Refresh tab management untuk sync UI
         await tabManagement.smartRefresh(true);
 
-        console.log('[MOUNT] ✅ Tab validation completed - tabs sudah divalidasi dengan changeRequests terbaru');
+        // console.log('[MOUNT] ✅ Tab validation completed - tabs sudah divalidasi dengan changeRequests terbaru');
       } catch (error) {
-        console.error('[MOUNT] ❌ Failed to load change requests:', error);
+        // console.error('[MOUNT] ❌ Failed to load change requests:', error);
       } finally {
         isLoadingChangeRequests.value = false;
       }
@@ -4426,7 +4425,7 @@ onMounted(async () => {
         isLoadingBasicInfo.value = true;
         await loadBasicInformation();
       } catch (error) {
-        console.error('[MOUNT] Failed to load basic info:', error);
+        // console.error('[MOUNT] Failed to load basic info:', error);
       } finally {
         isLoadingBasicInfo.value = false;
       }
@@ -4534,9 +4533,9 @@ onMounted(async () => {
           loaded: true
         }
       }, parentOrigin);
-      console.log('[Update-Data] ✅ Content fully loaded - notified parent');
+      // console.log('[Update-Data] ✅ Content fully loaded - notified parent');
     } catch (error) {
-      console.error('[Update-Data] ❌ Failed to notify parent:', error);
+      // console.error('[Update-Data] ❌ Failed to notify parent:', error);
     }
   }
 
@@ -4546,13 +4545,13 @@ onMounted(async () => {
   // ✅ SAFETY: Force warning banner ready after timeout to prevent infinite skeleton
   setTimeout(() => {
     if (!isWarningBannerReady.value) {
-      console.warn('[WARNING] Forcing warning banner ready after timeout. Debug info:', {
-        isLoadingChangeRequests: isLoadingChangeRequests.value,
-        isInitialPageLoad: isInitialPageLoad.value,
-        changeRequestsLoaded: changeRequests.value !== null && changeRequests.value !== undefined,
-        changeRequestsCount: changeRequests.value?.length,
-        activeTab: activeTab.value
-      });
+      // console.warn('[WARNING] Forcing warning banner ready after timeout. Debug info:', {
+      //   isLoadingChangeRequests: isLoadingChangeRequests.value,
+      //   isInitialPageLoad: isInitialPageLoad.value,
+      //   changeRequestsLoaded: changeRequests.value !== null && changeRequests.value !== undefined,
+      //   changeRequestsCount: changeRequests.value?.length,
+      //   activeTab: activeTab.value
+      // });
       isWarningBannerForcedReady.value = true;
     }
   }, 5000); // 5 seconds safety timeout
@@ -4629,7 +4628,7 @@ onMounted(async () => {
   // ✅ GUARD: Watch for activeTab changes to RE-CHECK changeRequests (prevent duplicate requests)
   watch(activeTab, async (newTab, oldTab) => {
     if (newTab && newTab !== oldTab) {
-      console.log(`[TAB SWITCH GUARD] 🔄 Switch dari "${oldTab}" ke "${newTab}" - re-checking changeRequests...`);
+      // console.log(`[TAB SWITCH GUARD] 🔄 Switch dari "${oldTab}" ke "${newTab}" - re-checking changeRequests...`);
 
       // ✅ CRITICAL: Force fresh check untuk tab baru (GUARD mechanism)
       // Ini memastikan tab tidak bisa edit kalau ada request yang sedang berjalan
@@ -4637,7 +4636,7 @@ onMounted(async () => {
         // Step 0: FORCE reload changeRequests dari API (ensure fresh data)
         tabManagement.resetChangeRequestsCache();
         await loadChangeRequests();
-        console.log(`[TAB SWITCH GUARD] ✅ Fresh changeRequests loaded, total: ${changeRequests.value?.length || 0}`);
+        // console.log(`[TAB SWITCH GUARD] ✅ Fresh changeRequests loaded, total: ${changeRequests.value?.length || 0}`);
 
         // Step 1: Invalidate cache untuk tab baru (force fresh check)
         tabManagement.invalidateTabCache(newTab);
@@ -4655,20 +4654,20 @@ onMounted(async () => {
         const canEdit = tabManagement.canEditTabCompletelySync(newTab);
         const tabStatus = tabManagement.tabStatusCache.value[newTab];
 
-        console.log(`[TAB SWITCH GUARD] ✅ Guard check completed for "${newTab}":`, {
-          canEdit,
-          hasDraft: tabStatus?.hasDraft || false,
-          hasWaiting: tabStatus?.hasWaiting || false,
-          hasNeedRevision: tabStatus?.hasNeedRevision || false
-        });
+        // console.log(`[TAB SWITCH GUARD] ✅ Guard check completed for "${newTab}":`, {
+        //   canEdit,
+        //   hasDraft: tabStatus?.hasDraft || false,
+        //   hasWaiting: tabStatus?.hasWaiting || false,
+        //   hasNeedRevision: tabStatus?.hasNeedRevision || false
+        // });
 
         if (!canEdit) {
-          console.log(`[TAB SWITCH GUARD] 🔒 Tab "${newTab}" LOCKED - ada request yang sedang berjalan`);
+          // console.log(`[TAB SWITCH GUARD] 🔒 Tab "${newTab}" LOCKED - ada request yang sedang berjalan`);
         } else {
-          console.log(`[TAB SWITCH GUARD] ✅ Tab "${newTab}" AVAILABLE - tidak ada request yang berjalan`);
+          // console.log(`[TAB SWITCH GUARD] ✅ Tab "${newTab}" AVAILABLE - tidak ada request yang berjalan`);
         }
       } catch (error) {
-        console.error(`[TAB SWITCH GUARD] ❌ Error checking guard for "${newTab}":`, error);
+        // console.error(`[TAB SWITCH GUARD] ❌ Error checking guard for "${newTab}":`, error);
       }
 
       // ✅ OPTIMIZED: Only populate draft data if needed (no network calls)
@@ -4779,7 +4778,7 @@ onMounted(async () => {
       await tabManagement.smartRefresh(true);
       lastRefreshTime.value = Date.now();
     } catch (error) {
-      console.error('[Update-Data] ❌ Error during navigation change:', error);
+      // console.error('[Update-Data] ❌ Error during navigation change:', error);
     }
   };
 
@@ -4805,15 +4804,15 @@ onMounted(async () => {
 
     // Detect navigation FROM history TO update-data
     if (newPath === '/update-data' && oldPath && oldPath.includes('/update-data/history')) {
-      console.log('[NAVIGATION] Detected navigation from history to update-data');
-      console.log('[NAVIGATION] Old path:', oldPath);
-      console.log('[NAVIGATION] New path:', newPath);
-      console.log('[NAVIGATION] Starting comprehensive refresh...');
+      // console.log('[NAVIGATION] Detected navigation from history to update-data');
+      // console.log('[NAVIGATION] Old path:', oldPath);
+      // console.log('[NAVIGATION] New path:', newPath);
+      // console.log('[NAVIGATION] Starting comprehensive refresh...');
 
       // ✅ REMOUNT: Add delay untuk ensure API has processed any recent submissions
       navigationRefreshTimeout = setTimeout(async () => {
         try {
-          console.log('[REMOUNT via NAVIGATION] 🔄 Balik dari /history ke /update-data - re-checking changeRequests...');
+          // console.log('[REMOUNT via NAVIGATION] 🔄 Balik dari /history ke /update-data - re-checking changeRequests...');
 
           // Step 1: Clear cache untuk force fresh check
           invalidateCache('navigation_from_history');
@@ -4827,7 +4826,7 @@ onMounted(async () => {
           await loadChangeRequests();
           isLoadingChangeRequests.value = false;
 
-          console.log('[REMOUNT via NAVIGATION] ✅ Fresh changeRequests loaded, total:', changeRequests.value?.length || 0);
+          // console.log('[REMOUNT via NAVIGATION] ✅ Fresh changeRequests loaded, total:', changeRequests.value?.length || 0);
 
           // Step 4: Re-validate ALL tabs dengan changeRequests terbaru
           await tabManagement.forceUpdateAllTabsCache();
@@ -4850,21 +4849,21 @@ onMounted(async () => {
 
           lastRefreshTime.value = Date.now();
 
-          console.log('[REMOUNT via NAVIGATION] ✅ Tab re-validation completed');
-          console.log('[REMOUNT via NAVIGATION] Active tab:', activeTab.value, '| Can edit:', tabManagement.canEditTabCompletelySync(activeTab.value));
+          // console.log('[REMOUNT via NAVIGATION] ✅ Tab re-validation completed');
+          // console.log('[REMOUNT via NAVIGATION] Active tab:', activeTab.value, '| Can edit:', tabManagement.canEditTabCompletelySync(activeTab.value));
         } catch (error) {
-          console.error('[REMOUNT via NAVIGATION] ❌ Error during navigation refresh:', error);
+          // console.error('[REMOUNT via NAVIGATION] ❌ Error during navigation refresh:', error);
         }
       }, 300); // 300ms delay to ensure API has time to process
     }
     // Also handle any navigation TO update-data (not just from history)
     else if (newPath === '/update-data' && oldPath && oldPath !== newPath) {
-      console.log('[NAVIGATION] Detected navigation to update-data from:', oldPath);
+      // console.log('[NAVIGATION] Detected navigation to update-data from:', oldPath);
 
       const timeSinceLastRefresh = Date.now() - lastRefreshTime.value;
       // Only refresh if data is older than 15 seconds (reduced from 30)
       if (timeSinceLastRefresh > 15000) {
-        console.log('[NAVIGATION] Stale data detected (age:', Math.floor(timeSinceLastRefresh/1000), 's) - refreshing');
+        // console.log('[NAVIGATION] Stale data detected (age:', Math.floor(timeSinceLastRefresh/1000), 's) - refreshing');
 
         navigationRefreshTimeout = setTimeout(async () => {
           try {
@@ -4878,13 +4877,13 @@ onMounted(async () => {
             await updateCanEditCurrentTab();
 
             lastRefreshTime.value = Date.now();
-            console.log('[NAVIGATION] ✅ Stale data refresh completed');
+            // console.log('[NAVIGATION] ✅ Stale data refresh completed');
           } catch (error) {
-            console.error('[NAVIGATION] ❌ Error during stale data refresh:', error);
+            // console.error('[NAVIGATION] ❌ Error during stale data refresh:', error);
           }
         }, 200);
       } else {
-        console.log('[NAVIGATION] Data is fresh (age:', Math.floor(timeSinceLastRefresh/1000), 's) - skipping refresh');
+        // console.log('[NAVIGATION] Data is fresh (age:', Math.floor(timeSinceLastRefresh/1000), 's) - skipping refresh');
       }
     }
   }, { immediate: false });
@@ -4915,7 +4914,7 @@ onMounted(async () => {
 // ✅ REMOUNT: Setup onActivated untuk re-check changeRequests setiap kali buka /update-data
 onActivated(async () => {
   try {
-    console.log('[REMOUNT] 🔄 /update-data dibuka - re-checking changeRequests...');
+    // console.log('[REMOUNT] 🔄 /update-data dibuka - re-checking changeRequests...');
 
     // Step 1: Clear cache untuk force fresh check
     invalidateCache('page_activated');
@@ -4926,12 +4925,12 @@ onActivated(async () => {
 
     // Step 3: Load FRESH changeRequests dari API
     isLoadingChangeRequests.value = true;
-    console.log('[REMOUNT] 📡 Loading change requests...');
+    // console.log('[REMOUNT] 📡 Loading change requests...');
     await loadChangeRequests();
-    console.log('[REMOUNT] ✅ Change requests loaded');
+    // console.log('[REMOUNT] ✅ Change requests loaded');
     isLoadingChangeRequests.value = false;
 
-    console.log('[REMOUNT] ✅ Fresh changeRequests loaded, total:', changeRequests.value?.length || 0);
+    // console.log('[REMOUNT] ✅ Fresh changeRequests loaded, total:', changeRequests.value?.length || 0);
 
     // Step 4: Re-validate ALL tabs dengan changeRequests terbaru
     // Ini akan check apakah ada request (draft/waiting/need-revision) untuk setiap kategori
@@ -4954,10 +4953,10 @@ onActivated(async () => {
       lastRefreshTime.value = Date.now();
     }
 
-    console.log('[REMOUNT] ✅ Tab re-validation completed');
-    console.log('[REMOUNT] Active tab:', activeTab.value, '| Can edit:', tabManagement.canEditTabCompletelySync(activeTab.value));
+    // console.log('[REMOUNT] ✅ Tab re-validation completed');
+    // console.log('[REMOUNT] Active tab:', activeTab.value, '| Can edit:', tabManagement.canEditTabCompletelySync(activeTab.value));
   } catch (error) {
-    console.error('[REMOUNT] ❌ Error during remount refresh:', error);
+    // console.error('[REMOUNT] ❌ Error during remount refresh:', error);
   }
 });
 
@@ -5006,7 +5005,7 @@ const debouncedReloadWarningBanner = debounce(async () => {
     // Now only update the current tab cache if needed
     await tabManagement.updateTabStatusCache(activeTab.value);
   } catch (error) {
-    console.error('[Update-Data] ❌ Error reloading warning banner:', error);
+    // console.error('[Update-Data] ❌ Error reloading warning banner:', error);
   }
 }, 100); // ✅ REDUCED: Debounce time from 500ms to 100ms for better responsiveness
 
@@ -5372,7 +5371,7 @@ definePageMeta({
 
 // Add error boundary for dynamic import issues
 onErrorCaptured((error, instance, info) => {
-  console.error('Page error captured:', error, info);
+  // console.error('Page error captured:', error, info);
   // Don't prevent the error from propagating
   return false;
 });

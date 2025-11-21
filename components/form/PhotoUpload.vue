@@ -73,7 +73,7 @@
       class="mt-3 md:mt-4 w-full"
       :no-margin="true"
     >
-      To update your profile photo, please submit a formal employee.
+       Please upload an official employee photograph to update your profile photo.
     </UiAlert>
   </div>
 </template>

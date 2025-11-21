@@ -240,7 +240,7 @@ export function useEditPageComposed() {
     try {
       await editPageApi.saveAsDraft(requestId.value, formData.value, activeTab.value)
     } catch (error) {
-      console.error('Save draft error:', error)
+      // console.error('Save draft error:', error)
     }
   }
 
@@ -248,7 +248,7 @@ export function useEditPageComposed() {
     try {
       await editPageApi.submitForApproval(requestId.value, formData.value, activeTab.value)
     } catch (error) {
-      console.error('Submit error:', error)
+      // console.error('Submit error:', error)
     }
   }
 

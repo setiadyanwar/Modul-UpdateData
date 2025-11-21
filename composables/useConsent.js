@@ -177,7 +177,7 @@ export const useConsent = () => {
         hasActiveConsent.value = activeConsents.value.length > 0
         return response
       } else {
-        console.warn('Failed to fetch active consents:', response.message)
+        // console.warn('Failed to fetch active consents:', response.message)
         // Set fallback empty data instead of throwing error
         activeConsents.value = []
         latestConsent.value = null
@@ -185,7 +185,7 @@ export const useConsent = () => {
         return { success: true, data: [] }
       }
     } catch (err) {
-      console.error(`Error fetching active consents (attempt ${retryCount + 1}/${maxRetries + 1}):`, err)
+      // console.error(`Error fetching active consents (attempt ${retryCount + 1}/${maxRetries + 1}):`, err)
 
       // Retry logic with exponential backoff
       if (retryCount < maxRetries) {
@@ -236,7 +236,7 @@ export const useConsent = () => {
       }
     } catch (err) {
       error.value = err.message
-      console.warn('Failed to load consent status:', err.message)
+      // console.warn('Failed to load consent status:', err.message)
       // Don't show error toast for consent status failures as they're not critical
       // showError('Failed to load consent status')
       throw err

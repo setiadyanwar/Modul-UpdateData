@@ -143,7 +143,7 @@ export function useAddress() {
       await loadAddress()
       addressLoaded.value = true
     } catch (error) {
-      console.error('Error loading address:', error)
+      // console.error('Error loading address:', error)
       toastError('Failed to load address data')
     } finally {
       isLoadingAddress.value = false
@@ -155,7 +155,7 @@ export function useAddress() {
     try {
       await loadAddressData()
     } catch (error) {
-      console.error('Error fetching missing address data:', error)
+      // console.error('Error fetching missing address data:', error)
     }
   }
 

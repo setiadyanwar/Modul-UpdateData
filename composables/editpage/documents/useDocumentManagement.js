@@ -150,7 +150,7 @@ export function useDocumentManagement() {
 
       return response
     } catch (error) {
-      console.error('Upload error:', error)
+      // console.error('Upload error:', error)
       throw error
     } finally {
       isUploading.value = false

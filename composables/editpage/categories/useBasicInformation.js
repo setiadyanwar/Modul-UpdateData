@@ -103,7 +103,7 @@ export function useBasicInformation() {
       await loadBasicInformation()
       basicInfoLoaded.value = true
     } catch (error) {
-      console.error('Error loading basic information:', error)
+      // console.error('Error loading basic information:', error)
       toastError('Failed to load basic information')
     } finally {
       isLoadingBasicInfo.value = false
