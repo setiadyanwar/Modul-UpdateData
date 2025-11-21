@@ -1053,26 +1053,20 @@ const reloadWarningBanner = async (force = false) => {
     return globalEditMode.value && canEditTabCompletelySync(activeTab.value);
   };
 
-  // OPTIMIZED: Auto-refresh cache for better performance
+  // ❌ DISABLED: Auto-refresh polling causing unnecessary API load
+  // Cache updates happen via:
+  // 1. Tab switch → updateTabStatusCache called by watcher
+  // 2. Draft save/delete → invalidateTabCache + manual update
+  // 3. User action → smartRefresh called explicitly
+  // No need for polling every 5 seconds!
   const startAutoRefresh = () => {
-    // Refresh cache every 30 seconds for better responsiveness
-    setInterval(() => {
-      // Jangan refresh jika user sedang dalam edit mode untuk menghindari gangguan
-      if (globalEditMode.value) {
-        return;
-      }
-      
-      Object.keys(tabStatusCache.value).forEach(tabId => {
-        const cached = tabStatusCache.value[tabId];
-        if (cached && (Date.now() - cached.lastUpdated) > 5000) {
-          updateTabStatusCache(tabId);
-        }
-      });
-    }, 5000);
+    // Auto-refresh disabled to prevent unnecessary API load
+    // setInterval removed - use event-driven updates instead
+    return; // Early return - no polling
   };
 
-  // Start auto-refresh when composable is initialized
-  startAutoRefresh();
+  // Auto-refresh disabled - no longer needed
+  // startAutoRefresh();
 
   return {
     // State

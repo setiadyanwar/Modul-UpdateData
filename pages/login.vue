@@ -59,7 +59,7 @@
                 </label>
                 <InputText
                   id="email"
-                  v-model="formData.email"
+                  v-model="email"
                   type="email"
                   placeholder="Enter your email"
                   class="form-input"
@@ -78,7 +78,7 @@
                 <div class="password-input-wrapper">
                   <InputText
                     id="password"
-                    v-model="formData.password"
+                    v-model="password"
                     :type="showPassword ? 'text' : 'password'"
                     placeholder="Enter your password"
                     class="form-input"
@@ -103,13 +103,17 @@
                 <span>{{ loginError }}</span>
               </div>
 
-              <Button
+              <UiButton
                 type="submit"
-                :label="isLoggingIn ? 'Logging in...' : 'Login'"
-                :icon="isLoggingIn ? 'pi pi-spin pi-spinner' : 'pi pi-sign-in'"
-                :disabled="isLoggingIn || !formData.email || !formData.password"
+                variant="primary"
+                size="default"
+                :fullWidth="true"
+                :disabled="isLoggingIn || !isFormValid"
                 class="login-button"
-              />
+              >
+                <i :class="isLoggingIn ? 'pi pi-spin pi-spinner' : 'pi pi-sign-in'"></i>
+                <span>{{ isLoggingIn ? 'Logging in...' : 'Login' }}</span>
+              </UiButton>
             </form>
           </div>
 
@@ -169,6 +173,7 @@ import { ref, computed, onMounted } from 'vue';
 import envConfig from '~/config/environment';
 import { useAuthenticationCore } from '~/composables/useAuthenticationCore';
 import { useToast } from '~/composables/useToast';
+import UiButton from '~/components/ui/Button.vue';
 
 const router = useRouter();
 const { login: authLogin, isLoading: authLoading } = useAuthenticationCore();
@@ -180,11 +185,9 @@ const appVersion = ref(envConfig.APP.VERSION || '1.0.0');
 // Login mode: 'standalone' or 'portal'
 const loginMode = ref('standalone');
 
-// Form data
-const formData = ref({
-  email: '',
-  password: ''
-});
+// Form data - using separate refs for better reactivity
+const email = ref('');
+const password = ref('');
 
 // Form errors
 const errors = ref({
@@ -200,6 +203,13 @@ const showPassword = ref(false);
 
 // Loading state
 const isLoggingIn = computed(() => authLoading.value);
+
+// Form validation - check if form is valid
+const isFormValid = computed(() => {
+  const emailVal = email.value?.trim() || '';
+  const passwordVal = password.value?.trim() || '';
+  return emailVal.length > 0 && passwordVal.length > 0;
+});
 
 // Access steps
 const accessSteps = [
@@ -224,18 +234,18 @@ const validateForm = () => {
 
   let isValid = true;
 
-  if (!formData.value.email) {
+  if (!email.value) {
     errors.value.email = 'Email is required';
     isValid = false;
-  } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.value.email)) {
+  } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value)) {
     errors.value.email = 'Please enter a valid email address';
     isValid = false;
   }
 
-  if (!formData.value.password) {
+  if (!password.value) {
     errors.value.password = 'Password is required';
     isValid = false;
-  } else if (formData.value.password.length < 6) {
+  } else if (password.value.length < 6) {
     errors.value.password = 'Password must be at least 6 characters';
     isValid = false;
   }
@@ -252,7 +262,7 @@ const handleLogin = async () => {
   }
 
   try {
-    const result = await authLogin(formData.value.email, formData.value.password);
+    const result = await authLogin(email.value, password.value);
 
     if (result.success) {
       toastSuccess('Login successful! Redirecting...');
@@ -674,6 +684,19 @@ useHead({
   gap: 0.5rem;
 }
 
+.form-group:has(.form-input:disabled) .form-label {
+  opacity: 0.65;
+  color: #94a3b8;
+}
+
+.dark .form-group:has(.form-input:disabled) .form-label {
+  color: #64748b;
+}
+
+.form-group:has(.form-input:disabled) .form-label i {
+  opacity: 0.6;
+}
+
 .form-label {
   display: flex;
   align-items: center;
@@ -698,6 +721,18 @@ useHead({
 
 .form-input {
   width: 100%;
+}
+
+.form-input:disabled {
+  background-color: #f1f5f9 !important;
+  color: #94a3b8 !important;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.dark .form-input:disabled {
+  background-color: #334155 !important;
+  color: #64748b !important;
 }
 
 .password-input-wrapper {
@@ -774,10 +809,6 @@ useHead({
 }
 
 .login-button {
-  width: 100%;
-  padding: 0.875rem;
-  font-size: 1rem;
-  font-weight: 600;
   margin-top: 0.5rem;
 }
 

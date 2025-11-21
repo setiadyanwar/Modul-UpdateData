@@ -28,12 +28,13 @@ let authInstance = null;
   // Configuration constants
   const CONFIG = {
     // Token lifetimes (in milliseconds)
-    ACCESS_TOKEN_LIFETIME: envConfig.SECURITY.JWT_EXPIRY || 1800000, // 30 minutes
+    ACCESS_TOKEN_LIFETIME: envConfig.SECURITY.JWT_EXPIRY || 1200000, // 20 minutes (CORRECTED!)
     REFRESH_TOKEN_LIFETIME: envConfig.SECURITY.REFRESH_TOKEN_EXPIRY || 604800000, // 7 days
 
-    // Session management - IMPROVED TIMING
-    SESSION_WARNING_TIME: envConfig.SECURITY.WARNING_TIMEOUT || 1200000, // 20 minutes of inactivity before showing modal
-    COUNTDOWN_DURATION: envConfig.SECURITY.COUNTDOWN_DURATION || 600000, // 10 minutes countdown in modal
+    // Session management - CORRECTED TIMING
+    SESSION_WARNING_TIME: envConfig.SECURITY.WARNING_TIMEOUT || 900000, // 15 minutes of inactivity before showing modal
+    COUNTDOWN_DURATION: envConfig.SECURITY.COUNTDOWN_DURATION || 300000, // 5 minutes countdown in modal
+    LAST_CHANCE_PERIOD: 300000, // 5 minutes before modal (10-15 min idle) untuk detect aktivitas
     ACTIVITY_THROTTLE: envConfig.SECURITY.ACTIVITY_THROTTLE || 100, // 100ms throttle
   
   // Security settings
@@ -43,16 +44,22 @@ let authInstance = null;
   // API endpoints
   ENDPOINTS: {
     LOGIN: '/api/auth/login',
-    REFRESH: '/api/auth/refresh',
-    LOGOUT: '/api/auth/logout'
+    REFRESH: '/api/auth/refresh'
+    // Note: Logout tidak perlu API endpoint
+    // Cukup clear localStorage + postMessage ke parent (ESS Host)
   }
 };
 
-// Activity events to monitor
+// Activity events to monitor - REDUCED for performance
+// Only track essential user activity for session timeout
 const ACTIVITY_EVENTS = [
-  'mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click',
-  'keydown', 'wheel', 'focus', 'input', 'change', 'mouseup', 'mouseover', 
-  'mouseout', 'keyup', 'touchmove', 'touchend'
+  'click', 'keydown', 'scroll', 'touchstart'
+];
+
+// Critical activity events for last-chance monitoring (≤5 min before modal)
+// Only mouse movement and keyboard for detecting real user presence
+const LAST_CHANCE_EVENTS = [
+  'mousemove', 'keydown', 'keypress'
 ];
 
 export const useAuthenticationCore = () => {
@@ -70,7 +77,13 @@ export const useAuthenticationCore = () => {
   const isSessionWarningVisible = ref(false);
   const sessionCountdownTime = ref(0);
   const lastActivityTime = ref(Date.now());
+  const sessionMonitorStartTime = ref(Date.now());
+  const sessionMonitorTargetTime = ref(Date.now() + CONFIG.SESSION_WARNING_TIME);
   const isTabVisible = ref(true);
+  
+  // Last chance monitoring state (≤5 min before modal)
+  const isLastChanceMonitoringActive = ref(false);
+  const lastChanceActivityDetected = ref(false);
   
   // Account lockout state
   const failedLoginAttempts = ref(0);
@@ -83,7 +96,10 @@ export const useAuthenticationCore = () => {
   let tokenRefreshTimer = null;
   let activityThrottleTimer = null;
   let visibilityTimer = null;
+  let lastChanceScheduleTimer = null;
   let debugStatusTimer = null;
+  let lastChanceTimer = null;
+  let lastChanceCheckTimer = null;
 
   // Computed properties
   const isAccountLocked = computed(() => {
@@ -236,7 +252,7 @@ const parseJWTPayload = (token) => {
     return 'VALID';
   };
 
-  // Get valid access token (refresh only on user activity)
+  // Get valid access token (smart refresh untuk mencegah premature logout)
   const getValidAccessToken = async () => {
     if (process.server) return null;
     
@@ -254,29 +270,59 @@ const parseJWTPayload = (token) => {
         return accessToken;
 
       case 'NEEDS_REFRESH':
-        // FIXED: Auto-refresh token to prevent premature expiry
-        // This ensures token stays fresh during user session
+        // Token <5 menit tapi masih valid
+        // Return as-is, last chance monitoring akan handle jika ada aktivitas
         if (process.dev) {
-          logger.tokenEvent('TOKEN_NEEDS_REFRESH_AUTO_REFRESHING', {
-            userId: user.value?.id
+          logger.tokenEvent('TOKEN_NEEDS_REFRESH_RETURNED_AS_IS', {
+            userId: user.value?.id,
+            message: 'Token <5 menit tapi masih valid'
           });
         }
-        try {
-          const newToken = await refreshAccessToken();
-          return newToken || accessToken; // Return new token or fallback to current
-        } catch (error) {
-          logger.tokenError('AUTO_REFRESH_FAILED', error, {
-            userId: user.value?.id
-          });
-          return accessToken; // Return current token on refresh failure
-        }
+        return accessToken;
 
       case 'EXPIRED':
-        // Token expired - Check if we should show session warning first
+        // FIXED: Token expired - coba refresh dulu sebelum logout
         const timeSinceActivity = Date.now() - lastActivityTime.value;
 
-        // If user was recently active (within warning period), show modal
-        if (timeSinceActivity < CONFIG.SESSION_WARNING_TIME && !isSessionWarningVisible.value) {
+        // Jika inactivity belum sampai warning time, user masih aktif
+        // Refresh token untuk memperpanjang session
+        if (timeSinceActivity < CONFIG.SESSION_WARNING_TIME) {
+          if (process.dev) {
+            logger.tokenEvent('TOKEN_EXPIRED_BUT_USER_ACTIVE_REFRESHING', {
+              userId: user.value?.id,
+              timeSinceActivity: Math.floor(timeSinceActivity / 1000) + 's',
+              message: 'User masih dalam periode aktif, refresh token'
+            });
+          }
+          
+          try {
+            // Coba refresh token
+            const newToken = await refreshAccessToken();
+            if (newToken) {
+              // Refresh berhasil, kembalikan token baru
+              return newToken;
+            } else {
+              // Refresh gagal, tampilkan modal
+              if (!isSessionWarningVisible.value) {
+                showSessionWarning();
+              }
+              return null;
+            }
+          } catch (error) {
+            // Error saat refresh, tampilkan modal
+            logger.tokenError('TOKEN_REFRESH_ON_EXPIRED_FAILED', error, {
+              userId: user.value?.id
+            });
+            if (!isSessionWarningVisible.value) {
+              showSessionWarning();
+            }
+            return null;
+          }
+        }
+
+        // Token expired setelah long inactivity (>20 menit)
+        // Tampilkan modal atau force logout
+        if (!isSessionWarningVisible.value) {
           if (process.dev) {
             logger.tokenEvent('TOKEN_EXPIRED_SHOWING_SESSION_WARNING', {
               userId: user.value?.id,
@@ -285,17 +331,10 @@ const parseJWTPayload = (token) => {
           }
           showSessionWarning();
           return null;
+        } else {
+          // Modal sudah visible, return null
+          return null;
         }
-
-        // Token expired after long inactivity - force logout
-        if (process.dev) {
-          logger.tokenEvent('TOKEN_EXPIRED_FORCING_LOGOUT', {
-            userId: user.value?.id,
-            timeSinceActivity: Math.floor(timeSinceActivity / 1000) + 's'
-          });
-        }
-        await forceLogout('Session expired due to inactivity');
-        return null;
 
       default:
         return null;
@@ -421,72 +460,200 @@ const parseJWTPayload = (token) => {
     const timeUntilExpiry = expirationTime - currentTime;
     
     if (process.dev) {
-      // Debug token status
+      const minutes = Math.floor(timeUntilExpiry / 60000);
+      const seconds = Math.floor((timeUntilExpiry % 60000) / 1000);
+      console.log(`[AUTH] 🎫 Token expires in ${minutes}m ${seconds}s`);
     }
     
-    // Start inactivity monitoring - modal will show after 15 minutes of inactivity
+    // Start inactivity monitoring - modal akan muncul setelah 15 menit idle
+    // Last chance monitoring akan start otomatis di menit ke-10 (5 menit sebelum modal)
     startInactivityMonitoring();
-    
-    // DON'T schedule automatic refresh - let token expire naturally if no activity
-    // Auto refresh only happens on user activity via checkAndRefreshTokenOnActivity
-    if (process.dev) {
-      // Debug token status
-    }
   };
 
-  // Start monitoring inactivity to show modal after 20 minutes
+  // Start monitoring session countdown (fixed 15 minutes window)
   const startInactivityMonitoring = () => {
-    // Clear existing timer
+    // Clear existing timers
     if (sessionWarningTimer) {
       clearTimeout(sessionWarningTimer);
       sessionWarningTimer = null;
     }
+    if (lastChanceScheduleTimer) {
+      clearTimeout(lastChanceScheduleTimer);
+      lastChanceScheduleTimer = null;
+    }
     
-    // Debug log for monitoring restart with detailed timing
+    sessionMonitorStartTime.value = Date.now();
+    sessionMonitorTargetTime.value = sessionMonitorStartTime.value + CONFIG.SESSION_WARNING_TIME;
+    
     if (process.dev) {
-      const sessionWarningMinutes = Math.floor(CONFIG.SESSION_WARNING_TIME / 60000);
-      const currentTime = new Date().toLocaleTimeString();
-      const warningTime = new Date(Date.now() + CONFIG.SESSION_WARNING_TIME).toLocaleTimeString();
-
-
-      // Start debug status logging if not already running
+      const warningTime = new Date(sessionMonitorTargetTime.value).toLocaleTimeString();
+      console.log(`[AUTH] ⏰ Session countdown started - Modal target at ${warningTime}`);
       startDebugStatusLogging();
     }
     
-    // Schedule warning modal to appear after 20 minutes of inactivity
+    // Schedule last chance monitoring (5 minutes before modal)
+    const lastChanceDelay = Math.max(0, CONFIG.SESSION_WARNING_TIME - CONFIG.LAST_CHANCE_PERIOD);
+    lastChanceScheduleTimer = setTimeout(() => {
+      if (isAuthenticated.value && !isSessionWarningVisible.value) {
+        if (process.dev) {
+          console.log('[AUTH] 🎯 Last chance monitoring window started (minutes 10-15)');
+        }
+        startLastChanceMonitoring();
+      }
+    }, lastChanceDelay);
+    
+    // Schedule modal
     sessionWarningTimer = setTimeout(() => {
-      if (!isAuthenticated.value) {
-        if (process.dev) {
-        }
+      if (!isAuthenticated.value || isSessionWarningVisible.value) {
         return;
       }
-      
-      if (isSessionWarningVisible.value) {
-        if (process.dev) {
-        }
-        return;
-      }
-      
-      const timeSinceActivity = Date.now() - lastActivityTime.value;
-      
       if (process.dev) {
+        console.log('[AUTH] 🚨 Session timeout modal triggered by fixed countdown');
       }
-      
-      if (timeSinceActivity >= CONFIG.SESSION_WARNING_TIME) {
-        if (process.dev) {
-        }
-        showSessionWarning();
-      } else {
-        // Reschedule for remaining time
-        const remainingTime = CONFIG.SESSION_WARNING_TIME - timeSinceActivity;
-        if (process.dev) {
-        }
-        
-        sessionWarningTimer = setTimeout(() => {
-          startInactivityMonitoring();
-        }, remainingTime);
+      showSessionWarning();
+    }, CONFIG.SESSION_WARNING_TIME);
+  };
+
+  /**
+   * Last Chance Monitoring Functions
+   * Aktivasi monitoring khusus saat token tersisa ≤5 menit
+   */
+  
+  // Start last chance monitoring - pantau mouse/keyboard 5 menit sebelum modal (menit 10-15)
+  const startLastChanceMonitoring = () => {
+    if (isLastChanceMonitoringActive.value) {
+      return; // Already active
+    }
+    
+    if (process.dev) {
+      console.log('[AUTH] 🎯 Last Chance Monitoring STARTED - 5 min window (idle 10-15 min)');
+    }
+    
+    isLastChanceMonitoringActive.value = true;
+    lastChanceActivityDetected.value = false;
+    
+    // Setup listener khusus untuk mouse/keyboard
+    setupLastChanceListeners();
+    
+    // Timer untuk auto-stop setelah 5 menit (saat modal akan muncul)
+    if (lastChanceTimer) {
+      clearTimeout(lastChanceTimer);
+    }
+    
+    lastChanceTimer = setTimeout(() => {
+      if (process.dev) {
+        console.log('[AUTH] ⏰ Last Chance window habis - Modal seharusnya muncul');
       }
-    }, CONFIG.SESSION_WARNING_TIME); // 20 minutes
+      stopLastChanceMonitoring('window_expired');
+    }, CONFIG.LAST_CHANCE_PERIOD); // 5 minutes
+  };
+  
+  // Stop last chance monitoring
+  const stopLastChanceMonitoring = (reason = 'unknown') => {
+    if (!isLastChanceMonitoringActive.value) {
+      return;
+    }
+    
+    if (process.dev) {
+      logger.tokenEvent('LAST_CHANCE_MONITORING_STOPPED', {
+        userId: user.value?.id,
+        reason,
+        activityDetected: lastChanceActivityDetected.value
+      });
+    }
+    
+    isLastChanceMonitoringActive.value = false;
+    lastChanceActivityDetected.value = false;
+    
+    // Remove listener khusus
+    removeLastChanceListeners();
+    
+    // Clear timers
+    if (lastChanceTimer) {
+      clearTimeout(lastChanceTimer);
+      lastChanceTimer = null;
+    }
+    if (lastChanceCheckTimer) {
+      clearTimeout(lastChanceCheckTimer);
+      lastChanceCheckTimer = null;
+    }
+    if (lastChanceScheduleTimer) {
+      clearTimeout(lastChanceScheduleTimer);
+      lastChanceScheduleTimer = null;
+    }
+  };
+  
+  // Handler untuk last chance activity detection
+  const handleLastChanceActivity = async () => {
+    // Hanya proses jika mode aktif dan belum detect aktivitas
+    if (!isLastChanceMonitoringActive.value || lastChanceActivityDetected.value) {
+      return;
+    }
+
+    if (process.dev) {
+      console.log('[AUTH] 🎯 AKTIVITAS TERDETEKSI dalam last chance window - refresh token!');
+    }
+
+    // ✅ FIX: Set flag PERMANENTLY until monitoring ends
+    // This prevents spam - only ONE refresh during the entire last-chance window
+    // Flag will be reset when:
+    // 1. Last chance monitoring stops (modal shown)
+    // 2. User extends session manually
+    // 3. User logs out
+    lastChanceActivityDetected.value = true;
+
+    // Update lastActivityTime
+    lastActivityTime.value = Date.now();
+
+    // Refresh token immediately - extend token 20 menit lagi
+    try {
+      const newToken = await refreshAccessToken();
+
+      if (newToken) {
+        if (process.dev) {
+          console.log('[AUTH] ✅ Token refreshed successfully - Extended 20 minutes');
+          console.log('[AUTH] 🔒 Flag LOCKED - No more refreshes until next last-chance window');
+        }
+
+        // ✅ FIX: DO NOT RESET FLAG!
+        // Prevents spam refresh calls when user continues moving/typing
+        // Previous code reset flag here, causing spam on every activity
+        //
+        // ❌ REMOVED: lastChanceActivityDetected.value = false;
+      }
+    } catch (error) {
+      logger.tokenError('LAST_CHANCE_REFRESH_FAILED', error, {
+        userId: user.value?.id
+      });
+
+      // ✅ FIX: Even on error, keep flag = true to prevent spam retries
+      // If refresh failed, we'll let the modal show (correct behavior)
+      // Don't spam the server with retry attempts
+      //
+      // ❌ REMOVED: lastChanceActivityDetected.value = false;
+
+      if (process.dev) {
+        console.warn('[AUTH] ⚠️ Refresh failed but flag REMAINS true to prevent spam');
+      }
+    }
+  };
+  
+  // Setup listener khusus untuk last chance monitoring
+  const setupLastChanceListeners = () => {
+    if (process.server) return;
+    
+    LAST_CHANCE_EVENTS.forEach(event => {
+      document.addEventListener(event, handleLastChanceActivity, { passive: true });
+    });
+  };
+  
+  // Remove listener khusus untuk last chance monitoring
+  const removeLastChanceListeners = () => {
+    if (process.server) return;
+    
+    LAST_CHANCE_EVENTS.forEach(event => {
+      document.removeEventListener(event, handleLastChanceActivity);
+    });
   };
 
   /**
@@ -494,6 +661,7 @@ const parseJWTPayload = (token) => {
    */
   
   // Reset activity timer (called on user activity)
+  // CORRECTED: Hanya update timestamp, TIDAK restart inactivity timer
   const resetActivityTimer = (isUserActivity = true) => {
     // Use configured throttle time from environment
     if (activityThrottleTimer && isUserActivity) {
@@ -504,18 +672,20 @@ const parseJWTPayload = (token) => {
       // Throttle activity detection using config value
       activityThrottleTimer = setTimeout(() => {
         activityThrottleTimer = null;
-      }, CONFIG.ACTIVITY_THROTTLE); // Use config value (50ms)
+      }, CONFIG.ACTIVITY_THROTTLE); // Use config value (100ms)
       
       // Debug log for activity detection
       if (process.dev && localStorage.getItem('debug_auth_activity')) {
         const currentTime = new Date().toLocaleTimeString();
+        console.log(`[AUTH] 📝 Activity detected at ${currentTime} - UPDATE lastActivityTime only`);
       }
       
-      // Check if token needs refresh on user activity
-      checkAndRefreshTokenOnActivity();
+      // IMPORTANT: Hanya update lastActivityTime
+      // TIDAK restart inactivity timer - biarkan timer asli jalan terus dari login
+      // Last chance monitoring yang akan handle refresh token jika ada aktivitas
     }
     
-    // Always update activity time
+    // Always update activity time untuk tracking inactivity
     lastActivityTime.value = Date.now();
 
     // IMPORTANT: DO NOT hide modal on activity while it's visible
@@ -528,62 +698,16 @@ const parseJWTPayload = (token) => {
       visibilityTimer = null;
     }
 
-    // Restart inactivity monitoring on user activity to reset the countdown
-    if (isUserActivity && isAuthenticated.value && !isSessionWarningVisible.value) {
-      if (process.dev && localStorage.getItem('debug_auth')) {
-      }
-      // Restart timer on user activity - this resets the 20-minute countdown
-      startInactivityMonitoring();
-    }
+    // REMOVED: JANGAN restart inactivity monitoring setiap aktivitas
+    // Timer harus jalan dari login dan TIDAK di-reset
+    // Hanya last chance monitoring yang detect aktivitas untuk refresh token
     
   };
 
-  // Check and refresh token on user activity (active until modal appears)
-  const checkAndRefreshTokenOnActivity = async () => {
-    if (process.server) return;
-    
-    // Don't auto refresh if modal is visible - user must click extend
-    if (isSessionWarningVisible.value) {
-      return;
-    }
-    
-    const accessToken = localStorage.getItem('access_token');
-    if (!accessToken) return;
-    
-    const tokenStatus = getTokenStatus(accessToken);
-    
-    // Auto refresh strategy: 
-    // - NEEDS_REFRESH (< 5 min left): Always auto refresh on activity
-    // - VALID (> 5 min left): Also refresh occasionally to keep session fresh
-    // - EXPIRED: Force logout
-    
-    if (tokenStatus === 'NEEDS_REFRESH') {
-      try {
-        await refreshAccessToken();
-      } catch (error) {
-        // Error handled silently
-      }
-    } else if (tokenStatus === 'EXPIRED') {
-      await forceLogout('Token expired');
-    } else if (tokenStatus === 'VALID') {
-      // For VALID tokens, also refresh periodically to keep session active
-      const payload = parseJWTPayload(accessToken);
-      if (payload) {
-        const expirationTime = payload.exp * 1000;
-        const currentTime = Date.now();
-        const timeUntilExpiry = expirationTime - currentTime;
-        const minutesUntilExpiry = Math.floor(timeUntilExpiry / 60000);
-        
-        // Refresh if token will expire in 10 minutes or less (more aggressive)
-        if (minutesUntilExpiry <= 10) {
-          try {
-            await refreshAccessToken();
-          } catch (error) {
-          }
-        }
-      }
-    }
-  };
+  // REMOVED: checkAndRefreshTokenOnActivity - tidak diperlukan lagi
+  // Token refresh sekarang hanya terjadi melalui:
+  // 1. Last chance monitoring (≤5 min sebelum modal) - handleLastChanceActivity()
+  // 2. Manual extend session dari modal - extendSession()
 
   // Show session warning modal
   const showSessionWarning = () => {
@@ -591,6 +715,14 @@ const parseJWTPayload = (token) => {
     
     // Prevent multiple modals
     if (isSessionWarningVisible.value) return;
+    
+    // Stop last chance monitoring karena modal sudah muncul
+    if (isLastChanceMonitoringActive.value) {
+      stopLastChanceMonitoring('modal_shown');
+    }
+    
+    // Update monitor target to now
+    sessionMonitorTargetTime.value = Date.now();
     
     // Check current token status before showing modal
     const currentToken = localStorage.getItem('access_token');
@@ -605,9 +737,13 @@ const parseJWTPayload = (token) => {
       return;
     }
     
-    // Always use fixed 10-minute countdown for consistency
-    // This gives users predictable warning time regardless of actual token expiry
-    sessionCountdownTime.value = CONFIG.COUNTDOWN_DURATION / 1000; // 10 minutes = 600 seconds
+    // CORRECTED: Use 5-minute countdown
+    // This gives users 5 minutes to decide extend atau logout
+    sessionCountdownTime.value = CONFIG.COUNTDOWN_DURATION / 1000; // 5 minutes = 300 seconds
+    
+    if (process.dev) {
+      console.log('[AUTH] 🚨 SessionTimeoutModal SHOWN - Countdown: 5 minutes');
+    }
     
     // Check if there's reasonable time remaining
     const payload = parseJWTPayload(currentToken);
@@ -655,20 +791,24 @@ const parseJWTPayload = (token) => {
 
   // Extend session (called from modal)
   const extendSession = async () => {
-    
+
     try {
       const newToken = await refreshAccessToken();
       if (newToken) {
         // Hide the warning modal
         hideSessionWarning();
-        
+
+        // ✅ FIX: Stop last chance monitoring and reset flag
+        // This prepares for the NEXT last-chance window
+        stopLastChanceMonitoring('manual_extend');
+
         // Reset activity timer for manual extend session (user action)
         resetActivityTimer(true); // This IS user activity
-        
+
         // Schedule next token refresh and restart inactivity monitoring for new token
         scheduleTokenRefresh(newToken);
 
-        success('Session extended successfully for another 30 minutes');
+        success('Session extended successfully for another 20 minutes');
         return true;
       } else {
         showError('Failed to extend session. Please log in again.');
@@ -717,56 +857,37 @@ const parseJWTPayload = (token) => {
     }
     
     if (isVisible) {
-      // Clear visibility timer
       if (visibilityTimer) {
         clearTimeout(visibilityTimer);
         visibilityTimer = null;
       }
       
-      // Check if we should show session warning when tab becomes visible
-      const timeSinceActivity = Date.now() - lastActivityTime.value;
-      const minutesInactive = Math.floor(timeSinceActivity / 60000);
-      const secondsInactive = Math.floor((timeSinceActivity % 60000) / 1000);
-      
-      if (process.dev) {
+      const remaining = sessionMonitorTargetTime.value - Date.now();
+      if (remaining <= 0 && !isSessionWarningVisible.value) {
+        showSessionWarning();
+        return;
       }
       
-      if (timeSinceActivity >= CONFIG.SESSION_WARNING_TIME && !isSessionWarningVisible.value) {
-        // Show warning immediately if enough time has passed
-        if (process.dev) {
-        }
-        showSessionWarning();
-      } else {
-        // DON'T reset activity timer just because tab became visible
-        // Only restart monitoring, but keep original lastActivityTime
-        if (process.dev) {
-        }
-        startInactivityMonitoring();
+      if (!sessionWarningTimer && remaining > 0) {
+        sessionWarningTimer = setTimeout(() => {
+          if (!isSessionWarningVisible.value && isAuthenticated.value) {
+            showSessionWarning();
+          }
+        }, remaining);
       }
     } else {
-      // When tab becomes hidden, continue countdown based on last activity
       if (sessionWarningTimer) {
         clearTimeout(sessionWarningTimer);
         sessionWarningTimer = null;
       }
       
-      const timeSinceActivity = Date.now() - lastActivityTime.value;
-      const remainingTimeUntilWarning = CONFIG.SESSION_WARNING_TIME - timeSinceActivity;
-      
-      if (remainingTimeUntilWarning > 0) {
-        visibilityTimer = setTimeout(() => {
-          if (!document.hidden && isAuthenticated.value) {
-            showSessionWarning();
-          }
-        }, remainingTimeUntilWarning);
-      } else {
-        // Should show warning immediately when tab becomes visible  
-        visibilityTimer = setTimeout(() => {
-          if (!document.hidden && isAuthenticated.value) {
-            showSessionWarning();
-          }
-        }, 1000);
-      }
+      const remaining = sessionMonitorTargetTime.value - Date.now();
+      const delay = remaining > 0 ? remaining : 1000;
+      visibilityTimer = setTimeout(() => {
+        if (!document.hidden && isAuthenticated.value && !isSessionWarningVisible.value) {
+          showSessionWarning();
+        }
+      }, delay);
     }
   };
 
@@ -989,20 +1110,33 @@ const parseJWTPayload = (token) => {
   // Logout guard to prevent multiple simultaneous logout calls
   let isLoggingOut = false;
 
-  // Logout function - manual logout (shared auth service not available)
+  // Logout function - Simplified for ESS Host iframe compatibility
   const logout = async (reason = 'User logged out') => {
     if (process.server) return;
 
     // Prevent multiple simultaneous logout calls
     if (isLoggingOut) {
+      if (process.dev) {
+        console.log('[AUTH] ⚠️ Logout already in progress, skipping...');
+      }
       return;
     }
 
     isLoggingOut = true;
 
     try {
-      // Note: Using local logout implementation
-      // The shared auth-service.js file doesn't exist, so we handle logout locally
+      // Save userId for logging before clearing
+      const loggedOutUserId = user.value?.id;
+      const isInIframe = window.parent !== window;
+
+      if (process.dev) {
+        console.log('[AUTH] 🚪 Starting logout process:', {
+          reason,
+          userId: loggedOutUserId,
+          isInIframe,
+          timestamp: new Date().toISOString()
+        });
+      }
 
       // Clear all timers
       clearAllTimers();
@@ -1016,10 +1150,11 @@ const parseJWTPayload = (token) => {
       isSessionWarningVisible.value = false;
       sessionCountdownTime.value = 0;
 
-      // Log logout event before clearing data
+      // Log logout event
       logger.authEvent('LOGOUT', {
-        userId: user.value?.id,
-        reason
+        userId: loggedOutUserId,
+        reason,
+        isInIframe
       });
 
       // Clear stored data - ESSHost format
@@ -1047,7 +1182,6 @@ const parseJWTPayload = (token) => {
       // Clear all sessionStorage (like mango implementation)
       sessionStorage.clear();
 
-
       // Show appropriate message
       if (reason.includes('Session expired') || reason.includes('inactivity')) {
         sessionExpired(reason);
@@ -1060,19 +1194,33 @@ const parseJWTPayload = (token) => {
         window.dispatchEvent(new CustomEvent('user-logout'));
       }
 
-      // If we're in an iframe, notify parent to logout and redirect
-      if (window.parent !== window) {
+      // CRITICAL: If in iframe, send postMessage FIRST before any redirect/unmount
+      if (isInIframe) {
         const getParentOrigin = () => {
           try {
             if (document.referrer) {
-              return new URL(document.referrer).origin;
+              const origin = new URL(document.referrer).origin;
+              if (process.dev) {
+                console.log('[AUTH] 📡 Detected parent origin from referrer:', origin);
+              }
+              return origin;
             }
-          } catch (e) {}
+          } catch (e) {
+            if (process.dev) {
+              console.warn('[AUTH] ⚠️ Could not parse referrer, using wildcard');
+            }
+          }
           return '*';
         };
 
         const parentOrigin = getParentOrigin();
-        // console.log('[AUTH] 🚪 Sending LOGOUT_REQUEST to parent:', parentOrigin);
+        
+        // IMPORTANT: Send postMessage IMMEDIATELY
+        console.log('[AUTH] 🚪 Sending LOGOUT_REQUEST to parent:', {
+          origin: parentOrigin,
+          reason,
+          timestamp: new Date().toISOString()
+        });
 
         window.parent.postMessage({
           type: 'LOGOUT_REQUEST',
@@ -1082,24 +1230,53 @@ const parseJWTPayload = (token) => {
           data: { reason }
         }, parentOrigin);
 
-        // Send completion message after short delay
-        setTimeout(() => {
-          window.parent.postMessage({
-            type: 'UPDATE_DATA_LOGOUT_COMPLETE',
-            source: 'update-data',
-            app_name: 'Update Data',
-            timestamp: new Date().toISOString()
-          }, parentOrigin);
-          // console.log('[AUTH] ✅ Sent LOGOUT_COMPLETE to parent');
-        }, 500);
+        // Send completion message with delay to ensure first message is received
+        await new Promise(resolve => {
+          setTimeout(() => {
+            window.parent.postMessage({
+              type: 'UPDATE_DATA_LOGOUT_COMPLETE',
+              source: 'update-data',
+              app_name: 'Update Data',
+              timestamp: new Date().toISOString()
+            }, parentOrigin);
+            
+            console.log('[AUTH] ✅ Sent LOGOUT_COMPLETE to parent');
+            resolve();
+          }, 300); // Reduced from 500ms to 300ms for faster response
+        });
+
+        // Wait a bit more to ensure parent receives messages before iframe potentially unmounts
+        await new Promise(resolve => setTimeout(resolve, 200));
+
+        if (process.dev) {
+          console.log('[AUTH] 🏁 Logout complete, parent should handle redirect');
+        }
+
+        // DON'T navigate in iframe - let parent handle it
+        // Parent (ESS Host) will handle the redirect to login
+
       } else {
-        // If not in iframe, redirect to login
+        // Standalone mode - redirect to login
+        if (process.dev) {
+          console.log('[AUTH] 🔄 Standalone mode, redirecting to /login');
+        }
         await navigateTo('/login');
       }
+
+    } catch (error) {
+      // Log any errors but don't throw - logout must always succeed
+      console.error('[AUTH] ❌ Logout error:', error);
+      logger.authError('LOGOUT_ERROR', error, {
+        reason,
+        message: 'Logout completed despite error'
+      });
     } finally {
       // Reset logout guard after a delay
       setTimeout(() => {
         isLoggingOut = false;
+        if (process.dev) {
+          console.log('[AUTH] 🔓 Logout guard released');
+        }
       }, 1000);
     }
   };
@@ -1177,6 +1354,17 @@ const parseJWTPayload = (token) => {
       clearTimeout(visibilityTimer);
       visibilityTimer = null;
     }
+    if (lastChanceTimer) {
+      clearTimeout(lastChanceTimer);
+      lastChanceTimer = null;
+    }
+    if (lastChanceCheckTimer) {
+      clearTimeout(lastChanceCheckTimer);
+      lastChanceCheckTimer = null;
+    }
+    
+    // Stop last chance monitoring
+    stopLastChanceMonitoring('cleanup');
   };
 
 /**
@@ -1477,6 +1665,10 @@ const initializeUserData = async () => {
     // Session state
     isSessionWarningVisible: computed(() => isSessionWarningVisible.value),
     sessionCountdownTime: computed(() => sessionCountdownTime.value),
+    sessionMonitorStartTime: computed(() => sessionMonitorStartTime.value),
+    sessionMonitorTargetTime: computed(() => sessionMonitorTargetTime.value),
+    lastActivityTime: computed(() => lastActivityTime.value),
+    isLastChanceMonitoringActive: computed(() => isLastChanceMonitoringActive.value),
     
     // Account lockout state
     failedLoginAttempts: computed(() => failedLoginAttempts.value),
@@ -1497,6 +1689,7 @@ const initializeUserData = async () => {
     // Session management
     extendSession,
     resetActivityTimer,
+    showSessionWarning, // For debug panel
     
     // ADDED: User data functions
     getUserDetail,

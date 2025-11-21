@@ -4,7 +4,7 @@ import { $fetch } from 'ofetch';
 import envConfig from '~/config/environment.js';
 
 export default defineEventHandler(async (event) => {
-  console.log('[Employee Emergency Contact] Request received');
+  // console.log('[Employee Emergency Contact] Request received');
 
   try {
 
@@ -24,14 +24,14 @@ export default defineEventHandler(async (event) => {
 
 
     if (!token) {
-      console.log('[Employee Emergency Contact] No authentication token provided');
+      // console.log('[Employee Emergency Contact] No authentication token provided');
       throw createError({
         statusCode: 401,
         statusMessage: 'Unauthorized - No authentication token provided'
       });
     }
 
-    console.log('[Employee Emergency Contact] Forwarding request to API:', `${envConfig.API_BASE_URL}/employee/emergency-contact`);
+    // console.log('[Employee Emergency Contact] Forwarding request to API:', `${envConfig.API_BASE_URL}/employee/emergency-contact`);
 
     // Forward to correct API endpoint
     const response = await $fetch(`${envConfig.API_BASE_URL}/employee/emergency-contact`, {
@@ -42,7 +42,7 @@ export default defineEventHandler(async (event) => {
       }
     });
 
-    console.log('[Employee Emergency Contact] Response received successfully');
+    // console.log('[Employee Emergency Contact] Response received successfully');
 
     // Normalize response shape for frontend (success/data)
     if (response && response.status && response.data) {
@@ -56,7 +56,7 @@ export default defineEventHandler(async (event) => {
     return { success: true, status: 200, data: response };
   } catch (error) {
     // Error handling for emergency contact data retrieval
-    console.error('[Employee Emergency Contact] Error:', error.message);
+    // console.error('[Employee Emergency Contact] Error:', error.message);
 
     // Proper error handling
     if (error.statusCode === 401) {
