@@ -27,10 +27,10 @@ export default defineEventHandler(async (event) => {
     const parentId = getRouterParam(event, 'parent_id');
     const itemId = getRouterParam(event, 'item_id');
 
-    console.log('[Attachment Download Parent] Request:', {
-      parentId,
-      itemId
-    });
+    // console.log('[Attachment Download Parent] Request:', {
+    //   parentId,
+    //   itemId
+    // });
 
     if (!parentId || !itemId) {
       throw createError({
@@ -58,7 +58,7 @@ export default defineEventHandler(async (event) => {
     const endpointTemplate = envConfig.API_ENDPOINTS?.EMPLOYEE?.ATTACHMENTS?.DOWNLOAD_PARENT_ITEM || '/employee/attachments/parent/{parent_id}/item/{item_id}/download';
     const targetUrl = `${apiBaseUrl}${endpointTemplate.replace('{parent_id}', parentId).replace('{item_id}', itemId)}`;
 
-    console.log('[Attachment Download Parent] Forwarding to:', targetUrl);
+    // console.log('[Attachment Download Parent] Forwarding to:', targetUrl);
 
     // Fetch the file from backend with increased timeout for file downloads
     const controller = new AbortController()
@@ -75,16 +75,16 @@ export default defineEventHandler(async (event) => {
 
     clearTimeout(timeoutId)
 
-    console.log('[Attachment Download Parent] Response:', {
-      status: response.status,
-      statusText: response.statusText,
-      contentType: response.headers.get('content-type')
-    });
+    // console.log('[Attachment Download Parent] Response:', {
+    //   status: response.status,
+    //   statusText: response.statusText,
+    //   contentType: response.headers.get('content-type')
+    // });
 
     // Check if API request was successful
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('[Attachment Download Parent] API Error:', errorText);
+      // console.error('[Attachment Download Parent] API Error:', errorText);
 
       throw createError({
         statusCode: response.status,
@@ -126,7 +126,7 @@ export default defineEventHandler(async (event) => {
     }
 
   } catch (error) {
-    console.error('[Attachment Download Parent] Error:', error);
+    // console.error('[Attachment Download Parent] Error:', error);
 
     // If it's already a createError, re-throw it
     if (error.statusCode) {
