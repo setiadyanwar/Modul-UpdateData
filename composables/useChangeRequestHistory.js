@@ -310,7 +310,7 @@ export const useChangeRequestHistory = () => {
 
   // Delete change request
   const deleteChangeRequest = async (changeRequestId) => {
-    const response = await apiDelete(`/api/proxy/employee/change-request/${changeRequestId}`)
+    const response = await apiDelete(`/employee/change-request/${changeRequestId}`)
     if (response.success) {
       // ✅ OPTIMIZED: Only reload if we don't have recent data
       if (!requests.value || requests.value.length === 0) {

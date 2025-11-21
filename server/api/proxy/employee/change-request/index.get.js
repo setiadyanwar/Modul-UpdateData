@@ -7,10 +7,10 @@ export default defineEventHandler(async (event) => {
   const startTime = Date.now();
   const requestId = Math.random().toString(36).substring(2, 15);
 
-  console.log('[Change Request GET] Change request list endpoint called', {
-    requestId,
-    timestamp: new Date().toISOString()
-  });
+  // console.log('[Change Request GET] Change request list endpoint called', {
+  //   requestId,
+  //   timestamp: new Date().toISOString()
+  // });
 
   try {
     const query = getQuery(event)
@@ -19,9 +19,9 @@ export default defineEventHandler(async (event) => {
     // Auth header
     const authHeader = headers.authorization || headers.Authorization
     if (!authHeader) {
-      console.error('[Change Request GET] No authorization header found', {
-        requestId
-      });
+      // console.error('[Change Request GET] No authorization header found', {
+      //   requestId
+      // });
       return { success: false, message: 'Authorization header is required', status: 401 }
     }
 
@@ -33,11 +33,11 @@ export default defineEventHandler(async (event) => {
     const qs = searchParams.toString()
     const targetUrl = `${apiBaseUrl}/employee/change-request${qs ? `?${qs}` : ''}`
 
-    console.log('[Change Request GET] Calling API', {
-      requestId,
-      targetUrl,
-      hasQuery: qs.length > 0
-    });
+    // console.log('[Change Request GET] Calling API', {
+    //   requestId,
+    //   targetUrl,
+    //   hasQuery: qs.length > 0
+    // });
 
     const apiHeaders = {
       'Authorization': authHeader,
@@ -54,11 +54,11 @@ export default defineEventHandler(async (event) => {
     const text = await resp.text()
     const duration = Date.now() - startTime;
 
-    console.log('[Change Request GET] API response received', {
-      requestId,
-      status: resp.status,
-      duration: `${duration}ms`
-    });
+    // console.log('[Change Request GET] API response received', {
+    //   requestId,
+    //   status: resp.status,
+    //   duration: `${duration}ms`
+    // });
 
     logger.apiResponse('GET', targetUrl, resp.status, duration, {
       module: 'CHANGE_REQUEST_LIST',
@@ -70,10 +70,10 @@ export default defineEventHandler(async (event) => {
     try {
       data = text ? JSON.parse(text) : {}
     } catch (parseError) {
-      console.warn('[Change Request GET] Failed to parse API response as JSON', {
-        requestId,
-        responseText: text?.substring(0, 200)
-      });
+      // console.warn('[Change Request GET] Failed to parse API response as JSON', {
+      //   requestId,
+      //   responseText: text?.substring(0, 200)
+      // });
       logger.warn('Failed to parse API response as JSON', {
         module: 'CHANGE_REQUEST_LIST',
         action: 'JSON_PARSE_ERROR',
@@ -88,12 +88,12 @@ export default defineEventHandler(async (event) => {
                            data?.data?.action === 'refresh_token'
 
     if (!resp.ok || isTokenExpired) {
-      console.error('[Change Request GET] API request failed', {
-        requestId,
-        status: resp.status,
-        isTokenExpired,
-        response: text?.substring(0, 200)
-      });
+      // console.error('[Change Request GET] API request failed', {
+      //   requestId,
+      //   status: resp.status,
+      //   isTokenExpired,
+      //   response: text?.substring(0, 200)
+      // });
 
       logger.apiError('GET', targetUrl, {
         message: 'API request failed',
@@ -135,11 +135,11 @@ export default defineEventHandler(async (event) => {
       list = []
     }
 
-    console.log('[Change Request GET] Change request list retrieved successfully', {
-      requestId,
-      itemCount: list.length,
-      duration: `${duration}ms`
-    });
+    // console.log('[Change Request GET] Change request list retrieved successfully', {
+    //   requestId,
+    //   itemCount: list.length,
+    //   duration: `${duration}ms`
+    // });
 
     logger.info('Change request list retrieved successfully', {
       module: 'CHANGE_REQUEST_LIST',
@@ -156,11 +156,11 @@ export default defineEventHandler(async (event) => {
   } catch (error) {
     const duration = Date.now() - startTime;
 
-    console.error('[Change Request GET] Unexpected error', {
-      requestId,
-      duration: `${duration}ms`,
-      error: error instanceof Error ? error.message : String(error)
-    });
+    // console.error('[Change Request GET] Unexpected error', {
+    //   requestId,
+    //   duration: `${duration}ms`,
+    //   error: error instanceof Error ? error.message : String(error)
+    // });
 
     logger.error('Unexpected error in change request list endpoint', error, {
       module: 'CHANGE_REQUEST_LIST',

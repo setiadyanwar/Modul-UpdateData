@@ -1,16 +1,16 @@
-import { defineEventHandler, getQuery, getHeaders } from 'h3'
+import { defineEventHandler, getHeaders } from 'h3'
 import envConfig from '~/config/environment.js';
 
 export default defineEventHandler(async (event) => {
-  // console.log('[Change Request GET by ID] Get change request by ID endpoint called', {
-  //   timestamp: new Date().toISOString()
-  // });
+  console.log('[Change Request DELETE] Delete change request endpoint called', {
+    timestamp: new Date().toISOString()
+  });
 
   try {
     // Get change request ID from URL params
     const changeRequestId = event.context.params?.id
     if (!changeRequestId) {
-      // console.error('[Change Request GET by ID] No change request ID provided');
+      console.error('[Change Request DELETE] No change request ID provided');
       return {
         success: false,
         message: 'Change request ID is required',
@@ -18,12 +18,9 @@ export default defineEventHandler(async (event) => {
       }
     }
 
-    // console.log('[Change Request GET by ID] Processing request', {
-    //   changeRequestId
-    // });
-
-    // Get query parameters
-    const query = getQuery(event)
+    console.log('[Change Request DELETE] Processing delete request', {
+      changeRequestId
+    });
 
     // Get headers
     const headers = getHeaders(event)
@@ -31,7 +28,7 @@ export default defineEventHandler(async (event) => {
     // Extract authorization token
     const authHeader = headers.authorization || headers.Authorization
     if (!authHeader) {
-      // console.error('[Change Request GET by ID] No authorization header found');
+      console.error('[Change Request DELETE] No authorization header found');
       return {
         success: false,
         message: 'Authorization header is required',
@@ -39,17 +36,16 @@ export default defineEventHandler(async (event) => {
       }
     }
 
-
     // API base URL from environment
     const apiBaseUrl = envConfig?.API_BASE_URL || process.env.API_BASE_URL
 
     // Build target URL for the real API
     const targetUrl = `${apiBaseUrl}/employee/change-request/${changeRequestId}`
 
-    // console.log('[Change Request GET by ID] Calling API', {
-    //   targetUrl,
-    //   changeRequestId
-    // });
+    console.log('[Change Request DELETE] Calling API', {
+      targetUrl,
+      changeRequestId
+    });
 
     // Prepare headers for the real API call
     const apiHeaders = {
@@ -60,29 +56,28 @@ export default defineEventHandler(async (event) => {
     if (headers['x-request-id']) apiHeaders['X-Request-ID'] = headers['x-request-id']
     if (headers['user-agent']) apiHeaders['User-Agent'] = headers['user-agent']
 
-
     // Make the actual API call to the real backend
     const response = await fetch(targetUrl, {
-      method: 'GET',
+      method: 'DELETE',
       headers: apiHeaders
     })
 
-    // console.log('[Change Request GET by ID] API response received', {
-    //   status: response.status,
-    //   statusText: response.statusText,
-    //   changeRequestId
-    // });
+    console.log('[Change Request DELETE] API response received', {
+      status: response.status,
+      statusText: response.statusText,
+      changeRequestId
+    });
 
     // Get response text first
     const responseText = await response.text()
 
     // Check if response is successful
     if (!response.ok) {
-      // console.error('[Change Request GET by ID] API request failed', {
-      //   status: response.status,
-      //   changeRequestId,
-      //   response: responseText?.substring(0, 200)
-      // });
+      console.error('[Change Request DELETE] API request failed', {
+        status: response.status,
+        changeRequestId,
+        response: responseText?.substring(0, 200)
+      });
 
       // Try to parse error response
       let errorData
@@ -105,48 +100,49 @@ export default defineEventHandler(async (event) => {
     try {
       responseData = responseText ? JSON.parse(responseText) : {}
     } catch (e) {
-      // If response is empty or not JSON, return error
+      // If response is empty (common for DELETE), that's OK
       if (responseText.trim() === '') {
-        // console.error('[Change Request GET by ID] Empty response from API', {
-        //   changeRequestId
-        // });
+        console.log('[Change Request DELETE] Empty response from API (expected for DELETE)', {
+          changeRequestId
+        });
         return {
-          success: false,
-          message: 'Empty response from API',
-          status: 500
+          success: true,
+          message: 'Change request deleted successfully',
+          status: 200,
+          data: { id: changeRequestId }
         }
       }
-      // If response is not JSON but has content, return as text
-      // console.warn('[Change Request GET by ID] Non-JSON response', {
-      //   changeRequestId,
-      //   response: responseText?.substring(0, 100)
-      // });
+      // If response is not JSON but has content
+      console.warn('[Change Request DELETE] Non-JSON response', {
+        changeRequestId,
+        response: responseText?.substring(0, 100)
+      });
       return {
         success: true,
-        message: 'Change request retrieved successfully',
+        message: 'Change request deleted successfully',
         status: 200,
         data: { id: changeRequestId, raw_response: responseText }
       }
     }
 
-    // console.log('[Change Request GET by ID] Change request retrieved successfully', {
-    //   changeRequestId,
-    //   hasData: !!responseData
-    // });
+    console.log('[Change Request DELETE] Change request deleted successfully', {
+      changeRequestId,
+      hasData: !!responseData
+    });
 
     // Return the response data
     return {
       success: true,
-      message: 'Change request retrieved successfully',
+      message: 'Change request deleted successfully',
       status: 200,
       data: responseData
     }
 
   } catch (error) {
-    // console.error('[Change Request GET by ID] Unexpected error', {
-    //   error: error instanceof Error ? error.message : String(error),
-    //   stack: error instanceof Error ? error.stack : undefined
-    // });
+    console.error('[Change Request DELETE] Unexpected error', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined
+    });
 
     return {
       success: false,

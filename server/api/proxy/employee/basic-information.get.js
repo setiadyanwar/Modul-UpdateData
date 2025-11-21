@@ -4,7 +4,7 @@ import { $fetch } from 'ofetch';
 import envConfig from '~/config/environment.js';
 
 export default defineEventHandler(async (event) => {
-  console.log('[Employee Basic Info] Request received');
+  // console.log('[Employee Basic Info] Request received');
 
   try {
 
@@ -24,14 +24,14 @@ export default defineEventHandler(async (event) => {
 
 
     if (!token) {
-      console.log('[Employee Basic Info] No authentication token provided');
+      // console.log('[Employee Basic Info] No authentication token provided');
       throw createError({
         statusCode: 401,
         statusMessage: 'Unauthorized - No authentication token provided'
       });
     }
 
-    console.log('[Employee Basic Info] Forwarding request to API:', `${envConfig.API_BASE_URL}${envConfig.API_ENDPOINTS.EMPLOYEE.BASIC_INFORMATION}`);
+    // console.log('[Employee Basic Info] Forwarding request to API:', `${envConfig.API_BASE_URL}${envConfig.API_ENDPOINTS.EMPLOYEE.BASIC_INFORMATION}`);
 
     // Forward to correct API endpoint
     const response = await $fetch(`${envConfig.API_BASE_URL}${envConfig.API_ENDPOINTS.EMPLOYEE.BASIC_INFORMATION}`, {
@@ -42,7 +42,7 @@ export default defineEventHandler(async (event) => {
       }
     });
 
-    console.log('[Employee Basic Info] Response received successfully');
+    // console.log('[Employee Basic Info] Response received successfully');
 
     // Normalize response shape for frontend (success/data)
     if (response && response.status && response.data) {
@@ -56,7 +56,7 @@ export default defineEventHandler(async (event) => {
     return { success: true, status: 200, data: response };
   } catch (error) {
     // Error handling for basic information retrieval
-    console.error('[Employee Basic Info] Error:', error.message);
+    // console.error('[Employee Basic Info] Error:', error.message);
 
     // ✅ ENHANCED: Proper error handling without mock data
     if (error.statusCode === 401) {
