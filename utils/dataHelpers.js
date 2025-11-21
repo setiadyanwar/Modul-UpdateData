@@ -9,52 +9,43 @@
  * - Number vs string comparisons ("0" vs 0)
  * - Whitespace differences
  * - Object/array reference vs value comparisons
+ * 
+ * NOTE: normalizeValue and deepEqualNormalized are available in utils/normalizeData.js
+ * Those functions were removed from this file to avoid duplicate export warnings.
+ * Use utils/normalizeData.js for normalizeValue and deepEqualNormalized.
  */
+
+import { normalizeValue } from '~/utils/normalizeData';
 
 /**
  * Normalize a single value for consistent comparison
- *
- * Rules:
- * - null, undefined, "" → "" (empty string)
- * - Numbers → Strings (for consistent comparison)
- * - Strings → Trimmed (remove leading/trailing whitespace)
- * - Other types → As-is
- *
+ * 
+ * NOTE: This function is duplicated in utils/normalizeData.js
+ * The version in normalizeData.js is the one being used.
+ * This function is kept for backward compatibility but should not be used.
+ * 
+ * @deprecated Use normalizeValue from '~/utils/normalizeData' instead
  * @param {*} value - The value to normalize
  * @returns {*} Normalized value
  */
-export const normalizeValue = (value) => {
-  // Treat null, undefined, and empty string as equivalent
-  if (value === null || value === undefined || value === "") {
-    return "";
-  }
-
-  // Convert numbers to strings for consistent comparison
-  // This prevents issues like "0" !== 0
-  if (typeof value === 'number') {
-    return String(value);
-  }
-
-  // Trim whitespace from strings
-  if (typeof value === 'string') {
-    return value.trim();
-  }
-
-  // Return other types as-is (booleans, etc.)
-  return value;
-};
+// Removed to avoid duplicate export warning
+// Use normalizeValue from utils/normalizeData.js instead
 
 /**
  * Recursively normalize an object or array
  *
  * - Handles nested objects
  * - Handles arrays (including arrays of objects)
- * - Applies normalizeValue to all leaf values
+ * - Applies normalization to all leaf values
+ * 
+ * NOTE: Uses normalizeValue from utils/normalizeData.js internally
  *
  * @param {Object|Array} obj - The object or array to normalize
  * @returns {Object|Array} Normalized object or array
  */
 export const normalizeObject = (obj) => {
+  // normalizeValue is imported from normalizeData.js at the top of the file
+  
   // Handle null/undefined
   if (obj === null || obj === undefined) {
     return null;
@@ -102,36 +93,24 @@ export const normalizeObject = (obj) => {
 
 /**
  * Deep equal comparison with automatic normalization
- *
- * This is the main function to use for change detection.
- * It normalizes both objects before comparing, ensuring:
- * - null vs "" vs undefined are treated as equal
- * - "0" vs 0 are treated as equal
- * - Whitespace differences are ignored
- *
+ * 
+ * NOTE: This function is duplicated in utils/normalizeData.js
+ * The version in normalizeData.js is the one being used.
+ * This function is kept for backward compatibility but should not be used.
+ * 
+ * @deprecated Use deepEqualNormalized from '~/utils/normalizeData' instead
  * @param {*} a - First value/object to compare
  * @param {*} b - Second value/object to compare
  * @returns {boolean} True if equal after normalization
  */
-export const deepEqualNormalized = (a, b) => {
-  // Normalize both values first
-  const normA = typeof a === 'object' && a !== null
-    ? normalizeObject(a)
-    : normalizeValue(a);
-
-  const normB = typeof b === 'object' && b !== null
-    ? normalizeObject(b)
-    : normalizeValue(b);
-
-  // Then do strict comparison
-  return deepEqualStrict(normA, normB);
-};
+// Removed to avoid duplicate export warning
+// Use deepEqualNormalized from utils/normalizeData.js instead
 
 /**
  * Strict deep equal comparison (after normalization)
  *
  * This function assumes values are already normalized.
- * Do not call directly - use deepEqualNormalized instead.
+ * Used internally by findDifferences and hasChanges.
  *
  * @private
  * @param {*} a - First value to compare
@@ -225,7 +204,10 @@ export const findDifferences = (original, current) => {
  * @returns {boolean} True if objects differ
  */
 export const hasChanges = (original, current) => {
-  return !deepEqualNormalized(original, current);
+  // Use normalizeObject and deepEqualStrict instead of removed deepEqualNormalized
+  const normOriginal = normalizeObject(original);
+  const normCurrent = normalizeObject(current);
+  return !deepEqualStrict(normOriginal, normCurrent);
 };
 
 /**
@@ -243,10 +225,10 @@ export const cloneNormalized = (obj) => {
 };
 
 // Export all functions
+// Note: normalizeValue and deepEqualNormalized removed to avoid duplicate export warning
+// Use utils/normalizeData.js instead for those functions
 export default {
-  normalizeValue,
   normalizeObject,
-  deepEqualNormalized,
   findDifferences,
   hasChanges,
   cloneNormalized
