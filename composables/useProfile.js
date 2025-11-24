@@ -1,11 +1,11 @@
 /**
  * User Profile Management
  * Simplified profile system that works with new authentication core
- * 
+ *
  * @version 2.0.0
  */
 
-import { ref, computed, watch, nextTick } from "vue";
+import { ref, computed, watch, nextTick, onUnmounted } from "vue";
 import { useAuthenticationCore } from "./useAuthenticationCore";
 
 export const useProfile = () => {
@@ -200,12 +200,13 @@ export const useProfile = () => {
 export const useUserRoles = () => {
   const userRoles = ref([]);
 
-  const loadUserRoles = async () => {
+  const loadUserRoles = () => {
     // Try to load from localStorage first
     const rolesString = localStorage.getItem('user_roles');
     if (rolesString) {
       try {
-        userRoles.value = JSON.parse(rolesString);
+        const parsed = JSON.parse(rolesString);
+        userRoles.value = parsed;
         return;
       } catch (error) {
         // console.error('[useUserRoles] Error parsing user_roles:', error);
@@ -231,13 +232,36 @@ export const useUserRoles = () => {
     // console.warn('[useUserRoles] No roles found in localStorage');
   };
 
-  // Auto-load on first access
-  if (userRoles.value.length === 0) {
-    loadUserRoles();
+  // Load roles on initialization
+  loadUserRoles();
+
+  // ✅ FIX: Listen to custom event when roles are saved (fixes first load issue)
+  // This ensures roles update in real-time when UserStorage.saveRoles() is called
+  if (process.client) {
+    const handleRolesSaved = () => {
+      loadUserRoles(); // Reload when roles change
+    };
+
+    // Listen to custom event from UserStorage
+    window.addEventListener('user-roles-saved', handleRolesSaved);
+
+    // Listen to storage events for cross-tab sync
+    window.addEventListener('storage', (event) => {
+      if (event.key === 'user_roles') {
+        loadUserRoles();
+      }
+    });
+
+    // Cleanup on unmount (Vue 3 lifecycle)
+    if (typeof onUnmounted === 'function') {
+      onUnmounted(() => {
+        window.removeEventListener('user-roles-saved', handleRolesSaved);
+      });
+    }
   }
 
   return {
-    userRoles,
+    userRoles: computed(() => userRoles.value),
     loadUserRoles,
   };
 };
