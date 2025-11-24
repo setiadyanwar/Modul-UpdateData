@@ -19,7 +19,8 @@ import { navigateTo } from '#app';
 import { useToast } from '~/composables/useToast';
 import envConfig from '~/config/environment.js';
 import { logger } from '~/utils/logger';
-import { ROLE_PERMISSIONS } from './useRBAC'
+import { ROLE_PERMISSIONS } from './useRBAC';
+import UserStorage from '~/utils/userStorage';
 
 
 // Global authentication state
@@ -924,8 +925,9 @@ const parseJWTPayload = (token) => {
         user.value = response.data;
         isAuthenticated.value = true;
 
-        // Store tokens and user data
-        localStorage.setItem('user', JSON.stringify(response.data));
+        // Store user data using centralized utility
+        UserStorage.saveUser(response.data);
+        // Store tokens
         localStorage.setItem('access_token', response.token.access_token);
         localStorage.setItem('refresh_token', response.token.refresh_token);
 
@@ -1289,13 +1291,13 @@ const parseJWTPayload = (token) => {
   // Check existing authentication state
   const checkAuth = async () => {
     if (process.server) return;
-    
-    const storedUser = localStorage.getItem('user');
+
+    const storedUser = UserStorage.getUser(); // Use centralized utility
     const accessToken = localStorage.getItem('access_token');
-    
+
     if (storedUser && accessToken) {
       try {
-        const parsedUser = JSON.parse(storedUser);
+        const parsedUser = storedUser; // Already parsed by UserStorage
         const tokenStatus = getTokenStatus(accessToken);
         
         if (tokenStatus === 'VALID' || tokenStatus === 'NEEDS_REFRESH') {
@@ -1414,14 +1416,17 @@ const getUserDetail = async () => {
         name: response.data.name || user.value?.name
       };
 
+      // Store updated user data using centralized utility
+      UserStorage.saveUser(user.value);
+
       // Log successful user detail fetch
       logger.authEvent('USER_DETAIL_FETCHED', {
         userId: response.data.employee_id,
         userEmail: response.data.email
       });
 
-      return { 
-        success: true, 
+      return {
+        success: true,
         data: response.data,
         message: 'User detail fetched successfully'
       };
@@ -1452,9 +1457,14 @@ const getUserDetail = async () => {
 
     return { success: false, message: errorMessage };
   } finally {
-    localStorage.setItem('user', JSON.stringify(user.value));
-    localStorage.setItem('user_roles', JSON.stringify(user.value.roles));
-    
+    // Store updated user data using centralized utility
+    if (user.value) {
+      UserStorage.saveUser(user.value);
+      if (user.value.roles) {
+        UserStorage.saveRoles(user.value.roles);
+      }
+    }
+
     isLoading.value = false;
   }
 };

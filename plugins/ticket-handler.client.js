@@ -4,23 +4,12 @@
  * Based on Mango's ticket-handler mechanism
  */
 import { nextTick } from 'vue';
+import UserStorage from '~/utils/userStorage';
 
 export default defineNuxtPlugin((nuxtApp) => {
   if (process.server) return;
-
-  // console.log('=== [Update-Data Ticket Handler] Initializing ===');
-  // console.log('[Ticket Handler] Environment:', process.client ? 'CLIENT ✅' : 'SERVER');
-  // console.log('[Ticket Handler] Current URL:', window.location.href);
-  // console.log('[Ticket Handler] Is iframe?', window.parent !== window);
-  // console.log('[Ticket Handler] Parent origin:', document.referrer || 'NONE');
-
   const route = useRoute();
   const router = useRouter();
-
-  // console.log('[Ticket Handler] Route path:', route.path);
-  // console.log('[Ticket Handler] Route query:', route.query);
-  // console.log('[Ticket Handler] Route fullPath:', route.fullPath);
-
   /**
    * Process ticket exchange
    * Exchanges SSO ticket directly with essbe API (POST /auth/ticket/login)
@@ -63,6 +52,11 @@ export default defineNuxtPlugin((nuxtApp) => {
 
         // console.log('[Ticket Handler] ✅ Tokens saved to localStorage');
 
+        // ✅ Save user data using centralized utility (validates and normalizes)
+        if (response.data) {
+          UserStorage.saveUser(response.data);
+        }
+
         // Step 2a: Parse JWT to extract roles and permissions early
         try {
           const parseJWTPayload = (token) => {
@@ -98,14 +92,14 @@ export default defineNuxtPlugin((nuxtApp) => {
               return [];
             })();
             if (normRoles.length) {
-              localStorage.setItem('user_roles', JSON.stringify(normRoles));
+              UserStorage.saveRoles(normRoles);
               // console.log('[Ticket Handler] ✅ User roles saved from JWT payload:', normRoles);
             }
 
             // Direct permissions from payload.access (array of strings) → normalize to objects
             if (Array.isArray(payload.access) && payload.access.length) {
               const perms = payload.access.map((p) => ({ permission_code: p }));
-              localStorage.setItem('user_permissions', JSON.stringify(perms));
+              UserStorage.savePermissions(perms);
               // console.log('[Ticket Handler] ✅ Permissions saved from JWT payload.access');
             }
           }
@@ -118,10 +112,7 @@ export default defineNuxtPlugin((nuxtApp) => {
           const { useAuthenticationCore } = await import('~/composables/useAuthenticationCore');
           const auth = useAuthenticationCore();
           // Ensure minimal user state exists for auth core
-          // Save basic user data first so checkAuth can pick it up
-          if (response.data) {
-            localStorage.setItem('user', JSON.stringify(response.data));
-          }
+          // Save basic user data first so checkAuth can pick it up (already saved above via UserStorage)
           // Let auth core read tokens and user from localStorage
           await auth.checkAuth();
           const initResult = await auth.initializeUserData();
@@ -131,13 +122,7 @@ export default defineNuxtPlugin((nuxtApp) => {
         }
         // console.log('[Ticket Handler] Token check:', localStorage.getItem('access_token') ? 'EXISTS' : 'NOT FOUND');
 
-        // Step 3: Store user data
-        if (response.data) {
-          localStorage.setItem('user', JSON.stringify(response.data));
-          // console.log('[Ticket Handler] ✅ User data saved:', response.data);
-        } else {
-          // console.warn('[Ticket Handler] ⚠️ No user data in response!');
-        }
+        // Step 3: User data already saved above via UserStorage.saveUser()
 
         // Utility: normalize permissions to [{ permission_code: string }]
         const normalizePermissions = (val) => {
@@ -213,14 +198,14 @@ export default defineNuxtPlugin((nuxtApp) => {
               ? userDetailResponse.data.data
               : userDetailResponse.data;
             if (payload && typeof payload === 'object') {
-              localStorage.setItem('user', JSON.stringify(payload));
+              UserStorage.saveUser(payload);
               // console.log('[Ticket Handler] ✅ Full user data updated');
 
               // Store roles if available (normalized to array of { role_id?, role_name })
               const rawRoles = payload.user_roles || payload.roles || payload.role_list || payload.userRoles;
               const roles = normalizeRoles(rawRoles);
               if (roles.length) {
-                localStorage.setItem('user_roles', JSON.stringify(roles));
+                UserStorage.saveRoles(roles);
                 // console.log('[Ticket Handler] ✅ User roles saved (normalized objects):', roles);
               }
 
@@ -228,7 +213,7 @@ export default defineNuxtPlugin((nuxtApp) => {
               const rawPerms = payload.permissions || payload.user_permissions;
               if (rawPerms) {
                 const permissions = normalizePermissions(rawPerms);
-                localStorage.setItem('user_permissions', JSON.stringify(permissions));
+                UserStorage.savePermissions(permissions);
                 // console.log('[Ticket Handler] ✅ User permissions saved (normalized):', permissions);
               }
             }
@@ -243,21 +228,21 @@ export default defineNuxtPlugin((nuxtApp) => {
         if (response.user_roles || response.roles) {
           const roles = normalizeRoles(response.user_roles || response.roles);
           if (roles.length) {
-            localStorage.setItem('user_roles', JSON.stringify(roles));
+            UserStorage.saveRoles(roles);
             // console.log('[Ticket Handler] ✅ User roles from ticket response saved (normalized objects)');
           }
         }
 
         if (response.user_permissions) {
           const permissions = normalizePermissions(response.user_permissions);
-          localStorage.setItem('user_permissions', JSON.stringify(permissions));
+          UserStorage.savePermissions(permissions);
           // console.log('[Ticket Handler] ✅ User permissions from ticket response saved (normalized)');
         }
 
         // Map permissions/roles from ticket response if present
         if (Array.isArray(response.access) && response.access.length) {
           const permissions = normalizePermissions(response.access);
-          localStorage.setItem('user_permissions', JSON.stringify(permissions));
+          UserStorage.savePermissions(permissions);
           // console.log('[Ticket Handler] ✅ Permissions from ticket response saved (normalized from response.access)');
         }
 
@@ -265,9 +250,9 @@ export default defineNuxtPlugin((nuxtApp) => {
         // console.log('[Ticket Handler] 📋 Final localStorage check:');
         // console.log('  - access_token:', localStorage.getItem('access_token') ? '✅ EXISTS' : '❌ MISSING');
         // console.log('  - refresh_token:', localStorage.getItem('refresh_token') ? '✅ EXISTS' : '❌ MISSING');
-        // console.log('  - user:', localStorage.getItem('user') ? '✅ EXISTS' : '❌ MISSING');
-        // console.log('  - user_roles:', localStorage.getItem('user_roles') ? '✅ EXISTS' : '⚠️ MISSING');
-        // console.log('  - user_permissions:', localStorage.getItem('user_permissions') ? '✅ EXISTS' : '⚠️ MISSING');
+        // console.log('  - user:', UserStorage.hasUser() ? '✅ EXISTS' : '❌ MISSING');
+        // console.log('  - user_roles:', UserStorage.getRoles().length > 0 ? '✅ EXISTS' : '⚠️ MISSING');
+        // console.log('  - user_permissions:', UserStorage.getPermissions().length > 0 ? '✅ EXISTS' : '⚠️ MISSING');
 
         // Step 7: Redirect to last visited route (if reload) or default /update-data (if fresh login)
         // ✅ FIX: Validate targetRoute to prevent malformed URLs from localStorage
@@ -380,60 +365,67 @@ export default defineNuxtPlugin((nuxtApp) => {
       // console.log('[Ticket Handler] ✅ Ticket already processed and token still valid - skipping exchange');
       // console.log('[Ticket Handler] 🎉 Using existing token from localStorage');
 
-      // ✅ Trigger auth state restore immediately (use IIFE for async)
+      // ✅ Restore auth state and initialize (SEQUENTIAL to prevent race condition)
       (async () => {
         try {
           const { useAuthState } = await import('~/composables/useAuthState');
           const { setAuthReady } = useAuthState();
 
           const storedToken = localStorage.getItem('access_token');
-          const storedUser = localStorage.getItem('user');
-          const storedRoles = localStorage.getItem('user_roles');
-          const storedPermissions = localStorage.getItem('user_permissions');
-
-          const user = storedUser ? JSON.parse(storedUser) : null;
-          const roles = storedRoles ? JSON.parse(storedRoles) : null;
-          const permissions = storedPermissions ? JSON.parse(storedPermissions) : null;
+          const user = UserStorage.getUser(); // Use centralized utility
+          const roles = UserStorage.getRoles();
+          const permissions = UserStorage.getPermissions();
 
           setAuthReady(storedToken, user, roles, permissions);
           // console.log('[Ticket Handler] 🔐 Auth state restored from existing session');
+
+          // ✅ FIX: Also initialize auth core like fresh ticket path
+          // This ensures user.value is set in useAuthenticationCore, which triggers useProfile watcher
+          // Without this, Header will stuck in skeleton loading because isProfileLoaded stays false
+          const { useAuthenticationCore } = await import('~/composables/useAuthenticationCore');
+          const auth = useAuthenticationCore();
+          await auth.checkAuth(); // Sets user.value from localStorage
+          // console.log('[Ticket Handler] ✅ Auth core initialized from cached session');
+
+          // ✅ Wait for reactive updates to propagate
+          await nextTick();
+
+          // ✅ THEN redirect (auth is guaranteed ready) - FIX RACE CONDITION
+          let lastRoute = localStorage.getItem('last_visited_route') || '/update-data';
+
+          // ✅ FIX: Validate lastRoute to prevent malformed URLs
+          if (lastRoute.includes('http://') || lastRoute.includes('https://')) {
+            // console.warn('[Ticket Handler] ⚠️ Malformed route detected in localStorage:', lastRoute);
+            // console.warn('[Ticket Handler] 🔧 Resetting to default route: /update-data');
+            lastRoute = '/update-data';
+            // Update localStorage with corrected value
+            localStorage.setItem('last_visited_route', '/update-data');
+          }
+
+          const hasLastRoute = !!localStorage.getItem('last_visited_route');
+
+          // console.log('[Ticket Handler] 🔍 Checking last visited route:', {
+          //   lastRoute,
+          //   hasLastRoute,
+          //   willRedirectTo: lastRoute,
+          //   isDefaultFallback: !hasLastRoute
+          // });
+
+          if (!hasLastRoute) {
+            // console.warn('[Ticket Handler] ⚠️ No last_visited_route found in localStorage - using default /update-data');
+          } else {
+            // console.log('[Ticket Handler] ✅ Found last_visited_route in localStorage:', lastRoute);
+          }
+
+          // console.log('[Ticket Handler] 🚀 Redirecting to:', lastRoute);
+          window.history.replaceState({}, document.title, lastRoute);
+          router.push(lastRoute);
         } catch (error) {
           // console.error('[Ticket Handler] ❌ Error restoring auth state:', error);
+          // Fallback: redirect to home on error
+          router.push('/');
         }
       })();
-
-      // ✅ Redirect to last visited route or fallback to /update-data
-      setTimeout(() => {
-        let lastRoute = localStorage.getItem('last_visited_route') || '/update-data';
-
-        // ✅ FIX: Validate lastRoute to prevent malformed URLs
-        if (lastRoute.includes('http://') || lastRoute.includes('https://')) {
-          // console.warn('[Ticket Handler] ⚠️ Malformed route detected in localStorage:', lastRoute);
-          // console.warn('[Ticket Handler] 🔧 Resetting to default route: /update-data');
-          lastRoute = '/update-data';
-          // Update localStorage with corrected value
-          localStorage.setItem('last_visited_route', '/update-data');
-        }
-
-        const hasLastRoute = !!localStorage.getItem('last_visited_route');
-
-        // console.log('[Ticket Handler] 🔍 Checking last visited route:', {
-        //   lastRoute,
-        //   hasLastRoute,
-        //   willRedirectTo: lastRoute,
-        //   isDefaultFallback: !hasLastRoute
-        // });
-
-        if (!hasLastRoute) {
-          // console.warn('[Ticket Handler] ⚠️ No last_visited_route found in localStorage - using default /update-data');
-        } else {
-          // console.log('[Ticket Handler] ✅ Found last_visited_route in localStorage:', lastRoute);
-        }
-
-        // console.log('[Ticket Handler] 🚀 Redirecting to:', lastRoute);
-        window.history.replaceState({}, document.title, lastRoute);
-        router.push(lastRoute);
-      }, 100);
 
       return; // STOP here - don't process ticket again!
     }
