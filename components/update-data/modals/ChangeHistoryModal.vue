@@ -95,8 +95,8 @@
                       </p>
                     </div>
                   </div>
-                  <span class="text-xs text-grey-400 bg-grey-100 dark:bg-grey-600 px-2 py-1 rounded-full">
-                    #{{ log.id_change_req_log }}
+                  <span class="text-xs text-grey-400 bg-grey-100 dark:bg-grey-600 py-1 rounded-full">
+                    #{{ log.id_change_req_log || '—' }}
                   </span>
                 </div>
 
@@ -170,34 +170,39 @@
                 </div>
 
                 <!-- Employee/Reviewer Info -->
-                <div class="mb-3" v-if="log.id_employee">
+                <div class="mb-3" v-if="getLogActorId(log)">
                   <h5 class="text-xs font-medium text-grey-600 dark:text-grey-400 mb-2">
                     Action by:
                   </h5>
                   <div class="flex items-center gap-2">
                     <div class="w-8 h-8 rounded-full overflow-hidden bg-secondary-50 flex items-center justify-center">
                       <img
-                        v-if="getEmployeePhoto(log.id_employee)"
-                        :src="getEmployeePhoto(log.id_employee)"
-                        :alt="getEmployeeName(log.id_employee)"
+                        v-if="getEmployeePhoto(getLogActorId(log))"
+                        :src="getEmployeePhoto(getLogActorId(log))"
+                        :alt="getLogActorName(log)"
                         class="w-full h-full object-cover"
-                        @error="handlePhotoError(log.id_employee)"
+                        @error="handlePhotoError(getLogActorId(log))"
                       />
                       <span v-else class="text-xs font-semibold text-secondary-600">
-                        {{ getUserInitials(getEmployeeName(log.id_employee)) }}
+                        {{ getUserInitials(getLogActorName(log)) }}
                       </span>
                     </div>
                     <div class="flex-1 min-w-0">
                       <p class="text-sm font-medium text-text-main truncate">
-                        {{ getEmployeeName(log.id_employee) }}
+                        {{ getLogActorName(log) }}
                       </p>
                       <p class="text-xs text-grey-500 truncate">
-                        {{ getEmployeeRoleFromStatus(log.new_status, log.action) }}
+                        {{ getLogActorRole(log) }}
                       </p>
                     </div>
-                    <span class="text-xs text-grey-400 bg-grey-100 dark:bg-grey-600 px-2 py-1 rounded">
-                      {{ getActionType(log.new_status, log.action) }}
-                    </span>
+                    <div class="flex flex-col items-end">
+                      <span
+                        class="text-xs px-2 py-0.5 rounded border transition-colors"
+                        :class="getActionStatusClass(log)"
+                      >
+                        {{ getActionByStatusLabel(log) }}
+                      </span>
+                    </div>
                   </div>
                 </div>
 
@@ -247,6 +252,7 @@
 
 <script setup>
 import { computed, ref, watch } from 'vue';
+import { useAuthenticationCore } from '~/composables/useAuthenticationCore';
 import { useApi } from '~/composables/useApi';
 
 const props = defineProps({
@@ -256,6 +262,9 @@ const props = defineProps({
 
 const emit = defineEmits(["close"]);
 const closeModal = () => emit("close");
+
+// Auth state (needed to determine actor status label)
+const { user: authUser } = useAuthenticationCore();
 
 // API integration
 const { apiGet } = useApi();
@@ -269,6 +278,25 @@ const employeeNames = ref({});
 // Employee photos cache
 const employeePhotos = ref({});
 
+const currentUserId = computed(() => {
+  return (
+    authUser.value?.id ||
+    authUser.value?.user_id ||
+    authUser.value?.employee_id ||
+    null
+  );
+});
+
+const currentUserName = computed(() => {
+  return (
+    authUser.value?.employee_name ||
+    authUser.value?.name ||
+    authUser.value?.display_name ||
+    authUser.value?.email ||
+    ''
+  );
+});
+
 // Fetch change history from API
 const fetchChangeHistory = async (idChangeReq) => {
   if (!idChangeReq) return;
@@ -277,7 +305,8 @@ const fetchChangeHistory = async (idChangeReq) => {
   error.value = null;
   
   try {
-    const response = await apiGet(`/employee/update-histories/${idChangeReq}`);
+    // const response = await apiGet(`/employee/v2/update-histories/${idChangeReq}`);
+    const response = await apiGet(`/employee/v2/update-histories/${idChangeReq}`);
     
     if (response.success && response.data) {
       // Handle both array and object responses
@@ -336,8 +365,14 @@ const fetchChangeHistory = async (idChangeReq) => {
           });
           
           // Fetch employee names for all logs
-          const uniqueEmployeeIds = [...new Set(apiLogs.value.map(log => log.id_employee).filter(Boolean))];
-          uniqueEmployeeIds.forEach(employeeId => {
+          const uniqueActorIds = [
+            ...new Set(
+              apiLogs.value
+                .map(log => log.action_by?.id_employee || log.id_employee)
+                .filter(Boolean)
+            ),
+          ];
+          uniqueActorIds.forEach((employeeId) => {
             fetchEmployeeName(employeeId);
           });
         }
@@ -432,6 +467,63 @@ const getEmployeePhoto = (employeeId) => {
   }
   
   return employeePhotos.value[employeeId];
+};
+
+const getLogActorId = (log) => {
+  if (!log) return null;
+  return log.action_by?.id_employee || log.id_employee || null;
+};
+
+// Determine actor name from log (prefer backend action_by payload)
+const getLogActorName = (log) => {
+  if (!log) return 'Unknown Employee';
+
+  if (log.action_by?.name) {
+    return log.action_by.name;
+  }
+
+  return getEmployeeName(getLogActorId(log));
+};
+
+const getLogActorRole = (log) => {
+  if (log?.action_by?.role) {
+    const roleParts = log.action_by.role
+      .split(',')
+      .map((part) => part.trim())
+      .filter(Boolean);
+    if (roleParts.length > 0) {
+      return roleParts.join(', ');
+    }
+  }
+  return 'Unknown Role';
+};
+
+const isLogActorCurrentUser = (log) => {
+  const actorId = getLogActorId(log);
+  if (actorId && currentUserId.value) {
+    if (String(actorId) === String(currentUserId.value)) {
+      return true;
+    }
+  }
+
+  const actorName = getLogActorName(log);
+  if (actorName && currentUserName.value) {
+    return actorName.trim().toLowerCase() === currentUserName.value.trim().toLowerCase();
+  }
+
+  return false;
+};
+
+const getActionByStatusLabel = (log) => {
+  return isLogActorCurrentUser(log) ? 'Creator' : 'Reviewer';
+};
+
+const getActionStatusClass = (log) => {
+  const label = getActionByStatusLabel(log);
+  if (label === 'Creator') {
+    return 'bg-primary-50 text-primary border-primary/20';
+  }
+  return 'bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-900/20 dark:text-orange-300 dark:border-orange-800';
 };
 
 // Handle photo loading error
@@ -708,106 +800,58 @@ const getUserInitials = (name) => {
   return (nameParts[0].charAt(0) + nameParts[nameParts.length - 1].charAt(0)).toUpperCase();
 };
 
-// Format date - handle both "27-08-2025 19-47-53" and standard formats
-const formatDate = (dateString) => {
-  if (!dateString) return 'Unknown date';
-  
+const parseFlexibleDate = (dateString) => {
+  if (!dateString) return null;
   try {
     // Handle format "27-08-2025 19-47-53" (API format)
     if (dateString.includes('-') && dateString.includes(' ')) {
       const [datePart, timePart] = dateString.split(' ');
-      const [day, month, year] = datePart.split('-');
-      const [hour, minute, second] = timePart.split('-');
-      
-      const date = new Date(year, month - 1, day, hour, minute, second);
-      
-      return date.toLocaleDateString('id-ID', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      });
+      const [day, month, year] = datePart.split('-').map(Number);
+      const timeSeparator = timePart.includes('-') ? '-' : ':';
+      const [hour, minute, second] = timePart.split(timeSeparator).map(Number);
+      return new Date(year, month - 1, day, hour || 0, minute || 0, second || 0);
     }
-    
-    // Handle format "07-08-2025 11:16:50" (legacy format)
-    if (dateString.includes('-') && dateString.includes(':')) {
-      const [datePart, timePart] = dateString.split(' ');
-      const [day, month, year] = datePart.split('-');
-      const [hour, minute, second] = timePart.split(':');
-      
-      const date = new Date(year, month - 1, day, hour, minute, second);
-      
-      return date.toLocaleDateString('id-ID', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      });
+
+    // Handle ISO format
+    if (dateString.includes('T')) {
+      return new Date(dateString);
     }
-    
+
     // Fallback to standard date parsing
-    return new Date(dateString).toLocaleDateString('id-ID', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    return new Date(dateString);
   } catch (error) {
-    return dateString; // Return original string if parsing fails
+    return null;
   }
 };
 
-// Get employee role based on status change and action
-const getEmployeeRoleFromStatus = (status, action) => {
-  if (!status) return 'Employee';
-  
-  const statusLower = status.toLowerCase();
-  const actionLower = action ? action.toLowerCase() : '';
-  
-  // Check action first for more accurate role determination
-  if (actionLower.includes('waiting') || actionLower.includes('submitted')) {
-    return 'Employee';
-  }
-  if (actionLower.includes('approved')) {
-    return 'HC Manager';
-  }
-  if (actionLower.includes('revision') || actionLower.includes('rejected')) {
-    return 'HC Staff';
-  }
-  
-  // Fallback to status-based role
-  if (statusLower.includes('draft')) return 'Employee';
-  if (statusLower.includes('waiting') || statusLower.includes('submitted')) return 'Employee';
-  if (statusLower.includes('approved')) return 'HC Manager';
-  if (statusLower.includes('rejected') || statusLower.includes('revision')) return 'HC Staff';
-  
-  return 'Employee';
+// Format date - handle both "27-08-2025 19-47-53" and standard formats
+const formatDate = (dateString) => {
+  const date = parseFlexibleDate(dateString);
+  if (!date || isNaN(date.getTime())) return dateString || 'Unknown date';
+
+  return date.toLocaleDateString('id-ID', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
 };
 
-// Get action type for display based on action field
-const getActionType = (status, action) => {
-  if (!status) return 'Action';
-  
-  const actionLower = action ? action.toLowerCase() : '';
-  
-  // Use action field if available for more accurate display
-  if (actionLower.includes('waiting')) return 'Submitter';
-  if (actionLower.includes('approved')) return 'Approver';
-  if (actionLower.includes('revision') || actionLower.includes('rejected')) return 'Reviewer';
-  if (actionLower.includes('submitted')) return 'Submitter';
-  if (actionLower.includes('draft')) return 'Creator';
-  
-  // Fallback to status-based action type
-  const statusLower = status.toLowerCase();
-  if (statusLower.includes('draft')) return 'Creator';
-  if (statusLower.includes('waiting') || statusLower.includes('submitted')) return 'Submitter';
-  if (statusLower.includes('approved')) return 'Approver';
-  if (statusLower.includes('rejected') || statusLower.includes('revision')) return 'Reviewer';
-  
-  return 'Actor';
+const formatShortLogDate = (dateString) => {
+  const date = parseFlexibleDate(dateString);
+  if (!date || isNaN(date.getTime())) return dateString || 'Unknown date';
+
+  const datePart = date.toLocaleDateString('en-GB', {
+    day: '2-digit',
+    month: 'short'
+  });
+  const timePart = date.toLocaleTimeString('en-GB', {
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+
+  return `${datePart}, ${timePart}`;
 };
 
 </script>
