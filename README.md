@@ -2,6 +2,18 @@
 
 Update Data adalah aplikasi remote microfrontend yang berjalan terpisah dari ESS-Sigma (Host) dan dimuat melalui iframe. Aplikasi ini menghandle semua fitur terkait update data karyawan.
 
+## ✨ Tujuan & Manfaat Bisnis
+
+> Update Data dibangun untuk menjawab kebutuhan karyawan TelkomSigma agar dapat mengelola data pribadinya secara mandiri sekaligus membantu perusahaan mematuhi Undang-Undang Perlindungan Data Pribadi (UU PDP).
+
+- **Self-service cepat & transparan** – Karyawan bisa mengajukan perubahan data kapan saja, memonitor status approval secara real-time, dan menerima notifikasi saat ada aksi lanjutan dari HC.
+- **Jejak audit lengkap** – Setiap perubahan terekam melalui change history, lengkap dengan pelaku, catatan, dan timestamp. Hal ini memudahkan investigasi internal maupun audit eksternal.
+- **Kepatuhan UU PDP** – Data pribadi karyawan diproses dengan mekanisme persetujuan eksplisit, enkripsi token, dan kontrol akses berbasis role. Update Data juga meminimalkan data duplikat di spreadsheet/manual sehingga mengurangi risiko kebocoran.
+- **Kolaborasi lintas fungsi** – HC, atasan langsung, dan karyawan menggunakan satu platform yang sama sehingga siklus persetujuan lebih singkat dan minim miskomunikasi.
+- **Integrasi mulus dengan ESS-Sigma** – Berjalan sebagai microfrontend sehingga tidak mengganggu portal utama dan mudah diperbarui tanpa downtime panjang.
+
+Jika aplikasi ini dipakai sesuai SOP (misalnya memastikan data pendukung yang diunggah valid), maka seluruh alur perubahan data karyawan sudah memenuhi prinsip *lawful, fair, transparent* yang digariskan UU PDP pasal 20–22.
+
 ## 🏗️ Arsitektur
 
 ```
@@ -280,7 +292,47 @@ config/environment.js      # Konfigurasi env & constants
 - ✅ **Change Request History** - Riwayat perubahan data
 - ✅ **Consent Management** - Manage persetujuan data
 
+### Kategori/Form Update yang Didukung
+
+| Modul | Alias di aplikasi | Keterangan ringkas |
+| --- | --- | --- |
+| **Basic Information** | `basic-information` | Data personal utama: nama lengkap, tempat/tanggal lahir, status pernikahan, nomor identitas. |
+| **Address** | `address` | Data alamat KTP dan domisili termasuk RT/RW, kode pos, dan bukti domisili. |
+| **Emergency Contact** | `emergency-contact` | Kontak darurat lebih dari satu, hubungan keluarga, nomor telepon. |
+| **Family Data** | `family` | Suami/istri, anak, tanggungan; dapat mengunggah akta nikah/lahir sebagai bukti. |
+| **Education & Certification** | `education`, `certification` | Jenjang pendidikan formal, sertifikasi profesional, beserta dokumen pendukung. |
+| **Employment / Organization** | `employment-info`, `job-history` | Unit kerja, jabatan, struktur organisasi (biasanya view-only untuk karyawan, editable oleh HC). |
+| **Payroll Account** | `payroll-account` | Informasi rekening gaji, bank, cabang, bukti kepemilikan. |
+| **Social Security** | `social-security` | BPJS Kesehatan/Ketenagakerjaan, fasilitas kesehatan, nomor kepesertaan. |
+| **Medical Record & Vaccination** | `medical-record`, `vaccination` | Kategori data sensitif; akses dibatasi ke role tertentu dan mematuhi prinsip PDP. |
+| **Consent Management** | `consent` | Riwayat persetujuan pengelolaan data pribadi. |
+| **Change Request History** | `history` | Timeline lengkap seluruh pengajuan dengan status, reviewer, dan catatan. |
+
+Setiap modul di atas dapat diajukan karyawan melalui UI Update Data. Saat submit, sistem memvalidasi field wajib, meminta lampiran (jika ditandai mandatory), dan mengirim notifikasi ke reviewer sesuai jalur persetujuan kategori tersebut.
+
+### Ringkasan kategori perubahan yang dapat diajukan karyawan
+
+- **Basic Information** – Nama lengkap, identitas pribadi, status pernikahan, tempat/tanggal lahir.
+- **Address** – Alamat KTP dan domisili lengkap berikut bukti pendukung.
+- **Emergency Contact** – Data kontak darurat lebih dari satu dengan hubungan keluarga.
+- **Family Data** – Informasi pasangan, anak, dan dokumen pendukung (akta nikah/lahir).
+- **Education & Certification** – Riwayat pendidikan formal dan sertifikasi profesional.
+- **Employment / Organization** – Informasi penugasan, jabatan, dan struktur organisasi (tergantung role).
+- **Payroll Account** – Rekening bank untuk payroll berikut bukti kepemilikan.
+- **Social Security** – Data BPJS Kesehatan/Ketenagakerjaan dan fasilitas kesehatan.
+- **Medical Record & Vaccination** – Data medis sensitif dan riwayat vaksinasi (akses terbatas).
+- **Consent Management** – Riwayat persetujuan pengolahan data pribadi.
+- **Change Request History** – Tracking lengkap seluruh perubahan dan status approval.
+
 ## 🔒 Security
+
+### Kepatuhan UU PDP
+
+- **Dasar hukum internal** – Semua perubahan data harus melewati approval chain perusahaan; karyawan memberikan consent eksplisit saat mengirim pengajuan.
+- **Minimisasi data** – Hanya field yang dibutuhkan yang kami simpan pada localStorage, selebihnya dipanggil via API ketika diperlukan sehingga mengurangi paparan data.
+- **Hak Subjek Data** – Karyawan dapat memperbarui, mengoreksi, atau menghapus data tertentu melalui modul Update Data sehingga hak akses, hak koreksi, dan hak keberatan terpenuhi.
+- **Jejak Aktivitas** – `ChangeHistoryModal` merekam siapa melakukan apa, kapan, dan alasan/nota pendukung sehingga memudahkan pemenuhan permintaan audit PDP.
+- **Enkripsi & session management** – Token hanya disimpan di sisi remote app, auto-refresh sebelum kedaluwarsa, dan diberitahukan ke host jika habis agar tidak ada sesi yatim.
 
 ### Origin Validation
 
