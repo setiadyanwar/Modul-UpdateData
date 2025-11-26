@@ -1026,10 +1026,20 @@ const previewPhotoUrl = ref('');
 const isLoadingPhoto = ref(false);
 
 // Parse parent_id dan item_id dari professional_photo string
+// Format: parent_id,item_id (comma is the separator, parent_id may contain hyphens)
 const parsePhotoId = (photoString) => {
   if (!photoString || typeof photoString !== 'string') return null;
-  const parts = photoString.split('-');
-  return parts.length === 2 ? { parent_id: parts[0], item_id: parts[1] } : null;
+
+  // Split by comma ONLY - parent_id may contain hyphens internally
+  const parts = photoString.split(',');
+  if (parts.length !== 2) return null;
+
+  const parent_id = parts[0].trim();
+  const item_id = parts[1].trim();
+
+  // Guard: both must be non-empty
+  if (!parent_id || !item_id) return null;
+  return { parent_id, item_id };
 };
 
 // Get photo direct URL for preview
@@ -1088,14 +1098,14 @@ watch(() => props.previewData?.['basic-information']?.professional_photo, async 
     return;
   }
 
-  // Check if it's a regular URL or parent_id-item_id format
-  if (newPhotoUrl.startsWith('http')) {
-    // Regular URL, use as is
+  // Check if it's a regular URL or parent_id,item_id format
+  if (newPhotoUrl.startsWith('http') || newPhotoUrl.startsWith('blob:')) {
+    // Regular URL or blob URL, use as is
     previewPhotoUrl.value = newPhotoUrl;
     return;
   }
 
-  // Assume it's parent_id-item_id format
+  // Assume it's parent_id,item_id format (comma separated)
   const photoIds = parsePhotoId(newPhotoUrl);
   if (!photoIds) {
     return;

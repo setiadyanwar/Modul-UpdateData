@@ -1446,10 +1446,16 @@ const handleFileChange = (event) => {
   }
 };
 
+const splitModelValue = (value) => {
+  if (!value || typeof value !== 'string') return [];
+  if (value.includes(',')) return value.split(',');
+  return [];
+};
+
 const handleViewClick = () => {
-  // Check if modelValue contains parent_id-item_id format
-  if (props.modelValue && typeof props.modelValue === 'string' && props.modelValue.includes('-')) {
-    const parts = props.modelValue.split('-');
+  // Check if modelValue contains parent_id,item_id format (comma preferred, hyphen fallback)
+  if (props.modelValue && typeof props.modelValue === 'string') {
+    const parts = splitModelValue(props.modelValue);
     if (parts.length >= 2) {
       // This is update-data format, use new modal
       openPreviewModalUpdateData();
@@ -1483,18 +1489,12 @@ const closeUpdateDataPreviewModal = () => {
 };
 
 const getParentIdFromModelValue = () => {
-  if (!props.modelValue || typeof props.modelValue !== 'string') {
-    return '';
-  }
-  const parts = props.modelValue.split('-');
+  const parts = splitModelValue(props.modelValue);
   return parts.length >= 2 ? parts[0] : '';
 };
 
 const getItemIdFromModelValue = () => {
-  if (!props.modelValue || typeof props.modelValue !== 'string') {
-    return '';
-  }
-  const parts = props.modelValue.split('-');
+  const parts = splitModelValue(props.modelValue);
   return parts.length >= 2 ? parts[1] : '';
 };
 

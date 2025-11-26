@@ -111,15 +111,39 @@ const isLoadingPreview = ref(false);
 const fileInput = ref(null);
 
 // Parse parent_id dan item_id dari professional_photo string
+// Support both formats: parent_id,item_id (new, comma-delimited) and parent_id-item_id (legacy)
 const parsePhotoId = (photoString) => {
   if (!photoString || typeof photoString !== 'string') return null;
-  const parts = photoString.split('-');
-  if (parts.length !== 2) return null;
-  const parent_id = String(parts[0] || '').trim();
-  const item_id = String(parts[1] || '').trim();
-  // Guard: both must be non-empty
-  if (!parent_id || !item_id) return null;
-  return { parent_id, item_id };
+
+  const sanitized = photoString.trim();
+  if (!sanitized) return null;
+
+  let parent_id = '';
+  let item_id = '';
+
+  // Prefer comma-delimited payloads (can have more than two segments, join the tail back)
+  if (sanitized.includes(',')) {
+    const parts = sanitized
+      .split(',')
+      .map((part) => part.trim())
+      .filter((part) => part.length > 0);
+
+    if (parts.length >= 2) {
+      parent_id = parts[0];
+      item_id = parts.slice(1).join(',');
+    }
+  }
+
+  // Fallback to old format (hyphen-separated, use last hyphen to survive IDs containing '-')
+  if ((!parent_id || !item_id) && sanitized.includes('-')) {
+    const lastHyphenIndex = sanitized.lastIndexOf('-');
+    if (lastHyphenIndex > 0 && lastHyphenIndex < sanitized.length - 1) {
+      parent_id = sanitized.slice(0, lastHyphenIndex).trim();
+      item_id = sanitized.slice(lastHyphenIndex + 1).trim();
+    }
+  }
+
+  return parent_id && item_id ? { parent_id, item_id } : null;
 };
 
 // Get photo direct URL for preview
@@ -176,14 +200,14 @@ watch(() => props.photoUrl, async (newPhotoUrl) => {
     return;
   }
 
-  // Check if it's a regular URL or parent_id-item_id format
+  // Check if it's a regular URL or parent_id,item_id format
   if (newPhotoUrl.startsWith('http') || newPhotoUrl.startsWith('blob:')) {
     // Regular URL or blob URL, use as is
     previewPhotoUrl.value = newPhotoUrl;
     return;
   }
 
-  // Assume it's parent_id-item_id format
+  // Assume it's parent_id,item_id format
   const photoIds = parsePhotoId(newPhotoUrl);
   if (!photoIds) {
     return;
