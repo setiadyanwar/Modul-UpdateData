@@ -341,7 +341,9 @@ export const useAttachments = () => {
   const getPreviewUrl = async (itemId) => {
     try {
       isLoadingPreview.value = true
-      const response = await apiGet(`/employee/attachments/${itemId}/preview`)
+      // If itemId contains comma (format: parent_id,item_id), extract only item_id
+      const actualItemId = itemId && itemId.includes(',') ? itemId.split(',')[1].trim() : itemId
+      const response = await apiGet(`/employee/attachments/${actualItemId}/preview`)
       
       if (response.status && response.data) {
         return {
@@ -362,8 +364,10 @@ export const useAttachments = () => {
 
   // Get attachment download URL
   const getDownloadUrl = (itemId) => {
+    // If itemId contains comma (format: parent_id,item_id), extract only item_id
+    const actualItemId = itemId && itemId.includes(',') ? itemId.split(',')[1].trim() : itemId
     // Return direct download endpoint URL
-    return `/api/proxy/employee/attachments/${itemId}/download`
+    return `/api/proxy/employee/attachments/${actualItemId}/download`
   }
 
   // Download attachment file
@@ -385,7 +389,9 @@ export const useAttachments = () => {
         throw new Error('No authentication token available')
       }
 
-      const endpoint = `/api/proxy/employee/attachments/${itemId}/download`
+      // If itemId contains comma (format: parent_id,item_id), extract only item_id
+      const actualItemId = itemId && itemId.includes(',') ? itemId.split(',')[1].trim() : itemId
+      const endpoint = `/api/proxy/employee/attachments/${actualItemId}/download`
       
       // Use fetch to download file
       const response = await fetch(endpoint, {
@@ -422,7 +428,9 @@ export const useAttachments = () => {
   const getAttachmentInfo = async (itemId) => {
     try {
       isLoadingInfo.value = true
-      const response = await apiGet(`/employee/attachments/${itemId}/information`)
+      // If itemId contains comma (format: parent_id,item_id), extract only item_id
+      const actualItemId = itemId && itemId.includes(',') ? itemId.split(',')[1].trim() : itemId
+      const response = await apiGet(`/employee/attachments/${actualItemId}/information`)
       
       if (response && (response.item_id || response.data)) {
         // Handle both direct response and wrapped response
