@@ -55,6 +55,7 @@
       @extend-session="handleExtendSession"
       @logout="handleLogout"
     />
+    
     <!-- Accessibility Menu - Tambahkan ini -->
     <AccessibilityMenu />
     </div>
@@ -79,8 +80,6 @@ const { isSidebarCollapsed, toggleSidebar } = useLayout();
 
 // Focus Mode State
 const isFocusMode = ref(false);
-
-// Removed Auth Debug UI and logic
 
 // Auth state for session timeout modal
 const {
@@ -109,8 +108,6 @@ onMounted(async () => {
     window.addEventListener('toggleFocusMode', (event) => {
       isFocusMode.value = event.detail.isFocusMode;
     });
-
-    // Removed Auth Debug listeners and intervals
 
     // ✅ PRELOAD: Load master data once for all update-data pages
     try {
