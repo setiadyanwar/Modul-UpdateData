@@ -75,6 +75,15 @@
     >
       To update your profile photo, please submit a formal employee.
     </UiAlert>
+
+    <!-- Image Cropper Modal -->
+    <ImageCropperModal
+      :is-open="isCropperOpen"
+      :image-file="selectedFileForCrop"
+      @close="handleCropperClose"
+      @cropped="handleCropped"
+      @reupload="handleCropperReupload"
+    />
   </div>
 </template>
 
@@ -82,6 +91,7 @@
 import { computed, ref, watch, onUnmounted } from 'vue';
 import UiAlert from '~/components/ui/Alert.vue';
 import UiButton from '~/components/ui/Button.vue';
+import ImageCropperModal from '~/components/update-data/modals/ImageCropperModal.vue';
 
 const emit = defineEmits(['photo-changed']);
 
@@ -109,6 +119,8 @@ const props = defineProps({
 const previewPhotoUrl = ref('');
 const isLoadingPreview = ref(false);
 const fileInput = ref(null);
+const isCropperOpen = ref(false);
+const selectedFileForCrop = ref(null);
 
 // Parse parent_id dan item_id dari professional_photo string
 // Support both formats: parent_id,item_id (new, comma-delimited) and parent_id-item_id (legacy)
@@ -256,25 +268,53 @@ const triggerSelect = () => {
   fileInput.value?.click();
 };
 
-// Handle photo selection from FE and preview immediately
+// Handle photo selection from FE - open cropper modal instead of applying immediately
 const onSelectPhoto = (e) => {
   const file = e.target.files && e.target.files[0];
   if (!file) return;
+  
+  // Check if file is an image
+  if (!file.type.startsWith('image/')) {
+    console.warn('Selected file is not an image');
+    if (fileInput.value) fileInput.value.value = '';
+    return;
+  }
+
+  // Open cropper modal with selected file
+  selectedFileForCrop.value = file;
+  isCropperOpen.value = true;
+  
+  // Reset input to allow re-select same file
+  if (fileInput.value) fileInput.value.value = '';
+};
+
+// Handle cropped image from modal
+const handleCropped = (croppedFile) => {
+  if (!croppedFile) return;
+  
   try {
-    const objectUrl = URL.createObjectURL(file);
+    const objectUrl = URL.createObjectURL(croppedFile);
     // Revoke previous
     if (previewPhotoUrl.value && previewPhotoUrl.value.startsWith('blob:')) {
       URL.revokeObjectURL(previewPhotoUrl.value);
     }
     previewPhotoUrl.value = objectUrl;
     // Emit to parent so it can upload/save later
-    emit('photo-changed', file);
-  } catch (_) {
-    // noop
-  } finally {
-    // reset input to allow re-select same file
-    if (fileInput.value) fileInput.value.value = '';
+    emit('photo-changed', croppedFile);
+  } catch (error) {
+    console.error('Error handling cropped image:', error);
   }
+};
+
+// Handle cropper modal close
+const handleCropperClose = () => {
+  isCropperOpen.value = false;
+  selectedFileForCrop.value = null;
+};
+
+const handleCropperReupload = (file) => {
+  if (!file) return;
+  selectedFileForCrop.value = file;
 };
 
 // Handle remove photo
