@@ -1,17 +1,18 @@
 <template>
   <div
     v-if="isSessionWarningVisible"
-    class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-30"
+    class="fixed inset-0 z-50 flex items-center justify-center"
+    style="background: transparent; backdrop-filter: blur(2px);"
     @click.self="handleBackdropClick"
   >
-    <div class="bg-white/90 rounded-lg shadow-xl max-w-md w-full mx-4 p-6 transform translate-y-0">
+    <div class="bg-white dark:bg-grey-800 rounded-xl shadow-2xl max-w-md w-full mx-4 p-6 transform translate-y-0 border border-grey-200 dark:border-grey-700">
       <!-- Header -->
       <div class="flex items-center mb-4">
         <div class="flex-shrink-0">
           <i class="pi pi-clock text-orange-500 text-2xl"></i>
         </div>
         <div class="ml-3">
-          <h3 class="text-lg font-medium text-gray-900">
+          <h3 class="text-lg font-medium text-grey-900 dark:text-grey-100">
             Session Timeout Warning
           </h3>
         </div>
@@ -19,29 +20,29 @@
 
       <!-- Content -->
       <div class="mb-6">
-        <p class="text-sm text-gray-600 mb-4">
+        <p class="text-sm text-grey-600 dark:text-grey-400 mb-4">
           Your session will expire in:
         </p>
         
         <!-- Countdown Display -->
         <div class="text-center mb-4">
-          <div class="text-3xl font-bold text-orange-600 mb-2">
+          <div class="text-3xl font-bold text-orange-600 dark:text-orange-500 mb-2">
             {{ formatCountdown(sessionCountdownTime) }}
           </div>
-          <div class="text-sm text-gray-500">
+          <div class="text-sm text-grey-500 dark:text-grey-400">
             {{ sessionCountdownTime <= 60 ? 'seconds' : 'minutes' }} remaining
           </div>
         </div>
 
         <!-- Progress Bar -->
-        <div class="w-full bg-gray-200 rounded-full h-2 mb-4">
+        <div class="w-full bg-grey-200 dark:bg-grey-700 rounded-full h-2 mb-4">
           <div
-            class="bg-orange-500 h-2 rounded-full transition-all duration-1000"
+            class="bg-orange-500 dark:bg-orange-600 h-2 rounded-full transition-all duration-1000"
             :style="{ width: `${(sessionCountdownTime / 300) * 100}%` }"
           ></div>
         </div>
 
-        <p class="text-sm text-gray-600">
+        <p class="text-sm text-grey-600 dark:text-grey-400">
           Click "Extend Session" to continue working, or you will be automatically logged out.
         </p>
       </div>
@@ -72,13 +73,13 @@
       </div>
 
       <!-- Warning Message -->
-      <div v-if="sessionCountdownTime <= 30" class="mt-4 p-3 bg-red-50 border border-red-200 rounded-md">
+      <div v-if="sessionCountdownTime <= 30" class="mt-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md">
         <div class="flex">
           <div class="flex-shrink-0">
-            <i class="pi pi-exclamation-triangle text-red-400"></i>
+            <i class="pi pi-exclamation-triangle text-red-500 dark:text-red-400"></i>
           </div>
           <div class="ml-3">
-            <p class="text-sm text-red-700">
+            <p class="text-sm text-red-700 dark:text-red-300">
               <strong>Warning:</strong> Your session will expire very soon. Please extend your session to avoid losing your work.
             </p>
           </div>
@@ -202,17 +203,18 @@ onMounted(() => {
   }
 }
 
-.bg-white {
-  animation: slideIn 0.3s ease-out;
+/* Modal slide in from center */
+.fixed > div {
+  animation: slideInCenter 0.3s ease-out;
 }
 
-@keyframes slideIn {
+@keyframes slideInCenter {
   from {
-    transform: translateY(-20px);
+    transform: translateY(-20px) scale(0.95);
     opacity: 0;
   }
   to {
-    transform: translateY(0);
+    transform: translateY(0) scale(1);
     opacity: 1;
   }
 }
