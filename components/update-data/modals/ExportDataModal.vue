@@ -284,7 +284,7 @@
                     </div>
 
                     <!-- Employment Information Section -->
-                    <div v-if="selectedType.title === 'Employment'"
+                    <div v-if="selectedType.title === 'Employment Information'"
                       class="grid grid-cols-1 lg:grid-cols-2 gap-3 lg:gap-4">
                       <div class="space-y-2">
                         <div class="flex justify-between">
@@ -726,7 +726,7 @@
                     </div>
 
                     <!-- Payroll Account Section -->
-                    <div v-if="selectedType.title === 'Account'" class="grid grid-cols-1 lg:grid-cols-2 gap-3 lg:gap-4">
+                    <div v-if="selectedType.title === 'Payroll Account Information'" class="grid grid-cols-1 lg:grid-cols-2 gap-3 lg:gap-4">
                       <div class="space-y-2">
                         <div class="flex justify-between">
                           <span class="text-sm font-medium text-gray-600 dark:text-grey-300 flex-shrink-0">Bank Name:</span>
@@ -796,7 +796,7 @@
                     </div>
 
                     <!-- Medical Record Section -->
-                    <div v-if="selectedType.title === 'Medical'" class="grid grid-cols-1 lg:grid-cols-2 gap-3 lg:gap-4">
+                    <div v-if="selectedType.title === 'Medical Report'" class="grid grid-cols-1 lg:grid-cols-2 gap-3 lg:gap-4">
                       <div class="space-y-2">
                         <div class="flex justify-between">
                           <span class="text-sm font-medium text-gray-600 dark:text-grey-300 flex-shrink-0">Blood Type:</span>

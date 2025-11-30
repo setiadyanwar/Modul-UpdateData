@@ -26,7 +26,7 @@ export const useExportData = () => {
     {
       id: "basic-information",
       title: "Basic Information",
-      description: "Informasi dasar karyawan",
+      description: "Basic employee information",
       icon: "pi-user",
       selected: true,
       disabled: true, // Tidak bisa diuncheck
@@ -34,8 +34,8 @@ export const useExportData = () => {
     },
     {
       id: "employment_info",
-      title: "Employment",
-      description: "Informasi pekerjaan dan penugasan",
+      title: "Employment Information",
+      description: "Employment and assignment information",
       icon: "pi-briefcase",
       selected: false, // Default tidak terceklist
       endpoint: "/employee/employment-information",
@@ -43,7 +43,7 @@ export const useExportData = () => {
     {
       id: "address",
       title: "Address",
-      description: "Alamat sesuai KTP dan domisili",
+      description: "Address according to KTP and domicile",
       icon: "pi-map-marker",
       selected: false,
       endpoint: "/employee/address",
@@ -51,7 +51,7 @@ export const useExportData = () => {
     {
       id: "family",
       title: "Family",
-      description: "Data anggota keluarga",
+      description: "Family member data",
       icon: "pi-users",
       selected: false,
       endpoint: "/employee/family",
@@ -59,7 +59,7 @@ export const useExportData = () => {
     {
       id: "emergency_contact",
       title: "Emergency Contact",
-      description: "Kontak darurat",
+      description: "Emergency contact information",
       icon: "pi-phone",
       selected: false,
       endpoint: "/employee/emergency-contact",
@@ -67,15 +67,15 @@ export const useExportData = () => {
     {
       id: "education",
       title: "Education",
-      description: "Riwayat pendidikan",
+      description: "Education history",
       icon: "pi-graduation-cap",
       selected: false,
       endpoint: "/employee/education",
     },
     {
       id: "payroll_account",
-      title: "Account",
-      description: "Informasi rekening dan NPWP",
+      title: "Payroll Account Information",
+      description: "Account and tax information",
       icon: "pi-credit-card",
       selected: false,
       endpoint: "/employee/payroll-account",
@@ -83,15 +83,15 @@ export const useExportData = () => {
     {
       id: "social_security",
       title: "Benefit",
-      description: "BPJS dan asuransi",
+      description: "BPJS and insurance",
       icon: "pi-shield",
       selected: false,
       endpoint: "/employee/social-securities",
     },
     {
       id: "medical_record",
-      title: "Medical",
-      description: "Data kesehatan",
+      title: "Medical Report",
+      description: "Health data and medical records",
       icon: "pi-heart",
       selected: false,
       endpoint: "/employee/medical-record",
