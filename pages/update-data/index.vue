@@ -249,6 +249,7 @@ let navigationRefreshTimeout = null;
 // Basic Information Files State
 const basicInfoUploadedFiles = ref([]);
 const basicInfoProfessionalPhoto = ref(null);
+const basicInfoAttachmentsChanged = ref(false);
 const addressUploadedFiles = ref([]);
 const payrollAccountUploadedFiles = ref([]);
 const socialSecurityUploadedFiles = ref([]);
@@ -582,7 +583,34 @@ const hasCurrentTabChanged = computed(() => {
   if (!original || !current) return false;
 
   // Use normalized deep comparison (handles null/"", whitespace, numbers)
-  return hasChangedNormalized(original, current);
+  const dataChanged = hasChangedNormalized(original, current);
+
+  // For basic-information tab, KTP document is mandatory for any changes
+  // Changes can be: field data changes, professional photo upload, or KTP document upload
+  // But KTP document MUST be present to enable Save as Draft / Update
+  if (tab === 'basic-information') {
+    const hasKTPFile = basicInfoUploadedFiles.value && basicInfoUploadedFiles.value.length > 0;
+    
+    // Check professional photo change directly from data (more reliable than flags)
+    const originalPhoto = original?.professional_photo || null;
+    const currentPhoto = current?.professional_photo || null;
+    const hasPhotoChanged = originalPhoto !== currentPhoto;
+    
+    // Check if there's a new professional photo file uploaded (but not yet applied to employeeData)
+    const hasNewPhotoFile = basicInfoProfessionalPhoto.value !== null;
+    
+    // Check if there are any changes: data changes OR professional photo change OR new photo file
+    const hasAnyChanges = dataChanged || hasPhotoChanged || hasNewPhotoFile;
+    
+    // Only return true if there are changes AND KTP file is present
+    if (hasAnyChanges) {
+      return hasKTPFile;
+    }
+    
+    return false;
+  }
+
+  return dataChanged;
 });
 
 // Helper: Get data for a specific tab
@@ -1333,7 +1361,8 @@ const handlePhotoUpload = (photoData) => {
 
 // Handle KTP files from MultiDocumentUpload
 const handleBasicInfoFilesChanged = (files) => {
-  basicInfoUploadedFiles.value = files;
+  basicInfoUploadedFiles.value = files || [];
+  basicInfoAttachmentsChanged.value = true;
 };
 
 // Address KTP files (mirrors basic info flow but scoped to address)
@@ -1366,13 +1395,15 @@ const handleFamilyFilesChanged = (files) => {
 
 // Handle professional photo from PhotoUpload component
 const handleProfessionalPhotoChanged = (file) => {
-  basicInfoProfessionalPhoto.value = file;
+  basicInfoProfessionalPhoto.value = file || null;
+  basicInfoAttachmentsChanged.value = true;
 };
 
 // Clear basic information files after successful submission
 const clearBasicInfoFiles = () => {
   basicInfoUploadedFiles.value = [];
   basicInfoProfessionalPhoto.value = null;
+  basicInfoAttachmentsChanged.value = false;
   // Also clear files in the child component
   if (basicInfoSectionRef.value) {
     basicInfoSectionRef.value.clearFiles?.();
@@ -2484,7 +2515,9 @@ const getChangedFieldsOnly = () => {
         religion_id: 'religion_id',
         marital_status_id: 'marital_status_id',
         // Name field - keep API field name
-        name: 'name'
+        name: 'name',
+        // Professional photo - keep API field name
+        professional_photo: 'professional_photo'
       };
 
       // Helper function to convert string IDs to numbers
@@ -3936,8 +3969,49 @@ const handleDiscardChanges = async () => {
     // Reset all data to original values with better error handling
     await resetAllDataToOriginal();
 
+    // ✅ FIX: Clear all attachment states to prevent false positive change detection
+    // Clear basic information files
+    if (activeTab.value === 'basic-information') {
+      clearBasicInfoFiles();
+    }
+    // Clear other tab files
+    if (activeTab.value === 'address') {
+      addressUploadedFiles.value = [];
+    }
+    if (activeTab.value === 'payroll-account') {
+      payrollAccountUploadedFiles.value = [];
+    }
+    if (activeTab.value === 'social-security') {
+      socialSecurityUploadedFiles.value = [];
+    }
+    if (activeTab.value === 'family') {
+      familyUploadedFiles.value = [];
+    }
+
     // Wait for next tick to ensure all reactive updates are processed
     await nextTick();
+
+    // ✅ FIX: Update originalData to currentData after reset to prevent false positive detection
+    // This ensures that when entering edit mode again, hasCurrentTabChanged will be false
+    if (activeTab.value === 'basic-information') {
+      personalData.originalData.value = { ...personalData.employeeData.value };
+    } else if (activeTab.value === 'address') {
+      personalData.originalAddressData.value = { ...personalData.addressData.value };
+    } else if (activeTab.value === 'emergency-contact') {
+      personalData.originalEmergencyContactData.value = [...personalData.emergencyContactData.value];
+    } else if (activeTab.value === 'payroll-account') {
+      personalData.originalPayrollAccountData.value = { ...personalData.payrollAccountData.value };
+    } else if (activeTab.value === 'family') {
+      personalData.originalFamilyData.value = [...personalData.familyData.value];
+    } else if (activeTab.value === 'education') {
+      personalData.originalEducationData.value = [...personalData.educationData.value];
+    } else if (activeTab.value === 'social-security') {
+      personalData.originalSocialSecurityData.value = { ...personalData.socialSecurityData.value };
+    } else if (activeTab.value === 'medical-record') {
+      personalData.originalMedicalRecordData.value = { ...personalData.medicalRecordData.value };
+    } else if (activeTab.value === 'employment-information') {
+      personalData.originalEmploymentInfoData.value = { ...personalData.employmentInfoData.value };
+    }
 
     // Clear any pending changes
     allTabChanges.value = {};
@@ -5316,7 +5390,7 @@ const validateBasicInformationChangesWithoutAttachments = () => {
   const editableFields = [
     'no_ktp', 'main_phone_number', 'private_email', 'secondary_phone_number',
     'birth_date', 'birth_place', 'gender_id', 'marital_status_id', 'religion_id',
-    'nationality_id', 'clothing_size_id', 'passport_number'
+    'nationality_id', 'clothing_size_id', 'passport_number', 'professional_photo'
   ];
 
   // Check if any editable fields have been changed
@@ -5504,7 +5578,6 @@ const scrollToDocumentUpload = () => {
   }
 };
 
-// Expose debug function to window for manual testing
 </script>
 
 <style scoped>

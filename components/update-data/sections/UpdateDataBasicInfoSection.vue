@@ -60,7 +60,7 @@
                   :photo-url="modelValue.professionalPhoto || modelValue.professional_photo"
                   :disabled="!(editMode && isTabEligible)"
                   :parent-loading="isLoading"
-                  @photo-changed="handlePhotoUpload"
+                  @photo-changed="handleProfessionalPhotoUpload"
                 />
               </div>
             </template>
