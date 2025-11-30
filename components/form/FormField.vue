@@ -1393,18 +1393,7 @@ const finalOptions = computed(() => {
     options = props.options;
   }
 
-  // Debug logging for troubleshooting
-  if (props.masterDataCategory && typeof window !== 'undefined') {
-    console.log(`[FormField] finalOptions for ${props.masterDataCategory}:`, {
-      category: props.masterDataCategory,
-      subcategory: props.masterDataSubCategory,
-      masterOptionsLength: masterOptions.value?.length || 0,
-      propsOptionsLength: props.options?.length || 0,
-      finalOptionsLength: options.length,
-      optionsLoaded: optionsLoaded.value,
-      sample: options.slice(0, 2)
-    });
-  }
+  // ✅ REMOVED: Debug logging for better performance
 
   // Apply filtering if filterBy prop is provided
   if (props.filterBy && props.filterBy.field && props.filterBy.value && options.length > 0) {
