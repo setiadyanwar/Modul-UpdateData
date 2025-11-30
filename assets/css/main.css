@@ -123,19 +123,39 @@
   color: var(--color-primary-500) !important;
 }
 
-.p-datepicker table td.p-datepicker-today > span {
-  background-color: var(--color-primary-500) !important;
-  color: white !important;
+/* ✅ Today's date - Using design tokens with all possible selectors */
+.p-datepicker table td.p-datepicker-today > span,
+.p-datepicker table td.p-datepicker-today .p-datepicker-day,
+.p-datepicker table td.p-datepicker-day-cell.p-datepicker-today .p-datepicker-day {
+  background-color: var(--p-datepicker-today-background, var(--color-primary-500)) !important;
+  color: var(--p-datepicker-today-color, white) !important;
   font-weight: 600 !important;
 }
 
-.p-datepicker table td.p-datepicker-today > span:hover {
+.p-datepicker table td.p-datepicker-today > span:hover,
+.p-datepicker table td.p-datepicker-today .p-datepicker-day:hover {
   background-color: var(--color-primary-600) !important;
 }
 
-.p-datepicker table td.p-datepicker-current-day > span {
-  background-color: var(--color-primary-500) !important;
-  color: white !important;
+/* ✅ Selected date - Using design tokens with all possible selectors */
+.p-datepicker table td.p-datepicker-selected > span,
+.p-datepicker table td.p-datepicker-selected .p-datepicker-day,
+.p-datepicker table td .p-datepicker-day-selected,
+.p-datepicker table td.p-datepicker-current-day > span,
+.p-datepicker table td.p-datepicker-current-day .p-datepicker-day {
+  background-color: var(--p-datepicker-date-selected-background, var(--color-primary-500)) !important;
+  color: var(--p-datepicker-date-selected-color, white) !important;
+  font-weight: 600 !important;
+}
+
+/* ✅ Today date when also selected */
+.p-datepicker table td.p-datepicker-today.p-datepicker-selected > span,
+.p-datepicker table td.p-datepicker-today.p-datepicker-selected .p-datepicker-day,
+.p-datepicker table td.p-datepicker-today .p-datepicker-day-selected,
+.p-datepicker table td.p-datepicker-today.p-datepicker-current-day > span,
+.p-datepicker table td.p-datepicker-today.p-datepicker-current-day .p-datepicker-day {
+  background-color: var(--p-datepicker-date-selected-background, var(--color-primary-500)) !important;
+  color: var(--p-datepicker-date-selected-color, white) !important;
   font-weight: 600 !important;
 }
 

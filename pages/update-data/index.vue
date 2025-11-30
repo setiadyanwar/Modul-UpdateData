@@ -34,7 +34,8 @@
       :has-draft-for-current-category="hasDraftForCurrentCategory"
       :current-category-display-name="currentCategoryDisplayName" :active-tab="activeTab"
       :has-current-tab-changed="hasCurrentTabChanged" :is-current-tab-form-valid="isCurrentTabFormValid"
-      :is-saving-draft="isSavingDraft" :is-submitting-update="isSubmittingUpdate" @download="downloadData"
+      :is-saving-draft="isSavingDraft" :is-submitting-update="isSubmittingUpdate" :is-in-insert-mode="isInInsertMode"
+      @download="downloadData"
       @edit="handleEditButtonClick" @cancel="handleCancelEdit" @save-draft="handleSaveAsDraft"
       @submit="handleEditButtonClick" />
 
@@ -351,6 +352,20 @@ const computedIsLoadingEducation = computed(() => !isMounted.value || isLoadingE
 const computedIsLoadingSocialSecurity = computed(() => !isMounted.value || isLoadingSocialSecurity.value);
 const computedIsLoadingMedicalRecord = computed(() => !isMounted.value || isLoadingMedicalRecord.value);
 const computedIsLoadingEmploymentInfo = computed(() => !isMounted.value || isLoadingEmploymentInfo.value);
+
+// Check if user is in insert mode for education, emergency contact, or family
+const isInInsertMode = computed(() => {
+  if (activeTab.value === 'education' && educationSectionRef.value?.showInsertForm) {
+    return true;
+  }
+  if (activeTab.value === 'emergency-contact' && emergencyContactSectionRef.value?.showInsertForm) {
+    return true;
+  }
+  if (activeTab.value === 'family' && familySectionRef.value?.showInsertForm) {
+    return true;
+  }
+  return false;
+});
 
 // Tambahkan mapping snake_case ke camelCase untuk EmploymentInfoForm
 const employmentInfoFormData = computed(() => ({

@@ -217,7 +217,7 @@
            size="small"
            @click="submitAllInserts"
            :disabled="!hasValidInsertData"
-           class="w-full bg-green-600 hover:bg-green-700 border-green-600 hover:border-green-700"
+           class="w-full bg-primary-600 hover:bg-primary-700 border-primary-600 hover:border-primary-700"
          >
            <i class="pi pi-check mr-2"></i> Submit All
          </UiButton>
@@ -435,11 +435,19 @@ const hasInsertData = () => {
 
 // Check if all insert forms have valid data
 const hasValidInsertData = computed(() => {
-  return insertForms.value.length > 0 && insertForms.value.every(form => 
-    form.emgc_name.trim() !== '' && 
-    form.emgc_relationship_id.trim() !== '' &&
-    form.emgc_number.trim() !== ''
-  );
+  if (insertForms.value.length === 0) return false;
+  
+  return insertForms.value.every(form => {
+    const name = String(form.emgc_name || '').trim();
+    const number = String(form.emgc_number || '').trim();
+    const relationshipId = form.emgc_relationship_id;
+    
+    return name !== '' && 
+           number !== '' &&
+           relationshipId !== null && 
+           relationshipId !== undefined && 
+           relationshipId !== '';
+  });
 });
 
 // Discard changes

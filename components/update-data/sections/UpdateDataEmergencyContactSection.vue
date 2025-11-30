@@ -245,7 +245,12 @@
             size="small"
             @click="submitAllInserts"
             :disabled="!hasValidInsertData"
-            class="w-full bg-green-600 hover:bg-green-700 border-green-600 hover:border-green-700"
+            :class="[
+              'w-full',
+              hasValidInsertData
+                ? 'bg-primary-600 hover:bg-primary-700 border-primary-600 hover:border-primary-700'
+                : 'bg-grey-300 border-grey-300 text-grey-600 cursor-not-allowed pointer-events-none opacity-50'
+            ]"
           >
             <i class="pi pi-check mr-2"></i> Submit All
           </UiButton>
@@ -259,10 +264,10 @@
       :is-visible="showUnsavedChangesModal"
       title="You have unsaved emergency contact data"
       message="You have filled in some emergency contact information. What would you like to do with your changes?"
-      save-button-text="Save as Draft"
+      save-button-text="Cancel"
       continue-button-text="Discard Changes"
       @close="showUnsavedChangesModal = false"
-      @save-draft="handleSaveDraftFromModal"
+      @save-draft="showUnsavedChangesModal = false"
       @continue="handleDiscardChanges"
     />
   </div>
@@ -444,28 +449,33 @@ const updateInsertField = (formId, key, value) => {
   }
 };
 
-const showDiscardConfirmation = () => {
+// Check if forms have any data entered
+const hasFormData = () => {
+  // Check if there are any forms
+  if (insertForms.value.length === 0) return false;
   
-  // Simplified check - if there are any forms, show modal
-  const hasUnsavedChanges = insertForms.value.length > 0;
-  
-  
-  if (hasUnsavedChanges) {
-    // Show confirmation modal
-    showUnsavedChangesModal.value = true;
-  } else {
-    // No changes, directly reset
-    handleDiscardChanges();
-  }
+  // Check if any form has data entered (not just empty/default values)
+  return insertForms.value.some(form => {
+    // Check if any field has been filled
+    const hasName = form.emgc_name && form.emgc_name.trim() !== '';
+    const hasNumber = form.emgc_number && form.emgc_number.trim() !== '';
+    const hasAddress = form.emgc_address && form.emgc_address.trim() !== '';
+    const hasRelationship = form.emgc_relationship_id !== null && form.emgc_relationship_id !== undefined;
+    
+    return hasName || hasNumber || hasAddress || hasRelationship;
+  });
 };
 
-// Handle save as draft from modal
-const handleSaveDraftFromModal = () => {
-  showUnsavedChangesModal.value = false;
+const showDiscardConfirmation = () => {
+  // Check if forms have any data entered
+  const hasData = hasFormData();
   
-  // Submit current data as draft
-  if (hasValidInsertData.value) {
-    submitAllInserts(true); // Pass true for isDraft
+  if (hasData) {
+    // Show confirmation modal if there's data
+    showUnsavedChangesModal.value = true;
+  } else {
+    // No data entered, directly exit insert mode
+    handleDiscardChanges();
   }
 };
 
@@ -657,7 +667,8 @@ if (process.client) {
 
 // Expose methods to parent component
 defineExpose({
-  clearAllInserts
+  clearAllInserts,
+  showInsertForm
 });
 
 // Validation helpers

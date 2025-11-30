@@ -1,5 +1,5 @@
 <template>
-  <div class="relative">
+  <div class="relative datepicker-wrapper">
     <!-- PrimeVue DatePicker -->
     <DatePicker
       :id="id"
@@ -22,6 +22,16 @@
       class="w-full"
       :class="{
         'opacity-50 cursor-not-allowed': disabled
+      }"
+      :pt="{
+        day: ({ context }) => ({
+          class: 'custom-datepicker-day',
+          style: context.selected ? {
+            'background': 'var(--color-primary-500)',
+            'background-color': 'var(--color-primary-500)',
+            'color': 'white'
+          } : {}
+        })
       }"
     />
   </div>
@@ -155,5 +165,38 @@ watch(dateValue, (newValue) => {
 </script>
 
 <style scoped>
-/* Styling sudah dipindah ke main.css */
+/* Design tokens sudah didefinisikan di :root (assets/tailwind.css) */
+/* PrimeVue DatePicker akan otomatis menggunakan design tokens tersebut */
+</style>
+
+<style>
+/* ✅ Override dengan selector yang sangat spesifik berdasarkan HTML yang di-inspect */
+/* Class yang digunakan: p-datepicker-day p-datepicker-day-selected */
+.datepicker-wrapper :deep(.p-datepicker-day-selected),
+.datepicker-wrapper :deep(.p-datepicker-day.p-datepicker-day-selected),
+.datepicker-wrapper :deep(.custom-datepicker-day.p-datepicker-day-selected),
+.datepicker-wrapper :deep(.p-datepicker .p-datepicker-day-selected),
+.datepicker-wrapper :deep(.p-datepicker table td .p-datepicker-day-selected),
+.datepicker-wrapper :deep(.p-datepicker-calendar .p-datepicker-day-selected) {
+  background: var(--color-primary-500) !important;
+  background-color: var(--color-primary-500) !important;
+  color: white !important;
+  border-color: var(--color-primary-500) !important;
+}
+
+/* Today date */
+.datepicker-wrapper :deep(.p-datepicker-today:not(.p-datepicker-day-selected)),
+.datepicker-wrapper :deep(.p-datepicker-day.p-datepicker-today:not(.p-datepicker-day-selected)) {
+  background: var(--color-primary-500) !important;
+  background-color: var(--color-primary-500) !important;
+  color: white !important;
+}
+
+/* Highlight class */
+.datepicker-wrapper :deep(.p-highlight),
+.datepicker-wrapper :deep(.p-datepicker .p-highlight) {
+  background: var(--color-primary-500) !important;
+  background-color: var(--color-primary-500) !important;
+  color: white !important;
+}
 </style>

@@ -262,7 +262,7 @@
               variant="outline"
               size="small"
               @click="addInsertForm" 
-              class="text-blue-600 hover:text-blue-700 border-blue-300 hover:border-blue-400 w-full sm:w-auto"
+              class="text-primary-600 hover:text-primary-700 border-blue-300 hover:border-primary-400 w-full sm:w-auto"
             >
               <i class="pi pi-plus mr-2"></i> Add Another Form
             </UiButton>
@@ -286,7 +286,7 @@
               'w-full',
               hasValidInsertData
                 ? 'bg-primary-600 hover:bg-primary-700 border-primary-600 hover:border-primary-700'
-                : 'bg-grey-300 border-grey-300 text-grey-600 cursor-not-allowed'
+                : 'bg-grey-300 border-grey-300 text-grey-600 cursor-not-allowed pointer-events-none opacity-50'
             ]"
           >
             <i class="pi pi-check mr-2"></i> Submit All
@@ -301,10 +301,10 @@
       :is-visible="showUnsavedChangesModal"
       title="You have unsaved family member data"
       message="You have filled in some information for family members. What would you like to do with your changes?"
-      save-button-text="Save as Draft"
+      save-button-text="Cancel"
       continue-button-text="Discard Changes"
       @close="showUnsavedChangesModal = false"
-      @save-draft="handleSaveDraftFromModal"
+      @save-draft="showUnsavedChangesModal = false"
       @continue="handleDiscardChanges"
     />
     
@@ -329,8 +329,8 @@
         @filesChanged="handleKKFilesChanged"
       />
 
-      <!-- Read-only FormField for View Mode -->
-      <div v-else class="bg-white dark:bg-grey-800 rounded-md shadow-sm border border-grey-200 dark:border-grey-700 p-4">
+      <!-- Read-only FormField for View Mode - Hide when in insert mode -->
+      <div v-else-if="!showInsertForm" class="bg-white dark:bg-grey-800 rounded-md shadow-sm border border-grey-200 dark:border-grey-700 p-4">
         <h5 class="text-sm font-medium text-text-main mb-3">KK Document</h5>
         <FormField
           label="Family Card (KK) Document"
@@ -408,7 +408,8 @@ const hasValidInsertData = computed(() => {
   // Check if there's at least one form and all forms have all required fields filled
   if (insertForms.value.length === 0) return false;
   
-  const isValid = insertForms.value.every(form => {
+  // Check if all forms have required fields filled
+  const allFieldsValid = insertForms.value.every(form => {
     // List of required fields for family member
     const requiredFields = [
       'name',
@@ -422,7 +423,7 @@ const hasValidInsertData = computed(() => {
     ];
     
     // Check if all required fields are filled and not empty
-    const allFieldsValid = requiredFields.every(field => {
+    const fieldsValid = requiredFields.every(field => {
       const value = form[field];
       if (typeof value === 'string') {
         return value.trim() !== '';
@@ -430,12 +431,29 @@ const hasValidInsertData = computed(() => {
       return value !== null && value !== undefined && value !== '';
     });
     
-    // Check validation status for each form
-    
-    return allFieldsValid;
+    return fieldsValid;
   });
   
-  return isValid;
+  // Check if KK document is uploaded (required)
+  // KK document is uploaded via MultiDocumentUpload and stored in kkUploadedFiles
+  // Access kkUploadedFiles.value to ensure reactivity
+  const kkFiles = kkUploadedFiles.value;
+  const hasKKDocument = Array.isArray(kkFiles) && kkFiles.length > 0;
+  
+  // Debug: log to see what we're checking
+  console.log('🔍 hasValidInsertData check:', {
+    allFieldsValid,
+    hasKKDocument,
+    kkUploadedFilesLength: kkFiles ? kkFiles.length : 0,
+    kkUploadedFiles: kkFiles,
+    insertFormsCount: insertForms.value.length,
+    kkUploadedFilesRef: kkUploadedFiles.value
+  });
+  
+  // Button enabled only if all fields are valid AND KK document is uploaded
+  const result = allFieldsValid && hasKKDocument;
+  console.log('🔍 Final result:', result);
+  return result;
 });
 
 // Function to get relation label from ID
@@ -602,12 +620,38 @@ const updateInsertField = (formId, key, value) => {
   form[key] = processedValue;
 };
 
+// Check if forms have any data entered
+const hasFormData = () => {
+  // Check if there are any forms
+  if (insertForms.value.length === 0) return false;
+  
+  // Check if any form has data entered (not just empty/default values)
+  return insertForms.value.some(form => {
+    // Check if any required field has been filled
+    const hasName = form.name && form.name.trim() !== '';
+    const hasGender = form.gender_id !== null && form.gender_id !== undefined;
+    const hasBirthDate = form.birth_date && form.birth_date.trim() !== '';
+    const hasBirthPlace = form.birth_place && form.birth_place.trim() !== '';
+    const hasAddress = form.address && form.address.trim() !== '';
+    const hasOccupation = form.occupation_id !== null && form.occupation_id !== undefined;
+    const hasRelation = form.relation_id !== null && form.relation_id !== undefined;
+    const hasMaritalStatus = form.marital_status_id !== null && form.marital_status_id !== undefined;
+    const hasKKDoc = form.kk_doc && form.kk_doc.trim() !== '';
+    
+    return hasName || hasGender || hasBirthDate || hasBirthPlace || hasAddress || 
+           hasOccupation || hasRelation || hasMaritalStatus || hasKKDoc;
+  }) || (Array.isArray(kkUploadedFiles.value) && kkUploadedFiles.value.length > 0);
+};
+
 const showDiscardConfirmation = () => {
-  // Simplified check - if there are any forms, show modal
-  const hasUnsavedChanges = insertForms.value.length > 0;
-  if (hasUnsavedChanges) {
+  // Check if forms have any data entered
+  const hasData = hasFormData();
+  
+  if (hasData) {
+    // Show confirmation modal if there's data
     showUnsavedChangesModal.value = true;
   } else {
+    // No data entered, directly exit insert mode
     handleDiscardChanges();
   }
 };
@@ -754,15 +798,6 @@ const submitAllInserts = (isDraft = false) => {
 };
 
 // Handle save as draft from modal
-const handleSaveDraftFromModal = () => {
-  showUnsavedChangesModal.value = false;
-  
-  // Submit current data as draft
-  if (hasValidInsertData.value) {
-    submitAllInserts(true); // Pass true for isDraft
-  }
-};
-
 // Handle discard changes from modal
 const handleDiscardChanges = () => {
   showUnsavedChangesModal.value = false;
@@ -865,7 +900,9 @@ if (process.client) {
 
 // Handle KK files from MultiDocumentUpload component
 const handleKKFilesChanged = (files) => {
+  console.log('📁 handleKKFilesChanged called with:', files);
   kkUploadedFiles.value = Array.isArray(files) ? files : [];
+  console.log('📁 kkUploadedFiles.value updated to:', kkUploadedFiles.value, 'Length:', kkUploadedFiles.value.length);
   emit('filesChanged', files);
 };
 
@@ -880,6 +917,7 @@ const scrollToKKDocument = () => {
 defineExpose({
   clearAllInserts,
   scrollToKKDocument,
-  scrollToUpload: scrollToKKDocument // Alias for consistency
+  scrollToUpload: scrollToKKDocument, // Alias for consistency
+  showInsertForm
 });
 </script>
