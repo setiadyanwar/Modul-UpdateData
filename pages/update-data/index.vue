@@ -4747,6 +4747,7 @@ onMounted(async () => {
   let smartRefreshInterval = null;
 
   // Add navigation event listener for browser navigation
+  // Store reference outside to prevent undefined error in onUnmounted
   const handleNavigationChange = async () => {
     try {
       // Invalidate cache
@@ -4760,6 +4761,9 @@ onMounted(async () => {
       console.error('[Update-Data] ❌ Error during navigation change:', error);
     }
   };
+  
+  // Store reference for cleanup
+  const handleNavigationChangeRef = handleNavigationChange;
 
   // Page visibility API for better refresh timing
   const handleVisibilityChange = async () => {
@@ -4868,8 +4872,8 @@ onMounted(async () => {
   }, { immediate: false });
 
   // Listen for navigation and visibility events
-  window.addEventListener('popstate', handleNavigationChange);
-  window.addEventListener('beforeunload', handleNavigationChange);
+  window.addEventListener('popstate', handleNavigationChangeRef);
+  window.addEventListener('beforeunload', handleNavigationChangeRef);
   document.addEventListener('visibilitychange', handleVisibilityChange);
 
   // Smart auto-refresh system - only refresh when needed
@@ -4961,9 +4965,9 @@ onUnmounted(() => {
     try { window.removeEventListener('requestStatusChanged', handleRequestHistoryUpdated); } catch {}
     try { window.removeEventListener('draftDeleted', handleRequestDeleted); } catch {}
     try { window.removeEventListener('forceRefreshUpdateData', handleRequestHistoryUpdated); } catch {}
-    window.removeEventListener('popstate', handleNavigationChange);
-    window.removeEventListener('beforeunload', handleNavigationChange);
-    document.removeEventListener('visibilitychange', handleVisibilityChange);
+    try { window.removeEventListener('popstate', handleNavigationChangeRef); } catch {}
+    try { window.removeEventListener('beforeunload', handleNavigationChangeRef); } catch {}
+    try { document.removeEventListener('visibilitychange', handleVisibilityChange); } catch {}
     clearInterval(smartRefreshInterval);
 
     // Clear cache invalidation timeout
