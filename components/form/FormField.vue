@@ -1266,19 +1266,7 @@ const loadMasterOptions = async () => {
       }
     }
 
-    // ✅ WAIT: For master data preload to complete
-    if (!masterDataReady.value) {
-      await new Promise((resolve) => {
-        const unwatch = watch(masterDataReady, (ready) => {
-          if (ready) {
-            unwatch();
-            resolve();
-          }
-        }, { immediate: true });
-      });
-    }
-
-    // ✅ OPTIMIZED: Master data should be ready now, use it directly
+    // ✅ OPTIMIZED: Check masterData cache first (don't wait for masterDataReady if data exists)
     if (masterData.value && masterData.value[cacheKey]) {
       const cachedData = masterData.value[cacheKey];
       masterOptions.value = cachedData.map(item => ({
@@ -1290,40 +1278,56 @@ const loadMasterOptions = async () => {
 
       // ✅ GLOBAL CACHE: Store in global cache for other FormFields
       globalOptionsCache.set(cacheKey, masterOptions.value);
+      return; // ✅ Early return - data loaded from cache
+    }
 
-      console.log(`[FormField] Loaded from masterData cache:`, {
-        cacheKey,
-        itemsCount: masterOptions.value.length,
-        firstItem: masterOptions.value[0]
+    // ✅ WAIT: For master data preload to complete only if data not in cache
+    if (!masterDataReady.value) {
+      // Set timeout to prevent infinite waiting (max 3 seconds)
+      const timeoutPromise = new Promise((resolve) => {
+        setTimeout(() => resolve(), 3000);
       });
-
-    } else {
-      // If somehow preload didn't include this category, load it now
-      console.log(`[FormField] Cache miss, fetching from API:`, {
-        cacheKey,
-        masterDataKeys: masterData.value ? Object.keys(masterData.value) : [],
-        masterDataReady: masterDataReady.value
+      
+      const readyPromise = new Promise((resolve) => {
+        const unwatch = watch(masterDataReady, (ready) => {
+          if (ready) {
+            unwatch();
+            resolve();
+          }
+        }, { immediate: true });
       });
+      
+      await Promise.race([readyPromise, timeoutPromise]);
+    }
 
-      masterOptions.value = await getOptions(props.masterDataCategory, props.masterDataSubCategory || null);
+    // ✅ OPTIMIZED: Check masterData again after waiting (might have been loaded during wait)
+    if (masterData.value && masterData.value[cacheKey]) {
+      const cachedData = masterData.value[cacheKey];
+      masterOptions.value = cachedData.map(item => ({
+        code: item.code,
+        value: item.value,
+        label: item.value
+      }));
       optionsLoaded.value = true;
 
       // ✅ GLOBAL CACHE: Store in global cache for other FormFields
       globalOptionsCache.set(cacheKey, masterOptions.value);
-
-      console.log(`[FormField] Fetched from API:`, {
-        cacheKey,
-        itemsCount: masterOptions.value.length,
-        firstItem: masterOptions.value[0]
-      });
+      return; // ✅ Early return - data loaded from cache
     }
+
+    // If somehow preload didn't include this category, load it now
+    masterOptions.value = await getOptions(props.masterDataCategory, props.masterDataSubCategory || null);
+    optionsLoaded.value = true;
+
+    // ✅ GLOBAL CACHE: Store in global cache for other FormFields
+    globalOptionsCache.set(cacheKey, masterOptions.value);
   } catch (error) {
     console.error(`[FormField] Error loading master options for ${props.masterDataCategory}:`, error);
     masterOptions.value = [];
   }
 };
 
-// Watch for master data category changes with debouncing
+// Watch for master data category changes with minimal debouncing
 let categoryChangeTimeout = null;
 watch(() => [props.masterDataCategory, props.masterDataSubCategory], (newVals, oldVals) => {
   const [newCategory, newSubCategory] = newVals || [];
@@ -1335,10 +1339,10 @@ watch(() => [props.masterDataCategory, props.masterDataSubCategory], (newVals, o
       clearTimeout(categoryChangeTimeout);
     }
 
-    // Debounce the category change to prevent rapid API calls
+    // ✅ OPTIMIZED: Reduced debounce for faster loading (50ms instead of 100ms)
     categoryChangeTimeout = setTimeout(() => {
       loadMasterOptions();
-    }, 100); // 100ms debounce
+    }, 50); // 50ms debounce for faster response
   }
 });
 
@@ -1352,20 +1356,30 @@ onMounted(() => {
   }
 });
 
-// Watch for master data availability and load options when ready with debouncing
+// ✅ OPTIMIZED: Watch for master data availability - only check specific cache key, not deep watch
 let masterDataTimeout = null;
-watch(() => masterData.value, (newMasterData) => {
+watch(() => {
+  // ✅ OPTIMIZED: Only watch the specific cache key, not entire masterData object
+  if (!props.masterDataCategory) return null;
+  const normalizedCategory = props.masterDataCategory.toUpperCase();
+  const normalizedSubCategory = props.masterDataSubCategory ? props.masterDataSubCategory.toUpperCase() : null;
+  const cacheKey = normalizedSubCategory ? `${normalizedCategory}_${normalizedSubCategory}` : normalizedCategory;
+  return masterData.value?.[cacheKey] || null;
+}, (newData) => {
   if (masterDataTimeout) {
     clearTimeout(masterDataTimeout);
   }
   
+  // ✅ OPTIMIZED: Reduced debounce and only trigger if data actually changed
   masterDataTimeout = setTimeout(() => {
-    if (newMasterData && Object.keys(newMasterData).length > 0 && props.masterDataCategory) {
-      
-      loadMasterOptions();
+    if (newData && Array.isArray(newData) && newData.length > 0 && props.masterDataCategory) {
+      // Only load if options not already loaded
+      if (!optionsLoaded.value || masterOptions.value.length === 0) {
+        loadMasterOptions();
+      }
     }
-  }, 100); // 100ms debounce
-}, { deep: true, immediate: true });
+  }, 10); // ✅ Reduced to 10ms for faster response
+}, { immediate: true });
 
 // Use master options if available, otherwise use props options
 const finalOptions = computed(() => {

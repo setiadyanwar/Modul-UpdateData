@@ -162,16 +162,7 @@ watch(searchQuery, (newQuery) => {
 
 // Filtered options based on debounced search
 const filteredOptions = computed(() => {
-  // Debug: Log options received
-  if (typeof window !== 'undefined' && props.options) {
-    console.log('[ModernSelect] filteredOptions computed:', {
-      optionsCount: props.options.length,
-      hasSearch: !!debouncedSearchQuery.value,
-      firstOption: props.options[0],
-      allOptions: props.options
-    });
-  }
-
+  // ✅ REMOVED: Console.log for better performance
   if (!debouncedSearchQuery.value) return props.options;
 
   const query = debouncedSearchQuery.value.toLowerCase().trim();

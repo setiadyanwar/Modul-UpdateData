@@ -407,6 +407,7 @@ const {
   getCategoryFromTabId,
   isTabPermanentlyLocked,
   isEditModeAllowed,
+  ensureChangeRequestsLoaded, // ✅ Use this instead of loadChangeRequests() directly to avoid duplicates
 } = tabManagement;
 
 // Local medical options that we will explicitly preload on mount (so network shows requests)
@@ -1942,8 +1943,8 @@ if (process.client) {
         cacheVersion.value = Date.now();
         console.log('[SUBMIT SUCCESS] Cache version bumped:', cacheVersion.value);
 
-        // Step 3: Load fresh change requests from API
-        await loadChangeRequests();
+        // Step 3: Load fresh change requests from API (with deduplication)
+        await ensureChangeRequestsLoaded();
 
         // Step 4: Invalidate tab data cache for affected tabs
         tabDataCache.invalidateCache(tab, 'after-submit-success');
@@ -3872,8 +3873,8 @@ const handleSaveAsDraft = async () => {
         cacheVersion.value = Date.now();
         console.log('[SAVE DRAFT SUCCESS] Cache version bumped:', cacheVersion.value);
 
-        // Step 3: Load fresh change requests from API
-        await loadChangeRequests();
+        // Step 3: Load fresh change requests from API (with deduplication)
+        await ensureChangeRequestsLoaded();
 
         // Step 4: ✅ CRITICAL - Force update ALL tabs cache untuk real-time check
         await tabManagement.forceUpdateAllTabsCache();
@@ -3947,7 +3948,7 @@ const handleSaveAsDraft = async () => {
       // Trigger background refresh (non-blocking)
       setTimeout(async () => {
         try {
-          await loadChangeRequests();
+          await ensureChangeRequestsLoaded();
           await tabManagement.forceUpdateAllTabsCache();
           console.log('[SAVE DRAFT FINALLY] ✅ Safety refresh completed');
         } catch (e) {
@@ -4195,7 +4196,8 @@ function handleToggleActiveEmergencyContact(idx, val) {
 const loadChangeRequestsWithLoading = async () => {
   try {
     isLoadingChangeRequests.value = true;
-    await loadChangeRequests();
+    // ✅ OPTIMIZED: Use ensureChangeRequestsLoaded to avoid duplicate API calls
+    await ensureChangeRequestsLoaded();
   } catch (error) {
   } finally {
     isLoadingChangeRequests.value = false;
@@ -4355,7 +4357,7 @@ onMounted(async () => {
         tabManagement.resetChangeRequestsCache();
 
         // Step 2: Load change requests dari API (FRESH DATA)
-        await loadChangeRequests();
+        await ensureChangeRequestsLoaded();
         console.log('[MOUNT] ✅ Change requests loaded, total:', changeRequests.value?.length || 0);
 
         // Step 3: Force update ALL tabs cache untuk real-time check
@@ -4606,7 +4608,7 @@ onMounted(async () => {
 
       try {
         tabManagement.resetChangeRequestsCache();
-        await loadChangeRequests();
+        await ensureChangeRequestsLoaded();
         console.log(`[TAB SWITCH GUARD] ✅ Fresh changeRequests loaded, total: ${changeRequests.value?.length || 0}`);
 
         tabManagement.invalidateTabCache(newTab);
@@ -4785,7 +4787,7 @@ onMounted(async () => {
 
           // Step 3: Load FRESH changeRequests dari API
           isLoadingChangeRequests.value = true;
-          await loadChangeRequests();
+          await ensureChangeRequestsLoaded();
           isLoadingChangeRequests.value = false;
 
           console.log('[REMOUNT via NAVIGATION] ✅ Fresh changeRequests loaded, total:', changeRequests.value?.length || 0);
@@ -4888,7 +4890,7 @@ onActivated(async () => {
     // Step 3: Load FRESH changeRequests dari API
     isLoadingChangeRequests.value = true;
     console.log('[REMOUNT] 📡 Loading change requests...');
-    await loadChangeRequests();
+    await ensureChangeRequestsLoaded();
     console.log('[REMOUNT] ✅ Change requests loaded');
     isLoadingChangeRequests.value = false;
 
