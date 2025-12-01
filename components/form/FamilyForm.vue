@@ -194,7 +194,9 @@
             @update:model-value="val => updateInsertField(form.id, 'telkomedika_card_number', val)" :disabled="true"
             placeholder="Disabled" />
           <FormField label="KK Document" type="file" :model-value="form.kk_doc"
-            @update:model-value="val => updateInsertField(form.id, 'kk_doc', val)" accept=".jpg,.jpeg,.png,.pdf"
+            @update:model-value="val => updateInsertField(form.id, 'kk_doc', val)"
+            @file-upload="file => handleKKFileUpload(form.id, file)"
+            accept=".jpg,.jpeg,.png,.pdf"
             class="lg:col-span-3" :use-update-data-preview="true" />
         </div>
       </div>
@@ -215,7 +217,7 @@
 
         <!-- Submit All Button - Full Width -->
         <UiButton variant="primary" size="small" @click="submitAllInserts" :disabled="!hasValidInsertData"
-          class="w-full bg-green-600 hover:bg-green-700 border-green-600 hover:border-green-700">
+          class="w-full bg-primary-600 hover:bg-primary-700 border-primary-600 hover:border-primary-700">
           <i class="pi pi-check mr-2"></i> Submit All
         </UiButton>
       </div>
@@ -408,7 +410,8 @@ const hasValidInsertData = computed(() => {
   // Check if there's at least one form and all forms have all required fields filled
   if (insertForms.value.length === 0) return false;
 
-  const isValid = insertForms.value.every(form => {
+  // Check if all forms have required fields filled
+  const allFieldsValid = insertForms.value.every(form => {
     // List of required fields for family member
     const requiredFields = [
       'name',
@@ -422,7 +425,7 @@ const hasValidInsertData = computed(() => {
     ];
 
     // Check if all required fields are filled and not empty
-    const allFieldsValid = requiredFields.every(field => {
+    const fieldsValid = requiredFields.every(field => {
       const value = form[field];
       if (typeof value === 'string') {
         return value.trim() !== '';
@@ -430,12 +433,39 @@ const hasValidInsertData = computed(() => {
       return value !== null && value !== undefined && value !== '';
     });
 
-
-
-    return allFieldsValid;
+    return fieldsValid;
   });
 
-  return isValid;
+  // Check if at least one form has KK document uploaded
+  // KK document is required - at least one form must have kk_doc
+  // FormField emits file.name (string) when file is selected via update:modelValue
+  const hasKKDocument = insertForms.value.some(form => {
+    const kkDoc = form.kk_doc;
+    
+    // If kk_doc is null, undefined, or empty string, no document uploaded
+    // Initial value is "" (empty string), so we need to check for that
+    if (kkDoc === null || kkDoc === undefined || kkDoc === '') return false;
+    
+    // If it's a File object, document is uploaded
+    if (kkDoc instanceof File) return true;
+    
+    // If it's an array with files, document is uploaded
+    if (Array.isArray(kkDoc) && kkDoc.length > 0) return true;
+    
+    // If it's a string (file name from FormField), check if it's not empty
+    if (typeof kkDoc === 'string') {
+      const trimmed = kkDoc.trim();
+      // Empty string means no file uploaded (initial value is "")
+      if (trimmed === '') return false;
+      // Non-empty string means file is uploaded (FormField sends file.name)
+      return true;
+    }
+    
+    return false;
+  });
+
+  // Button enabled only if all fields are valid AND KK document is uploaded
+  return allFieldsValid && hasKKDocument;
 });
 
 // Start insert flow
@@ -468,6 +498,19 @@ const removeInsertForm = (formId) => {
   // Auto exit adding mode if all forms are removed
   if (insertForms.value.length === 0) {
     showInsertForm.value = false;
+  }
+};
+
+// Handle KK file upload - ensure file is stored
+const handleKKFileUpload = (formId, file) => {
+  const form = insertForms.value.find(f => f.id === formId);
+  if (!form) return;
+  
+  // Store File object for actual upload
+  form.kk_doc_file = file;
+  // Ensure kk_doc has file name (FormField also emits this via update:modelValue)
+  if (file && file.name) {
+    form.kk_doc = file.name;
   }
 };
 

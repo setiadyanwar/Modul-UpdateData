@@ -1,8 +1,8 @@
 import { ref } from 'vue'
-import { useApi } from './useApi'
+import { useMasterData } from './useMasterData'
 
 export const useDocumentTypes = () => {
-  const { apiGet } = useApi()
+  const { getOptions } = useMasterData()
   
   // Start empty; will be populated from master API
   const documentTypes = ref([])
@@ -10,16 +10,26 @@ export const useDocumentTypes = () => {
   const isLoading = ref(false)
   const error = ref(null)
 
-  // Fetch document types from master API
+  // Fetch document types from master API using useMasterData to avoid duplicate API calls
   const fetchDocumentTypes = async () => {
     try {
       isLoading.value = true
       error.value = null
 
-  // Call master-api using category only (server provides all doc types)
-  let response;
+  // ✅ OPTIMIZED: Use useMasterData instead of direct API call to avoid duplicates
+  let data;
   try {
-    response = await apiGet('/master-api/?category=emp_document')
+    // Use useMasterData.getOptions to leverage caching and deduplication
+    const rawData = await getOptions('EMP_DOCUMENT');
+    
+    // getOptions returns array directly, but we need to handle response format
+    if (Array.isArray(rawData)) {
+      data = rawData;
+    } else if (rawData && rawData.data) {
+      data = rawData.data;
+    } else {
+      data = rawData;
+    }
   } catch (apiError) {
     // console.warn('⚠️ [useDocumentTypes] API call failed, using fallback data:', apiError.message);
     // Use fallback data instead of returning empty array
@@ -37,28 +47,28 @@ export const useDocumentTypes = () => {
   }
   // Debug removed
 
-      if (response && response.success && response.data) {
+      if (data) {
         // Handle different response formats. Some endpoints return:
         // - data: [ ... ]
         // - data: { master_data: [ ... ], total_records: N }
         // - data: { items: [ ... ] }
         // We try known keys first, then fall back to the first array found in the object.
-        let dataArray = response.data
+        let dataArray = data
 
   let usedArrayKey = null
   if (!Array.isArray(dataArray)) {
           const knownArrayKeys = ['master_data', 'items', 'data', 'results', 'rows', 'list']
           for (const k of knownArrayKeys) {
-            if (response.data && Array.isArray(response.data[k])) {
-              dataArray = response.data[k]
+            if (data && typeof data === 'object' && Array.isArray(data[k])) {
+              dataArray = data[k]
               usedArrayKey = k
               break
             }
           }
 
           // If master_data found, filter by expected category/subcategory
-          if (Array.isArray(response.data?.master_data)) {
-            const master = response.data.master_data
+          if (data && typeof data === 'object' && Array.isArray(data.master_data)) {
+            const master = data.master_data
 
             // tolerant matcher for category/subcategory field names
             const matchesCategory = (item, cat, subcat) => {
@@ -95,8 +105,8 @@ export const useDocumentTypes = () => {
           }
 
           // If still not an array, look for the first nested array value
-          if (!Array.isArray(dataArray) && response.data && typeof response.data === 'object') {
-            for (const [k, val] of Object.entries(response.data)) {
+          if (!Array.isArray(dataArray) && data && typeof data === 'object') {
+            for (const [k, val] of Object.entries(data)) {
               if (Array.isArray(val)) {
                 dataArray = val
                 usedArrayKey = k
@@ -107,8 +117,8 @@ export const useDocumentTypes = () => {
 
           if (!Array.isArray(dataArray)) {
             // Check if response is HTML (error page) instead of JSON
-            if (typeof response.data === 'string' && response.data.includes('<html>')) {
-              // console.error('❌ API returned HTML instead of JSON:', response.data.substring(0, 200) + '...');
+            if (typeof data === 'string' && data.includes('<html>')) {
+              // console.error('❌ API returned HTML instead of JSON:', data.substring(0, 200) + '...');
               // Return empty array instead of throwing error to prevent app crashes
               return [];
             }
@@ -119,7 +129,7 @@ export const useDocumentTypes = () => {
         }
 
   // Save raw response for quick inspection in the browser console and record which array key was used
-  try { if (typeof window !== 'undefined') window.__lastMasterDataResponse = response.data } catch { /* noop */ }
+  try { if (typeof window !== 'undefined') window.__lastMasterDataResponse = data } catch { /* noop */ }
   try { if (typeof window !== 'undefined') window.__lastDocTypesKeyUsed = usedArrayKey || 'direct_array' } catch { /* noop */ }
 
         // Transform the response data to a usable format (tolerant to various field names)

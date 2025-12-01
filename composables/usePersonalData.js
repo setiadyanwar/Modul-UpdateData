@@ -255,91 +255,104 @@ export const usePersonalData = () => {
   };
 
   // Load functions with proper error handling and data initialization
+  // ✅ DEDUPLICATION: Prevent multiple simultaneous calls
+  let loadingBasicInfoPromise = null;
+  
   const loadBasicInformation = async () => {
-    try {
-      // ✅ GUARD: Wait for token to be available before making API calls
-      if (process.client) {
-        let retries = 0;
-        const maxRetries = 20; // Wait max 4 seconds (20 * 200ms)
-
-        while (!localStorage.getItem('access_token') && retries < maxRetries) {
-          await new Promise(resolve => setTimeout(resolve, 200));
-          retries++;
-        }
-
-        if (!localStorage.getItem('access_token')) {
-          // console.error('[loadBasicInformation] ❌ No token available after waiting');
-          throw new Error('Authentication token not available. Please refresh the page.');
-        }
-
-      }
-
-      // ✅ OPTIMIZED: Load master options only once per session
-      // Check if master options are already loaded to prevent redundant calls
-      const hasMasterOptions = Object.values(masterOptions.value).some(options =>
-        Array.isArray(options) && options.length > 0
-      );
-
-      if (!hasMasterOptions) {
-        await loadMasterOptions();
-      } else {
-      }
-
-      // Updated endpoint according to new API contract
-      const response = await apiGet("/employee/basic-information");
-
-      // Check if we have valid API response
-      let apiData = null;
-      
-      if (response && response.success && response.data) {
-        apiData = response.data;
-      } else if (response && response.data) {
-        apiData = response.data;
-      } else if (response && typeof response === 'object') {
-        // Response might be the data directly
-        apiData = response;
-      } else {
-        throw new Error("Invalid API response structure");
-      }
-      
-      // Transform API data to match our form structure
-      const transformedData = {
-        nik: apiData.nik || "", // Add missing NIK field
-        name: apiData.name || "",
-        gender: apiData.gender || "", // Tambah field gender (bukan hanya gender_id)
-        gender_id: apiData.gender_id || "",
-        religion: apiData.religion || "", // Tambah field religion (bukan hanya religion_id)
-        religion_id: apiData.religion_id || "",
-        birth_place: apiData.birth_place || "",
-        birth_date: apiData.birth_date ? convertDateFormat(apiData.birth_date) : "", // Konversi format tanggal
-        no_ktp: apiData.no_ktp || "",
-        passport_number: apiData.passport_number || "",
-        marital_status: apiData.marital_status || "", // Tambah field marital_status
-        marital_status_id: apiData.marital_status_id !== null && apiData.marital_status_id !== undefined ? String(apiData.marital_status_id) : "", // Pastikan string untuk dropdown, termasuk "0"
-        nationality: apiData.nationality || "", // Tambah field nationality
-        nationality_id: String(apiData.nationality_id || ""), // Pastikan string untuk dropdown
-        clothing_size: apiData.clothing_size || "", // Tambah field clothing_size
-        clothing_size_id: apiData.clothing_size_id || "",
-        main_phone_number: apiData.main_phone_number || "",
-        secondary_phone_number: apiData.secondary_phone_number || "",
-        business_email: apiData.business_email || "",
-        private_email: apiData.private_email || "",
-        ktp_doc: apiData.ktp_doc || "",
-        professional_photo: apiData.professional_photo || "", // Perbaiki field name
-      };
-      
-  // Removed debug logs
-
-      const mergedData = safeMergeData(employeeData.value, transformedData);
-      
-      employeeData.value = mergedData;
-      originalData.value = JSON.parse(JSON.stringify(employeeData.value));
-    } catch (error) {
-      // console.error('Failed to load basic information:', error);
-      // Don't throw the error - continue with existing data to prevent app crash
-    } finally {
-      isLoadingBasicInfo.value = false;
+    // ✅ DEDUPLICATION: Return existing promise if already loading
+    if (loadingBasicInfoPromise) {
+      return loadingBasicInfoPromise;
     }
+    
+    loadingBasicInfoPromise = (async () => {
+      try {
+        // ✅ GUARD: Wait for token to be available before making API calls
+        if (process.client) {
+          let retries = 0;
+          const maxRetries = 20; // Wait max 4 seconds (20 * 200ms)
+
+          while (!localStorage.getItem('access_token') && retries < maxRetries) {
+            await new Promise(resolve => setTimeout(resolve, 200));
+            retries++;
+          }
+
+          if (!localStorage.getItem('access_token')) {
+            // console.error('[loadBasicInformation] ❌ No token available after waiting');
+            throw new Error('Authentication token not available. Please refresh the page.');
+          }
+
+        }
+
+        // ✅ OPTIMIZED: Load master options only once per session
+        // Check if master options are already loaded to prevent redundant calls
+        const hasMasterOptions = Object.values(masterOptions.value).some(options =>
+          Array.isArray(options) && options.length > 0
+        );
+
+        if (!hasMasterOptions) {
+          await loadMasterOptions();
+        } else {
+        }
+
+        // Updated endpoint according to new API contract
+        const response = await apiGet("/employee/basic-information");
+
+        // Check if we have valid API response
+        let apiData = null;
+        
+        if (response && response.success && response.data) {
+          apiData = response.data;
+        } else if (response && response.data) {
+          apiData = response.data;
+        } else if (response && typeof response === 'object') {
+          // Response might be the data directly
+          apiData = response;
+        } else {
+          throw new Error("Invalid API response structure");
+        }
+        
+        // Transform API data to match our form structure
+        const transformedData = {
+          nik: apiData.nik || "", // Add missing NIK field
+          name: apiData.name || "",
+          gender: apiData.gender || "", // Tambah field gender (bukan hanya gender_id)
+          gender_id: apiData.gender_id || "",
+          religion: apiData.religion || "", // Tambah field religion (bukan hanya religion_id)
+          religion_id: apiData.religion_id || "",
+          birth_place: apiData.birth_place || "",
+          birth_date: apiData.birth_date ? convertDateFormat(apiData.birth_date) : "", // Konversi format tanggal
+          no_ktp: apiData.no_ktp || "",
+          passport_number: apiData.passport_number || "",
+          marital_status: apiData.marital_status || "", // Tambah field marital_status
+          marital_status_id: apiData.marital_status_id !== null && apiData.marital_status_id !== undefined ? String(apiData.marital_status_id) : "", // Pastikan string untuk dropdown, termasuk "0"
+          nationality: apiData.nationality || "", // Tambah field nationality
+          nationality_id: String(apiData.nationality_id || ""), // Pastikan string untuk dropdown
+          clothing_size: apiData.clothing_size || "", // Tambah field clothing_size
+          clothing_size_id: apiData.clothing_size_id || "",
+          main_phone_number: apiData.main_phone_number || "",
+          secondary_phone_number: apiData.secondary_phone_number || "",
+          business_email: apiData.business_email || "",
+          private_email: apiData.private_email || "",
+          ktp_doc: apiData.ktp_doc || "",
+          professional_photo: apiData.professional_photo || "", // Perbaiki field name
+        };
+        
+        // Removed debug logs
+
+        const mergedData = safeMergeData(employeeData.value, transformedData);
+        
+        employeeData.value = mergedData;
+        originalData.value = JSON.parse(JSON.stringify(employeeData.value));
+      } catch (error) {
+        // console.error('Failed to load basic information:', error);
+        // Don't throw the error - continue with existing data to prevent app crash
+      } finally {
+        isLoadingBasicInfo.value = false;
+        loadingBasicInfoPromise = null; // ✅ Reset promise when done
+      }
+    })();
+    
+    return loadingBasicInfoPromise;
   };
 
   // Helper function to convert date format to DD-MM-YYYY

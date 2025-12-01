@@ -79,7 +79,7 @@ apiService.interceptors.response.use(
     //   error.message
     // );
 
-    // Handle 401 Unauthorized errors - notify parent (ESS-Sigma)
+    // Handle 401 Unauthorized errors - try refresh token first before logout
     const isTokenExpired = error.response?.status === 401 ||
                           (error.response?.data?.status === false &&
                            error.response?.data?.message === "Token has been invalidated") ||
@@ -89,6 +89,55 @@ apiService.interceptors.response.use(
                           (error.response?.data?.action === 'refresh_token');
 
     if (isTokenExpired && process.client) {
+      // ✅ FIX: Try to refresh token before clearing tokens and logging out
+      // This prevents logout when user returns to tab after token expired
+      const refreshToken = localStorage.getItem("refresh_token");
+      
+      if (refreshToken && !error.config?.url?.includes('/auth/refresh')) {
+        // Don't retry refresh if this is already a refresh token request
+        try {
+          // Try to refresh token using direct axios call (bypass interceptor to avoid loop)
+          // Use a new axios instance to avoid interceptors
+          const refreshAxios = axios.create({
+            baseURL: getApiBaseUrl(),
+            timeout: 10000,
+            headers: { 'Content-Type': 'application/json' }
+          });
+          
+          const refreshResponse = await refreshAxios.post('/api/auth/refresh', {
+            refresh_token: refreshToken
+          });
+
+          if (refreshResponse.data?.status && (refreshResponse.data?.token || refreshResponse.data?.data)) {
+            // Refresh successful - update tokens
+            const accessToken = refreshResponse.data?.token?.access_token || refreshResponse.data?.data?.access_token;
+            const newRefreshToken = refreshResponse.data?.token?.refresh_token || refreshResponse.data?.data?.refresh_token;
+            
+            if (accessToken) {
+              localStorage.setItem("access_token", accessToken);
+              if (newRefreshToken) {
+                localStorage.setItem("refresh_token", newRefreshToken);
+              }
+              
+              // Retry the original request with new token
+              const originalRequest = error.config;
+              originalRequest.headers.Authorization = `Bearer ${accessToken}`;
+              
+              // Dispatch event to notify authentication core
+              window.dispatchEvent(new CustomEvent('token-refreshed', {
+                detail: { accessToken, refreshToken: newRefreshToken }
+              }));
+              
+              return apiService(originalRequest);
+            }
+          }
+        } catch (refreshError) {
+          // Refresh failed - continue with logout
+          // console.warn('[Update-Data API] Token refresh failed:', refreshError);
+        }
+      }
+
+      // Refresh failed or no refresh token - clear tokens and logout
       // console.warn('[Update-Data API] Token expired, notifying parent');
 
       // Clear local tokens

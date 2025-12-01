@@ -358,15 +358,13 @@ const reloadWarningBanner = async (force = false) => {
   const switchTab = async (newTab) => {
     activeTab.value = newTab;
     
-    // Auto-load data for the new tab
-    try {
-      
-      // Use preloaded data if available, otherwise load
-      await preloadTabData(newTab);
-      
-    } catch {
-      // Error handled silently
-    }
+    // ✅ REMOVED: preloadTabData call - watch(activeTab) already handles data loading
+    // This was causing duplicate API calls:
+    // 1. watch(activeTab) triggers → preloadTabData()
+    // 2. switchTab() also calls preloadTabData() → DUPLICATE!
+    // Result: 2x API calls for each tab switch
+    //
+    // ✅ FIX: Let watch(activeTab) handle all data loading to avoid duplicates
   };
 
   // Function to check if a category has waiting approval request
@@ -1138,6 +1136,7 @@ const reloadWarningBanner = async (force = false) => {
     invalidateTabCache,
     invalidateAllCache,
     resetChangeRequestsCache,
+    ensureChangeRequestsLoaded, // ✅ EXPOSE: For use in pages to avoid duplicate API calls
     forceUpdateAllTabsCache, // ✅ NEW: Force update all tabs for real-time check
     // OPTIMIZED: New methods
     preloadTabData,

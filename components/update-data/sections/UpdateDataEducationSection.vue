@@ -239,7 +239,12 @@
             size="small"
             @click="submitAllInserts"
             :disabled="!hasValidInsertData"
-            class="w-full bg-green-600 hover:bg-green-700 border-green-600 hover:border-green-700"
+            :class="[
+              'w-full',
+              hasValidInsertData
+                ? 'bg-primary-600 hover:bg-primary-700 border-primary-600 hover:border-primary-700'
+                : 'bg-grey-300 border-grey-300 text-grey-600 cursor-not-allowed pointer-events-none opacity-50'
+            ]"
           >
             <i class="pi pi-check mr-2"></i> Submit All
           </UiButton>
@@ -253,10 +258,10 @@
       :is-visible="showUnsavedChangesModal"
       title="You have unsaved education data"
       message="You have filled in some information for education records. What would you like to do with your changes?"
-      save-button-text="Save as Draft"
+      save-button-text="Cancel"
       continue-button-text="Discard Changes"
       @close="showUnsavedChangesModal = false"
-      @save-draft="handleSaveDraftFromModal"
+      @save-draft="showUnsavedChangesModal = false"
       @continue="handleDiscardChanges"
     />
   </div>
@@ -399,12 +404,24 @@ const hasValidInsertData = computed(() => {
   const requiredFields = ['edu_level_id', 'edu_major_id', 'edu_institution_id', 'edu_start_date', 'edu_end_date'];
   
   const isValid = insertForms.value.every((form, formIndex) => {
+    // Check if all required fields are filled
     const allFieldsValid = requiredFields.every(field => {
       const value = form[field];
-      return value && value.toString().trim() !== '';
+      // Check if value exists and is not empty
+      if (value === null || value === undefined) return false;
+      if (typeof value === 'string') {
+        return value.trim() !== '';
+      }
+      // For numbers/dates, just check if not null/undefined
+      return value !== null && value !== undefined && value !== '';
     });
     
-    return allFieldsValid;
+    // Check if Ijazah document is uploaded for this form
+    const hasIjazahFile = insertUploadFiles.value[form.id] !== null && 
+                          insertUploadFiles.value[form.id] !== undefined;
+    
+    // Both fields and file must be valid
+    return allFieldsValid && hasIjazahFile;
   });
   
   // Form validation completed
@@ -678,17 +695,39 @@ const updateInsertField = (formId, key, value) => {
   }
 };
 
+// Check if forms have any data entered
+const hasFormData = () => {
+  // Check if there are any forms
+  if (insertForms.value.length === 0) return false;
+  
+  // Check if any form has data entered (not just empty/default values)
+  const hasFormFields = insertForms.value.some(form => {
+    // Check if any field has been filled
+    const hasLevel = form.edu_level_id !== null && form.edu_level_id !== undefined;
+    const hasMajor = form.edu_major_id !== null && form.edu_major_id !== undefined;
+    const hasInstitution = form.edu_institution_id !== null && form.edu_institution_id !== undefined;
+    const hasStartDate = form.edu_start_date && form.edu_start_date.trim() !== '';
+    const hasEndDate = form.edu_end_date && form.edu_end_date.trim() !== '';
+    
+    return hasLevel || hasMajor || hasInstitution || hasStartDate || hasEndDate;
+  });
+  
+  // Check if any file has been uploaded for insert forms
+  const hasUploadedFiles = Object.keys(insertUploadFiles.value).length > 0 && 
+    Object.values(insertUploadFiles.value).some(file => file !== null && file !== undefined);
+  
+  return hasFormFields || hasUploadedFiles;
+};
+
 const showDiscardConfirmation = () => {
+  // Check if forms have any data entered
+  const hasData = hasFormData();
   
-  // Simplified check - if there are any forms, show modal
-  const hasUnsavedChanges = insertForms.value.length > 0;
-  
-  
-  if (hasUnsavedChanges) {
-    // Show confirmation modal
+  if (hasData) {
+    // Show confirmation modal if there's data
     showUnsavedChangesModal.value = true;
   } else {
-    // No changes, directly reset
+    // No data entered, directly exit insert mode
     handleDiscardChanges();
   }
 };
@@ -824,15 +863,6 @@ const submitAllInserts = (isDraft = false) => {
 };
 
 // Handle save as draft from modal
-const handleSaveDraftFromModal = () => {
-  showUnsavedChangesModal.value = false;
-  
-  // Submit current data as draft
-  if (hasValidInsertData.value) {
-    submitAllInserts(true); // Pass true for isDraft
-  }
-};
-
 // Handle discard changes from modal
 const handleDiscardChanges = () => {
   showUnsavedChangesModal.value = false;
@@ -1036,7 +1066,8 @@ if (process.client) {
 
 // Expose methods to parent component
 defineExpose({
-  clearAllInserts
+  clearAllInserts,
+  showInsertForm
 });
 </script>
 

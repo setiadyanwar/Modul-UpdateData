@@ -877,7 +877,7 @@ const parseJWTPayload = (token) => {
   };
 
   // Handle tab visibility changes
-  const handleVisibilityChange = () => {
+  const handleVisibilityChange = async () => {
     const isVisible = !document.hidden;
     isTabVisible.value = isVisible;
     
@@ -889,6 +889,59 @@ const parseJWTPayload = (token) => {
       if (visibilityTimer) {
         clearTimeout(visibilityTimer);
         visibilityTimer = null;
+      }
+      
+      // ✅ FIX: Check and refresh token when tab becomes visible
+      // This prevents 401 errors when user returns to tab after token expired
+      if (isAuthenticated.value) {
+        try {
+          const accessToken = localStorage.getItem('access_token');
+          if (accessToken) {
+            const tokenStatus = getTokenStatus(accessToken);
+            
+            // If token is expired or needs refresh, try to refresh it
+            if (tokenStatus === 'EXPIRED' || tokenStatus === 'NEEDS_REFRESH') {
+              const timeSinceActivity = Date.now() - lastActivityTime.value;
+              
+              // Only refresh if user was recently active (within 20 minutes)
+              // This prevents refresh attempts for long-inactive sessions
+              if (timeSinceActivity < CONFIG.ACCESS_TOKEN_LIFETIME) {
+                if (process.dev) {
+                  logger.tokenEvent('TAB_VISIBLE_TOKEN_REFRESH_ATTEMPT', {
+                    userId: user.value?.id,
+                    tokenStatus,
+                    timeSinceActivity: Math.floor(timeSinceActivity / 1000) + 's'
+                  });
+                }
+                
+                const newToken = await refreshAccessToken();
+                if (newToken) {
+                  // Token refreshed successfully, restart monitoring
+                  scheduleTokenRefresh(newToken);
+                  resetActivityTimer(true);
+                  
+                  if (process.dev) {
+                    logger.tokenEvent('TAB_VISIBLE_TOKEN_REFRESHED', {
+                      userId: user.value?.id
+                    });
+                  }
+                } else {
+                  // Refresh failed, show session warning
+                  if (!isSessionWarningVisible.value) {
+                    showSessionWarning();
+                  }
+                }
+              }
+            }
+          }
+        } catch (error) {
+          // Silent fail - don't interrupt user experience
+          if (process.dev) {
+            logger.tokenError('TAB_VISIBLE_TOKEN_CHECK_FAILED', error, {
+              userId: user.value?.id
+            });
+          }
+        }
       }
       
       const remaining = sessionMonitorTargetTime.value - Date.now();
@@ -1693,6 +1746,35 @@ const initializeUserData = async () => {
       if (event.detail) {
         user.value = event.detail;
         isAuthenticated.value = true;
+      }
+    });
+
+    // ✅ FIX: Listen for token-refreshed event from API interceptor
+    // This ensures authentication core state is updated when API interceptor refreshes token
+    window.addEventListener('token-refreshed', async (event) => {
+      if (event.detail?.accessToken) {
+        const accessToken = event.detail.accessToken;
+        const refreshToken = event.detail.refreshToken;
+        
+        // Update tokens in localStorage (already done by interceptor, but ensure consistency)
+        if (accessToken) {
+          localStorage.setItem('access_token', accessToken);
+        }
+        if (refreshToken) {
+          localStorage.setItem('refresh_token', refreshToken);
+        }
+        
+        // Reschedule token monitoring based on new token expiry
+        scheduleTokenRefresh(accessToken);
+        
+        // Reset activity timer to reflect new session
+        resetActivityTimer(true);
+        
+        if (process.dev) {
+          logger.tokenEvent('TOKEN_REFRESHED_VIA_INTERCEPTOR', {
+            userId: user.value?.id
+          });
+        }
       }
     });
   }
