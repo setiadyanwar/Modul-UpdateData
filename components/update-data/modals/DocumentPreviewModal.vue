@@ -184,10 +184,23 @@ const loadDocumentContent = async () => {
   error.value = '';
 
   try {
+    // Parse itemId - might contain comma (parent_id,item_id format)
+    let actualParentId = props.parentId;
+    let actualItemId = props.itemId;
+
+    // If itemId contains comma, extract parent and item
+    if (actualItemId && actualItemId.toString().includes(',')) {
+      const parts = actualItemId.toString().split(',');
+      if (parts.length === 2) {
+        actualParentId = parts[0].trim();
+        actualItemId = parts[1].trim();
+      }
+    }
+
     // Choose endpoint based on presence of parentId
-    const previewPath = props.parentId
-      ? `/employee/attachments/parent/${props.parentId}/item/${props.itemId}/preview`
-      : `/employee/attachments/${props.itemId}/preview`;
+    const previewPath = actualParentId
+      ? `/employee/attachments/parent/${actualParentId}/item/${actualItemId}/preview`
+      : `/employee/attachments/${actualItemId}/preview`;
 
     const response = await apiGet(previewPath);
 
@@ -233,10 +246,23 @@ const downloadDocument = async () => {
       return;
     }
 
+    // Parse itemId - might contain comma (parent_id,item_id format)
+    let actualParentId = props.parentId;
+    let actualItemId = props.itemId;
+
+    // If itemId contains comma, extract parent and item
+    if (actualItemId && actualItemId.toString().includes(',')) {
+      const parts = actualItemId.toString().split(',');
+      if (parts.length === 2) {
+        actualParentId = parts[0].trim();
+        actualItemId = parts[1].trim();
+      }
+    }
+
     // Choose endpoint based on presence of parentId
-    const baseUrl = props.parentId
-      ? `/api/proxy/employee/attachments/parent/${props.parentId}/item/${props.itemId}/download`
-      : `/api/proxy/employee/attachments/${props.itemId}/download`;
+    const baseUrl = actualParentId
+      ? `/api/proxy/employee/attachments/parent/${actualParentId}/item/${actualItemId}/download`
+      : `/api/proxy/employee/attachments/${actualItemId}/download`;
     const urlWithAuth = `${baseUrl}?auth=${encodeURIComponent(`Bearer ${token}`)}`;
 
     // Use fetch for consistent behavior across all platforms

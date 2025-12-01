@@ -75,6 +75,15 @@
     >
        Please upload an official employee photograph to update your profile photo.
     </UiAlert>
+
+    <!-- Image Cropper Modal -->
+    <ImageCropperModal
+      :is-open="isCropperOpen"
+      :image-file="selectedFileForCrop"
+      @close="handleCropperClose"
+      @cropped="handleCropped"
+      @reupload="handleCropperReupload"
+    />
   </div>
 </template>
 
@@ -82,6 +91,7 @@
 import { computed, ref, watch, onUnmounted } from 'vue';
 import UiAlert from '~/components/ui/Alert.vue';
 import UiButton from '~/components/ui/Button.vue';
+import ImageCropperModal from '~/components/update-data/modals/ImageCropperModal.vue';
 
 const emit = defineEmits(['photo-changed']);
 
@@ -109,17 +119,43 @@ const props = defineProps({
 const previewPhotoUrl = ref('');
 const isLoadingPreview = ref(false);
 const fileInput = ref(null);
+const isCropperOpen = ref(false);
+const selectedFileForCrop = ref(null);
 
 // Parse parent_id dan item_id dari professional_photo string
+// Support both formats: parent_id,item_id (new, comma-delimited) and parent_id-item_id (legacy)
 const parsePhotoId = (photoString) => {
   if (!photoString || typeof photoString !== 'string') return null;
-  const parts = photoString.split('-');
-  if (parts.length !== 2) return null;
-  const parent_id = String(parts[0] || '').trim();
-  const item_id = String(parts[1] || '').trim();
-  // Guard: both must be non-empty
-  if (!parent_id || !item_id) return null;
-  return { parent_id, item_id };
+
+  const sanitized = photoString.trim();
+  if (!sanitized) return null;
+
+  let parent_id = '';
+  let item_id = '';
+
+  // Prefer comma-delimited payloads (can have more than two segments, join the tail back)
+  if (sanitized.includes(',')) {
+    const parts = sanitized
+      .split(',')
+      .map((part) => part.trim())
+      .filter((part) => part.length > 0);
+
+    if (parts.length >= 2) {
+      parent_id = parts[0];
+      item_id = parts.slice(1).join(',');
+    }
+  }
+
+  // Fallback to old format (hyphen-separated, use last hyphen to survive IDs containing '-')
+  if ((!parent_id || !item_id) && sanitized.includes('-')) {
+    const lastHyphenIndex = sanitized.lastIndexOf('-');
+    if (lastHyphenIndex > 0 && lastHyphenIndex < sanitized.length - 1) {
+      parent_id = sanitized.slice(0, lastHyphenIndex).trim();
+      item_id = sanitized.slice(lastHyphenIndex + 1).trim();
+    }
+  }
+
+  return parent_id && item_id ? { parent_id, item_id } : null;
 };
 
 // Get photo direct URL for preview
@@ -176,14 +212,14 @@ watch(() => props.photoUrl, async (newPhotoUrl) => {
     return;
   }
 
-  // Check if it's a regular URL or parent_id-item_id format
+  // Check if it's a regular URL or parent_id,item_id format
   if (newPhotoUrl.startsWith('http') || newPhotoUrl.startsWith('blob:')) {
     // Regular URL or blob URL, use as is
     previewPhotoUrl.value = newPhotoUrl;
     return;
   }
 
-  // Assume it's parent_id-item_id format
+  // Assume it's parent_id,item_id format
   const photoIds = parsePhotoId(newPhotoUrl);
   if (!photoIds) {
     return;
@@ -232,25 +268,53 @@ const triggerSelect = () => {
   fileInput.value?.click();
 };
 
-// Handle photo selection from FE and preview immediately
+// Handle photo selection from FE - open cropper modal instead of applying immediately
 const onSelectPhoto = (e) => {
   const file = e.target.files && e.target.files[0];
   if (!file) return;
+  
+  // Check if file is an image
+  if (!file.type.startsWith('image/')) {
+    console.warn('Selected file is not an image');
+    if (fileInput.value) fileInput.value.value = '';
+    return;
+  }
+
+  // Open cropper modal with selected file
+  selectedFileForCrop.value = file;
+  isCropperOpen.value = true;
+  
+  // Reset input to allow re-select same file
+  if (fileInput.value) fileInput.value.value = '';
+};
+
+// Handle cropped image from modal
+const handleCropped = (croppedFile) => {
+  if (!croppedFile) return;
+  
   try {
-    const objectUrl = URL.createObjectURL(file);
+    const objectUrl = URL.createObjectURL(croppedFile);
     // Revoke previous
     if (previewPhotoUrl.value && previewPhotoUrl.value.startsWith('blob:')) {
       URL.revokeObjectURL(previewPhotoUrl.value);
     }
     previewPhotoUrl.value = objectUrl;
     // Emit to parent so it can upload/save later
-    emit('photo-changed', file);
-  } catch (_) {
-    // noop
-  } finally {
-    // reset input to allow re-select same file
-    if (fileInput.value) fileInput.value.value = '';
+    emit('photo-changed', croppedFile);
+  } catch (error) {
+    console.error('Error handling cropped image:', error);
   }
+};
+
+// Handle cropper modal close
+const handleCropperClose = () => {
+  isCropperOpen.value = false;
+  selectedFileForCrop.value = null;
+};
+
+const handleCropperReupload = (file) => {
+  if (!file) return;
+  selectedFileForCrop.value = file;
 };
 
 // Handle remove photo

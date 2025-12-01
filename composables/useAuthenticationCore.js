@@ -85,6 +85,8 @@ export const useAuthenticationCore = () => {
   // Last chance monitoring state (≤5 min before modal)
   const isLastChanceMonitoringActive = ref(false);
   const lastChanceActivityDetected = ref(false);
+  const lastChanceRefreshCount = ref(0);
+  const lastRefreshTime = ref(null);
   
   // Account lockout state
   const failedLoginAttempts = ref(0);
@@ -101,6 +103,7 @@ export const useAuthenticationCore = () => {
   let debugStatusTimer = null;
   let lastChanceTimer = null;
   let lastChanceCheckTimer = null;
+  let lastChanceThrottleTimer = null;
 
   // Computed properties
   const isAccountLocked = computed(() => {
@@ -466,6 +469,16 @@ const parseJWTPayload = (token) => {
       console.log(`[AUTH] 🎫 Token expires in ${minutes}m ${seconds}s`);
     }
     
+    // ✅ FIX: Stop existing monitoring timers first to prevent conflicts
+    if (sessionWarningTimer) {
+      clearTimeout(sessionWarningTimer);
+      sessionWarningTimer = null;
+    }
+    if (lastChanceScheduleTimer) {
+      clearTimeout(lastChanceScheduleTimer);
+      lastChanceScheduleTimer = null;
+    }
+    
     // Start inactivity monitoring - modal akan muncul setelah 15 menit idle
     // Last chance monitoring akan start otomatis di menit ke-10 (5 menit sebelum modal)
     startInactivityMonitoring();
@@ -565,6 +578,7 @@ const parseJWTPayload = (token) => {
     
     isLastChanceMonitoringActive.value = false;
     lastChanceActivityDetected.value = false;
+    // Don't reset refresh count - keep for debugging
     
     // Remove listener khusus
     removeLastChanceListeners();
@@ -582,6 +596,10 @@ const parseJWTPayload = (token) => {
       clearTimeout(lastChanceScheduleTimer);
       lastChanceScheduleTimer = null;
     }
+    if (lastChanceThrottleTimer) {
+      clearTimeout(lastChanceThrottleTimer);
+      lastChanceThrottleTimer = null;
+    }
   };
   
   // Handler untuk last chance activity detection
@@ -595,12 +613,7 @@ const parseJWTPayload = (token) => {
       console.log('[AUTH] 🎯 AKTIVITAS TERDETEKSI dalam last chance window - refresh token!');
     }
 
-    // ✅ FIX: Set flag PERMANENTLY until monitoring ends
-    // This prevents spam - only ONE refresh during the entire last-chance window
-    // Flag will be reset when:
-    // 1. Last chance monitoring stops (modal shown)
-    // 2. User extends session manually
-    // 3. User logs out
+    // Set flag to prevent concurrent refresh calls
     lastChanceActivityDetected.value = true;
 
     // Update lastActivityTime
@@ -611,28 +624,39 @@ const parseJWTPayload = (token) => {
       const newToken = await refreshAccessToken();
 
       if (newToken) {
+        // Track refresh
+        lastChanceRefreshCount.value++;
+        lastRefreshTime.value = Date.now();
+        
         if (process.dev) {
           console.log('[AUTH] ✅ Token refreshed successfully - Extended 20 minutes');
-          console.log('[AUTH] 🔒 Flag LOCKED - No more refreshes until next last-chance window');
+          console.log('[AUTH] 🔄 Restarting inactivity monitoring...');
+          console.log(`[AUTH] 📊 Refresh count: ${lastChanceRefreshCount.value}`);
         }
 
-        // ✅ FIX: DO NOT RESET FLAG!
-        // Prevents spam refresh calls when user continues moving/typing
-        // Previous code reset flag here, causing spam on every activity
-        //
-        // ❌ REMOVED: lastChanceActivityDetected.value = false;
+        // ✅ FIX: Restart inactivity monitoring after successful refresh
+        // This resets the modal timer to 15 minutes from now
+        scheduleTokenRefresh(newToken);
+
+        // ✅ FIX: Reset flag after throttle delay (30 seconds) to allow next activity detection
+        // This prevents spam but allows multiple refreshes if user continues to be active
+        if (lastChanceThrottleTimer) {
+          clearTimeout(lastChanceThrottleTimer);
+        }
+        lastChanceThrottleTimer = setTimeout(() => {
+          lastChanceActivityDetected.value = false;
+          if (process.dev) {
+            console.log('[AUTH] 🔓 Flag reset - Ready for next activity detection');
+          }
+        }, 30000); // 30 seconds throttle
       }
     } catch (error) {
       logger.tokenError('LAST_CHANCE_REFRESH_FAILED', error, {
         userId: user.value?.id
       });
 
-      // ✅ FIX: Even on error, keep flag = true to prevent spam retries
+      // Keep flag = true on error to prevent spam retries
       // If refresh failed, we'll let the modal show (correct behavior)
-      // Don't spam the server with retry attempts
-      //
-      // ❌ REMOVED: lastChanceActivityDetected.value = false;
-
       if (process.dev) {
         console.warn('[AUTH] ⚠️ Refresh failed but flag REMAINS true to prevent spam');
       }
@@ -802,6 +826,10 @@ const parseJWTPayload = (token) => {
         // ✅ FIX: Stop last chance monitoring and reset flag
         // This prepares for the NEXT last-chance window
         stopLastChanceMonitoring('manual_extend');
+        
+        // Reset refresh count for new session cycle
+        lastChanceRefreshCount.value = 0;
+        lastRefreshTime.value = null;
 
         // Reset activity timer for manual extend session (user action)
         resetActivityTimer(true); // This IS user activity
@@ -1364,6 +1392,10 @@ const parseJWTPayload = (token) => {
       clearTimeout(lastChanceCheckTimer);
       lastChanceCheckTimer = null;
     }
+    if (lastChanceThrottleTimer) {
+      clearTimeout(lastChanceThrottleTimer);
+      lastChanceThrottleTimer = null;
+    }
     
     // Stop last chance monitoring
     stopLastChanceMonitoring('cleanup');
@@ -1679,6 +1711,9 @@ const initializeUserData = async () => {
     sessionMonitorTargetTime: computed(() => sessionMonitorTargetTime.value),
     lastActivityTime: computed(() => lastActivityTime.value),
     isLastChanceMonitoringActive: computed(() => isLastChanceMonitoringActive.value),
+    lastChanceActivityDetected: computed(() => lastChanceActivityDetected.value),
+    lastChanceRefreshCount: computed(() => lastChanceRefreshCount.value),
+    lastRefreshTime: computed(() => lastRefreshTime.value),
     
     // Account lockout state
     failedLoginAttempts: computed(() => failedLoginAttempts.value),

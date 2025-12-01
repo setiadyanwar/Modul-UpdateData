@@ -58,6 +58,26 @@
         <div class="debug-value" :class="lastChanceClass">
           {{ lastChanceStatus }}
         </div>
+        <div v-if="isLastChanceMonitoringActive" class="debug-sub-info">
+          <div class="sub-item">
+            <span class="sub-label">Activity Detected:</span>
+            <span :class="['sub-value', lastChanceActivityDetected ? 'warning' : 'success']">
+              {{ lastChanceActivityDetected ? '🔒 LOCKED' : '🔓 READY' }}
+            </span>
+          </div>
+          <div class="sub-item">
+            <span class="sub-label">Refresh Count:</span>
+            <span class="sub-value info">{{ lastChanceRefreshCount }}</span>
+          </div>
+          <div v-if="lastRefreshTime" class="sub-item">
+            <span class="sub-label">Last Refresh:</span>
+            <span class="sub-value success">{{ formatTimeAgo(lastRefreshTime) }}</span>
+          </div>
+          <div class="sub-item">
+            <span class="sub-label">Window:</span>
+            <span class="sub-value">{{ lastChanceWindowText }}</span>
+          </div>
+        </div>
       </div>
 
       <!-- Modal Status -->
@@ -104,16 +124,19 @@ const isMinimized = ref(false);
 
 // Get auth state
 const auth = useAuthenticationCore();
-const {
-  isAuthenticated,
-  isSessionWarningVisible,
-  sessionCountdownTime,
-  lastActivityTime,
-  isLastChanceMonitoringActive,
-  timeSinceLastActivity,
-  sessionMonitorStartTime,
-  sessionMonitorTargetTime
-} = auth;
+  const {
+    isAuthenticated,
+    isSessionWarningVisible,
+    sessionCountdownTime,
+    lastActivityTime,
+    isLastChanceMonitoringActive,
+    lastChanceActivityDetected,
+    lastChanceRefreshCount,
+    lastRefreshTime,
+    timeSinceLastActivity,
+    sessionMonitorStartTime,
+    sessionMonitorTargetTime
+  } = auth;
 
 // Local state for real-time updates
 const now = ref(Date.now());
@@ -251,6 +274,38 @@ const lastChanceClass = computed(() => {
   }
   return 'info';
 });
+
+// Last chance window timing
+const lastChanceWindowText = computed(() => {
+  if (!sessionMonitorTargetTime?.value) return 'N/A';
+  const windowStart = sessionMonitorTargetTime.value - 300000;
+  const windowEnd = sessionMonitorTargetTime.value;
+  const nowMs = now.value;
+  
+  if (nowMs < windowStart) {
+    const timeUntilWindow = windowStart - nowMs;
+    const minutes = Math.floor(timeUntilWindow / 60000);
+    const seconds = Math.floor((timeUntilWindow % 60000) / 1000);
+    return `Starts in ${minutes}m ${seconds}s`;
+  } else if (nowMs >= windowStart && nowMs < windowEnd) {
+    const timeInWindow = nowMs - windowStart;
+    const minutes = Math.floor(timeInWindow / 60000);
+    const seconds = Math.floor((timeInWindow % 60000) / 1000);
+    return `Active: ${minutes}m ${seconds}s in`;
+  } else {
+    return 'Window passed';
+  }
+});
+
+// Format time ago
+const formatTimeAgo = (timestamp) => {
+  if (!timestamp) return 'N/A';
+  const diff = now.value - timestamp;
+  const seconds = Math.floor(diff / 1000);
+  if (seconds < 60) return `${seconds}s ago`;
+  const minutes = Math.floor(seconds / 60);
+  return `${minutes}m ${seconds % 60}s ago`;
+};
 
 // Status class
 const statusClass = computed(() => {
@@ -471,6 +526,44 @@ onMounted(() => {
   font-size: 11px;
   line-height: 1.6;
   color: #ccc;
+}
+
+.debug-sub-info {
+  margin-top: 8px;
+  padding: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 6px;
+  font-size: 10px;
+}
+
+.sub-item {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.sub-item:last-child {
+  margin-bottom: 0;
+}
+
+.sub-label {
+  color: #999;
+}
+
+.sub-value {
+  font-weight: bold;
+}
+
+.sub-value.success {
+  color: #4caf50;
+}
+
+.sub-value.warning {
+  color: #ff9800;
+}
+
+.sub-value.info {
+  color: #2196f3;
 }
 
 .debug-actions-bar {
