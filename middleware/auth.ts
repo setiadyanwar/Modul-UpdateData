@@ -1,6 +1,25 @@
 // middleware/auth.ts
 // Update-Data Remote App - Auth Middleware
 export default defineNuxtRouteMiddleware((to, from) => {
+  // ✅ CRITICAL: Block ALL navigation if ticket login failed
+  // This must be checked FIRST before any other auth logic
+  if (process.client) {
+    const loginFailed = sessionStorage.getItem('ticket_login_failed');
+    if (loginFailed === 'true') {
+      console.log('[Auth Middleware] ⚠️ Login failed - blocking ALL navigation to:', to.path);
+      
+      // If in iframe, block ALL navigation - ESSHost will handle redirect via postMessage
+      if (window.parent !== window) {
+        // Don't navigate anywhere - postMessage already sent, ESSHost will redirect
+        return;
+      }
+      
+      // If standalone mode, clear flag and redirect to login
+      sessionStorage.removeItem('ticket_login_failed');
+      return navigateTo('/login', { replace: true });
+    }
+  }
+
   // Skip middleware untuk route yang tidak perlu auth
   const publicRoutes = ["/", "/error"];
   const isPublicRoute = publicRoutes.includes(to.path) ||

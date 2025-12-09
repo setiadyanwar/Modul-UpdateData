@@ -1,9 +1,9 @@
-import { $fetch } from 'ofetch';
 import envConfig from '~/config/environment';
 import {
   defineEventHandler,
   readBody,
   setResponseHeaders,
+  setResponseStatus,
   createError
 } from 'h3';
 
@@ -38,21 +38,56 @@ export default defineEventHandler(async (event) => {
     const apiBaseUrl = envConfig.API_BASE_URL;
     const refreshEndpoint = envConfig.API_ENDPOINTS?.AUTH?.REFRESH || '/auth/refresh';
 
-    const response = await $fetch(`${apiBaseUrl}${refreshEndpoint}`, {
+    // Use fetch directly to properly handle response status codes
+    const response = await fetch(`${apiBaseUrl}${refreshEndpoint}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json'
       },
-      body: {
+      body: JSON.stringify({
         refresh_token: refreshToken
-      }
+      })
     });
 
-    return response;
+    const responseStatus = response.status;
+    
+    // Set the response status code from API (before processing body)
+    setResponseStatus(event, responseStatus);
+
+    // Get response data
+    let responseData;
+    const responseContentType = response.headers.get('content-type');
+
+    if (responseContentType && responseContentType.includes('application/json')) {
+      responseData = await response.json();
+    } else {
+      const text = await response.text();
+      try {
+        responseData = JSON.parse(text);
+      } catch (e) {
+        // If it's an error status, forward the error properly
+        if (responseStatus >= 400) {
+          responseData = {
+            status: false,
+            message: response.statusText || 'Token refresh failed',
+            error: text.substring(0, 500),
+            statusCode: responseStatus
+          };
+        } else {
+          throw createError({
+            statusCode: 502,
+            statusMessage: 'Backend returned non-JSON response',
+            data: { preview: text.substring(0, 500) }
+          });
+        }
+      }
+    }
+
+    return responseData;
   } catch (error) {
     throw createError({
-      statusCode: error.status || error.statusCode || 500,
+      statusCode: error.statusCode || error.status || 500,
       statusMessage: error.message || 'Token refresh failed',
       data: error.data
     });

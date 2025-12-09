@@ -3,6 +3,34 @@ export default defineNuxtRouteMiddleware((to) => {
   if (to.path === '/') {
     const query = { ...to.query };
 
+    // ✅ CRITICAL: Don't redirect if login failed or ticket is being processed
+    if (process.client) {
+      // Check if login failed FIRST - highest priority
+      const loginFailed = sessionStorage.getItem('ticket_login_failed');
+      if (loginFailed === 'true') {
+        console.log('[Root Redirect] ⚠️ Login failed detected - blocking ALL redirects');
+        // Don't redirect - ESSHost will handle redirect via postMessage
+        return;
+      }
+
+      // Check if ticket is being processed - don't redirect yet
+      const ticketProcessing = sessionStorage.getItem('ticket_processing');
+      if (ticketProcessing === 'true') {
+        console.log('[Root Redirect] ⏳ Ticket processing - waiting for result');
+        // Don't redirect - wait for ticket handler to finish
+        return;
+      }
+
+      // ✅ CRITICAL: If in iframe with ticket, NEVER redirect - always let ticket handler process first
+      // This prevents /update-data from opening before we know if login will succeed
+      if (to.query.ticket && window.parent !== window) {
+        console.log('[Root Redirect] 📦 Ticket in iframe - NEVER redirect, let ticket handler process first');
+        // Don't redirect - ticket handler will handle redirect after successful login
+        // If login fails, ESSHost will handle redirect via postMessage
+        return;
+      }
+    }
+
     // ✅ CRITICAL: Check for last_visited_route in localStorage
     // This allows restoring the user's last location after parent reload
     let targetPath = '/update-data'; // default for fresh login
