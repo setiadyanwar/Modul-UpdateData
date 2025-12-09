@@ -10,12 +10,27 @@ export default defineNuxtPlugin((nuxtApp) => {
   if (process.server) return;
   const route = useRoute();
   const router = useRouter();
+  
+  // ✅ CRITICAL: Set processing flag immediately if ticket exists in URL
+  // This must be done BEFORE any middleware runs to prevent premature redirects
+  if (process.client && route.query.ticket) {
+    sessionStorage.setItem('ticket_processing', 'true');
+    console.log('[Ticket Handler] 🚦 Set ticket_processing flag immediately');
+  }
+  
   /**
    * Process ticket exchange
    * Exchanges SSO ticket directly with essbe API (POST /auth/ticket/login)
    */
   const processTicket = async (ticket) => {
     // console.log('[Ticket Handler] Processing ticket:', ticket.substring(0, 20) + '...');
+
+    // ✅ CRITICAL: Set flag immediately to prevent any redirect
+    // This prevents middleware from redirecting to /update-data before we know if login will fail
+    if (process.client) {
+      // Set a "processing" flag to prevent premature redirects
+      sessionStorage.setItem('ticket_processing', 'true');
+    }
 
     try {
       // Step 1: Exchange ticket for JWT token via essbe API
@@ -24,14 +39,127 @@ export default defineNuxtPlugin((nuxtApp) => {
       // Import API client dynamically
       const { apiPost } = await import('~/axios/api.client');
 
-      const response = await apiPost('/auth/ticket/login', { ticket });
-      // console.log('[Ticket Handler] Response:', response);
-      // console.log('[Ticket Handler] Response.status:', response.status);
-      // console.log('[Ticket Handler] Response.token:', response.token);
-      // console.log('[Ticket Handler] Response.data:', response.data);
+      // Exchange ticket for JWT token via essbe API
+      let response;
+      let responseStatus = null;
+      let isErrorResponse = false;
+      
+      try {
+        response = await apiPost('/auth/ticket/login', { ticket });
+        
+        // ✅ CRITICAL: Check if response is actually an error
+        // Axios with validateStatus < 500 doesn't throw for 4xx, so we need to check manually
+        // Check for various error indicators:
+        isErrorResponse = 
+          // Standard error format
+          (response.status === false) ||
+          // Missing token (required for success)
+          (!response.token) ||
+          // Error field present
+          (response.error !== undefined && response.error !== null) ||
+          // Error message without token
+          (response.message && !response.token && !response.data) ||
+          // Response is error object
+          (response.error_code !== undefined) ||
+          // Response is string (unexpected format)
+          (typeof response === 'string') ||
+          // Response is null/undefined
+          (!response || response === null);
+          
+        // Try to extract status code from response if available
+        if (response?.statusCode) {
+          responseStatus = response.statusCode;
+        } else if (response?.status === false) {
+          responseStatus = response.statusCode || 400;
+        }
+      } catch (apiError) {
+        // API call threw an error (network, timeout, 5xx, etc.)
+        isErrorResponse = true;
+        responseStatus = apiError?.response?.status || apiError?.status || 500;
+        
+        // Extract error message and data
+        const errorData = apiError?.response?.data || apiError?.data;
+        response = {
+          status: false,
+          message: errorData?.message || apiError?.message || 'Authentication failed. Please try again.',
+          error: apiError?.message,
+          statusCode: responseStatus,
+          data: errorData
+        };
+      }
+      
+      // Set flag early if login failed - BEFORE any redirect logic
+      if (isErrorResponse || response.status === false || !response.token) {
+        if (process.client) {
+          sessionStorage.setItem('ticket_login_failed', 'true');
+          sessionStorage.removeItem('ticket_processing');
+        }
+      } else {
+        // Login success - clear processing flag
+        if (process.client) {
+          sessionStorage.removeItem('ticket_processing');
+          sessionStorage.removeItem('ticket_login_failed');
+        }
+      }
 
       // Handle response based on essbe API format:
       // { status: true, message: "...", data: {...}, token: { access_token: "...", ... } }
+      // Check if login failed (status === false or no token or error detected)
+      if (isErrorResponse || response.status === false || !response.token) {
+        // Ticket login failed - immediately clear everything and notify parent
+        const errorMessage = response.message || response.error || 'Authentication failed. Please try again.';
+        const statusCode = responseStatus || response.statusCode || response.status === false ? 400 : 500;
+        
+        // Clear all flags and routes IMMEDIATELY
+        if (process.client) {
+          localStorage.removeItem('last_visited_route');
+          sessionStorage.removeItem('ticket_processing');
+          sessionStorage.setItem('ticket_login_failed', 'true'); // Set flag to block navigation
+        }
+        
+        // Notify parent (ESSHost) IMMEDIATELY - don't wait, don't navigate anywhere
+        if (window.parent !== window) {
+          const getHostOrigin = () => {
+            try {
+              const ref = document.referrer || '';
+              if (ref) {
+                const origin = new URL(ref).origin;
+                if (origin) return origin;
+              }
+              const envConfig = require('~/config/environment').default;
+              return envConfig.IS_PRODUCTION ? envConfig.FRONTEND_URLS.PRODUCTION.ESS_HOST : envConfig.FRONTEND_URLS.DEVELOPMENT.ESS_HOST;
+            } catch {
+              return '*';
+            }
+          };
+          
+          const hostOrigin = getHostOrigin();
+          const postMessageData = {
+            type: 'AUTH_FAILED',
+            source: 'update-data',
+            error: errorMessage,
+            action: 'redirect_to_dashboard', // Request ESSHost to redirect to dashboard immediately
+            details: {
+              status: response.status,
+              message: response.message || errorMessage,
+              statusCode: statusCode,
+              error: response.error,
+              errorCode: response.error_code
+            }
+          };
+          
+          console.log('[Ticket Handler] ❌ Login failed - sending postMessage immediately, blocking all navigation', {
+            statusCode,
+            errorMessage,
+            isErrorResponse
+          });
+          window.parent.postMessage(postMessageData, hostOrigin);
+        }
+        
+        // Exit immediately - don't navigate anywhere, don't render anything
+        return false;
+      }
+      
       if (response.status === true && response.token) {
         const accessToken = response.token.access_token;
         const refreshToken = response.token.refresh_token || '';
@@ -174,22 +302,19 @@ export default defineNuxtPlugin((nuxtApp) => {
           const { apiService } = await import('~/axios/api.client');
           apiService.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
 
-          // Try to get user detail (adjust endpoint based on essbe API)
-          // Common endpoints: /user/detail, /user/profile, /auth/me, /employees/profile
+          // Try to get user detail using endpoint that actually exists
+          // Endpoint: /employee/basic-information (proven to work, used throughout the app)
+          // Note: /auth/me and /employees/profile don't exist in backend
           let userDetailResponse;
+          
           try {
-            // Try /employees/profile first (matches config/environment.js)
-            userDetailResponse = await apiService.get('/employees/profile');
-            // console.log('[Ticket Handler] User detail response:', userDetailResponse.data);
-          } catch (profileError) {
-            // console.warn('[Ticket Handler] /employee/profile failed, trying /auth/me...', profileError.message);
-            try {
-              userDetailResponse = await apiService.get('/auth/me');
-              // console.log('[Ticket Handler] Auth/me response:', userDetailResponse.data);
-            } catch (meError) {
-              // console.warn('[Ticket Handler] ⚠️ Failed to fetch user detail:', meError.message);
-              // Continue anyway with data from ticket login
-            }
+            userDetailResponse = await apiService.get('/employee/basic-information');
+            // console.log('[Ticket Handler] Employee basic information response:', userDetailResponse.data);
+          } catch (basicInfoError) {
+            // /employee/basic-information failed - continue anyway with data from ticket login
+            // User detail is optional, ticket login response already has basic user data
+            // console.warn('[Ticket Handler] ⚠️ Failed to fetch user detail from /employee/basic-information:', basicInfoError.message);
+            // console.warn('[Ticket Handler] Continuing with data from ticket login response');
           }
 
           // If we got user detail, update localStorage (support multiple response shapes)
@@ -279,40 +404,105 @@ export default defineNuxtPlugin((nuxtApp) => {
           router.push(targetRoute);
         }, 1000); // Increased from 500ms to 1000ms
 
+        // Login success - clear flags
+        if (process.client) {
+          sessionStorage.removeItem('ticket_processing');
+          sessionStorage.removeItem('ticket_login_failed');
+        }
+
         return true;
       } else {
+        // Unexpected response format - treat as error
         throw new Error(response.message || 'Invalid response from ticket login');
       }
     } catch (error) {
-      // Improve diagnostics
-      const status = error?.response?.status;
-      const data = error?.response?.data;
+      // ✅ CRITICAL: This catch block handles ALL errors that weren't caught above:
+      // - Network errors (ECONNABORTED, Network Error, Failed to fetch)
+      // - Timeout errors
+      // - 5xx server errors (thrown by axios)
+      // - Unexpected response formats
+      // - Any other unhandled errors
+      
+      // Improve diagnostics - extract all possible error information
+      const status = error?.response?.status || error?.status;
+      const data = error?.response?.data || error?.data;
+      const errorCode = error?.code; // Network error codes (ECONNABORTED, etc.)
+      const errorMessage = 
+        data?.message || 
+        error?.message || 
+        (errorCode === 'ECONNABORTED' ? 'Request timeout. Please check your connection.' : '') ||
+        (error?.message?.includes('Network Error') ? 'Network error. Please check your connection.' : '') ||
+        (error?.message?.includes('Failed to fetch') ? 'Failed to connect to server. Please check your connection.' : '') ||
+        'Authentication failed. Please try again.';
+      
+      const statusCode = status || (errorCode ? 0 : 500); // 0 for network errors
+      
       // console.error('[Ticket Handler] ❌ Error exchanging ticket', {
       //   url: '/auth/ticket/login',
       //   status,
+      //   statusCode,
+      //   errorCode,
       //   data,
-      //   message: error?.message
+      //   message: error?.message,
+      //   error: error
       // });
 
-      // Show error toast if available
-      if (window.$toast) {
-        window.$toast.error('Authentication failed. Please try again.');
+      // Clear flags and set error flag immediately
+      if (process.client) {
+        localStorage.removeItem('last_visited_route');
+        sessionStorage.removeItem('ticket_processing');
+        sessionStorage.setItem('ticket_login_failed', 'true');
       }
 
-      // Notify parent if in iframe
+      // Notify parent (ESSHost) immediately - don't show toast in iframe
       if (window.parent !== window) {
-        window.parent.postMessage({
+        const getHostOrigin = () => {
+          try {
+            const ref = document.referrer || '';
+            if (ref) {
+              const origin = new URL(ref).origin;
+              if (origin) return origin;
+            }
+            const envConfig = require('~/config/environment').default;
+            return envConfig.IS_PRODUCTION ? envConfig.FRONTEND_URLS.PRODUCTION.ESS_HOST : envConfig.FRONTEND_URLS.DEVELOPMENT.ESS_HOST;
+          } catch {
+            return '*';
+          }
+        };
+        
+        const hostOrigin = getHostOrigin();
+        const postMessageData = {
           type: 'AUTH_FAILED',
           source: 'update-data',
-          error: error.message
-        }, '*');
+          error: errorMessage,
+          action: 'redirect_to_dashboard', // Request ESSHost to redirect to dashboard immediately
+          details: {
+            status: status,
+            statusCode: statusCode,
+            errorCode: errorCode, // Network error code (ECONNABORTED, etc.)
+            data: data,
+            message: errorMessage,
+            errorType: errorCode ? 'network' : (status >= 500 ? 'server' : 'client')
+          }
+        };
+        
+        console.log('[Ticket Handler] ❌ Error - sending postMessage immediately:', {
+          ...postMessageData,
+          originalError: error?.message
+        });
+        window.parent.postMessage(postMessageData, hostOrigin);
+      } else {
+        // Only show toast if not in iframe (standalone mode)
+        if (window.$toast) {
+          window.$toast.error(errorMessage);
+        }
+        // Standalone mode - redirect to login
+        setTimeout(() => {
+          router.push('/login');
+        }, 2000);
       }
 
-      // Redirect back to home after error
-      setTimeout(() => {
-        router.push('/');
-      }, 2000);
-
+      // Exit immediately - don't navigate anywhere in iframe mode
       return false;
     }
   };
@@ -529,7 +719,15 @@ export default defineNuxtPlugin((nuxtApp) => {
     // Run after small delay to ensure app is ready
     setTimeout(async () => {
       try {
-        await processTicket(ticket);
+        const result = await processTicket(ticket);
+        
+        // If ticket processing failed, don't allow any redirect
+        if (result === false) {
+          console.log('[Ticket Handler] ⚠️ Ticket processing failed - preventing redirect');
+          // Clear route to prevent middleware from redirecting
+          localStorage.removeItem('last_visited_route');
+          return; // Exit early, don't continue
+        }
       } catch (e) {
         // console.error('[Ticket Handler] Ticket processing failed:', e?.message || e);
       }

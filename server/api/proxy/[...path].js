@@ -1,9 +1,9 @@
 import envConfig from '~/config/environment';
-import { $fetch } from 'ofetch';
 import {
   defineEventHandler,
   getQuery,
   setResponseHeaders,
+  setResponseStatus,
   readBody,
 } from 'h3';
 
@@ -49,19 +49,65 @@ export default defineEventHandler(async (event) => {
   }
 
   const baseURL = envConfig.API_BASE_URL || process.env.API_BASE_URL;
+  const apiUrl = `${baseURL}${endpoint}`;
 
   try {
-    const response = await $fetch(endpoint, {
+    // Use fetch directly to properly handle response status codes
+    const fetchOptions = {
       method,
-      baseURL,
       headers,
-      body,
-      ignoreResponseError: true,
-    });
-    return response;
+    };
+
+    // Add body for mutating methods
+    if (body && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
+      fetchOptions.body = typeof body === 'string' ? body : JSON.stringify(body);
+    }
+
+    const response = await fetch(apiUrl, fetchOptions);
+
+    // Get response data
+    let responseData;
+    const responseContentType = response.headers.get('content-type');
+    const responseStatus = response.status;
+
+    // Set the response status code from API first (before processing body)
+    setResponseStatus(event, responseStatus);
+
+    // Handle response based on content type
+    if (responseContentType && responseContentType.includes('application/json')) {
+      responseData = await response.json();
+    } else {
+      // Non-JSON response - could be HTML error page, text, etc.
+      const text = await response.text();
+      
+      // Try to parse as JSON (some APIs return JSON without proper content-type)
+      try {
+        responseData = JSON.parse(text);
+      } catch (e) {
+        // If it's an error status (4xx/5xx), forward the error properly
+        if (responseStatus >= 400) {
+          // For error responses, return error data structure
+          responseData = {
+            status: false,
+            message: response.statusText || 'Request failed',
+            error: text.substring(0, 500),
+            statusCode: responseStatus
+          };
+        } else {
+          // For non-error non-JSON responses, return as text
+          responseData = {
+            status: true,
+            data: text,
+            contentType: responseContentType
+          };
+        }
+      }
+    }
+
+    return responseData;
   } catch (error) {
     throw createError({
-      statusCode: error.status || error.statusCode || 500,
+      statusCode: error.statusCode || error.status || 500,
       statusMessage: error.message || 'Proxy request failed',
       data: error.data
     });
