@@ -34,8 +34,9 @@ export default defineEventHandler(async (event) => {
   const incomingAuth = event.req.headers['authorization'];
 
   // Prepare headers
+  // Default headers. Use */* so binary download endpoints are accepted.
   const headers = {
-    Accept: 'application/json',
+    Accept: '*/*',
   };
   if (incomingAuth) headers['Authorization'] = incomingAuth;
 
@@ -73,35 +74,44 @@ export default defineEventHandler(async (event) => {
     // Set the response status code from API first (before processing body)
     setResponseStatus(event, responseStatus);
 
-    // Handle response based on content type
+    // Handle JSON responses
     if (responseContentType && responseContentType.includes('application/json')) {
       responseData = await response.json();
-    } else {
-      // Non-JSON response - could be HTML error page, text, etc.
-      const text = await response.text();
-      
-      // Try to parse as JSON (some APIs return JSON without proper content-type)
-      try {
-        responseData = JSON.parse(text);
-      } catch (e) {
-        // If it's an error status (4xx/5xx), forward the error properly
-        if (responseStatus >= 400) {
-          // For error responses, return error data structure
-          responseData = {
-            status: false,
-            message: response.statusText || 'Request failed',
-            error: text.substring(0, 500),
-            statusCode: responseStatus
-          };
-        } else {
-          // For non-error non-JSON responses, return as text
-          responseData = {
-            status: true,
-            data: text,
-            contentType: responseContentType
-          };
-        }
-      }
+      return responseData;
+    }
+
+    // Handle binary / file / non-JSON responses
+    // For successful responses (<400) return raw binary (Buffer) and forward headers
+    if (responseStatus < 400) {
+      const arrayBuffer = await response.arrayBuffer();
+
+      // Forward important headers
+      const forwardHeaders = {};
+      const contentDisposition = response.headers.get('content-disposition');
+      if (contentDisposition) forwardHeaders['content-disposition'] = contentDisposition;
+      if (responseContentType) forwardHeaders['content-type'] = responseContentType;
+
+      // Preserve content-length if available
+      const contentLength = response.headers.get('content-length');
+      if (contentLength) forwardHeaders['content-length'] = contentLength;
+
+      setResponseHeaders(event, forwardHeaders);
+
+      // Return as Buffer so Nuxt sends it as binary
+      return Buffer.from(arrayBuffer);
+    }
+
+    // For error responses (4xx/5xx) try to parse as text/JSON and wrap consistently
+    const text = await response.text();
+    try {
+      responseData = JSON.parse(text);
+    } catch (e) {
+      responseData = {
+        status: false,
+        message: response.statusText || 'Request failed',
+        error: text.substring(0, 500),
+        statusCode: responseStatus
+      };
     }
 
     return responseData;
