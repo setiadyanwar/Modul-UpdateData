@@ -140,6 +140,21 @@ export default defineNuxtConfig({
     transpile: ["primevue"],
   },
 
+  hooks: {
+    /**
+     * Add alias route for root (/) to reuse /update-data page.
+     * This prevents 404 at root while preserving query params (e.g., ticket, return_url).
+     * No extra page file needed.
+     */
+    'pages:extend'(pages) {
+      pages.push({
+        name: 'root-alias',
+        path: '/',
+        file: resolve(__dirname, 'pages/update-data/index.vue'),
+      });
+    },
+  },
+
   // Plugins configuration
   plugins: [
     // Ticket handler - MUST run FIRST to handle SSO ticket exchange before any other auth logic
