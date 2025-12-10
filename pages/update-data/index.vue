@@ -34,7 +34,8 @@
       :has-draft-for-current-category="hasDraftForCurrentCategory"
       :current-category-display-name="currentCategoryDisplayName" :active-tab="activeTab"
       :has-current-tab-changed="hasCurrentTabChanged" :is-current-tab-form-valid="isCurrentTabFormValid"
-      :is-saving-draft="isSavingDraft" :is-submitting-update="isSubmittingUpdate" @download="downloadData"
+      :is-saving-draft="isSavingDraft" :is-submitting-update="isSubmittingUpdate" :is-in-insert-mode="isInInsertMode"
+      @download="downloadData"
       @edit="handleEditButtonClick" @cancel="handleCancelEdit" @save-draft="handleSaveAsDraft"
       @submit="handleEditButtonClick" />
 
@@ -249,6 +250,7 @@ let navigationRefreshTimeout = null;
 // Basic Information Files State
 const basicInfoUploadedFiles = ref([]);
 const basicInfoProfessionalPhoto = ref(null);
+const basicInfoAttachmentsChanged = ref(false);
 const addressUploadedFiles = ref([]);
 const payrollAccountUploadedFiles = ref([]);
 const socialSecurityUploadedFiles = ref([]);
@@ -351,6 +353,20 @@ const computedIsLoadingSocialSecurity = computed(() => !isMounted.value || isLoa
 const computedIsLoadingMedicalRecord = computed(() => !isMounted.value || isLoadingMedicalRecord.value);
 const computedIsLoadingEmploymentInfo = computed(() => !isMounted.value || isLoadingEmploymentInfo.value);
 
+// Check if user is in insert mode for education, emergency contact, or family
+const isInInsertMode = computed(() => {
+  if (activeTab.value === 'education' && educationSectionRef.value?.showInsertForm) {
+    return true;
+  }
+  if (activeTab.value === 'emergency-contact' && emergencyContactSectionRef.value?.showInsertForm) {
+    return true;
+  }
+  if (activeTab.value === 'family' && familySectionRef.value?.showInsertForm) {
+    return true;
+  }
+  return false;
+});
+
 // Tambahkan mapping snake_case ke camelCase untuk EmploymentInfoForm
 const employmentInfoFormData = computed(() => ({
   nik: employmentInfoData.value.nik || "",
@@ -406,6 +422,7 @@ const {
   getCategoryFromTabId,
   isTabPermanentlyLocked,
   isEditModeAllowed,
+  ensureChangeRequestsLoaded, // ✅ Use this instead of loadChangeRequests() directly to avoid duplicates
 } = tabManagement;
 
 // Local medical options that we will explicitly preload on mount (so network shows requests)
@@ -582,7 +599,34 @@ const hasCurrentTabChanged = computed(() => {
   if (!original || !current) return false;
 
   // Use normalized deep comparison (handles null/"", whitespace, numbers)
-  return hasChangedNormalized(original, current);
+  const dataChanged = hasChangedNormalized(original, current);
+
+  // For basic-information tab, KTP document is mandatory for any changes
+  // Changes can be: field data changes, professional photo upload, or KTP document upload
+  // But KTP document MUST be present to enable Save as Draft / Update
+  if (tab === 'basic-information') {
+    const hasKTPFile = basicInfoUploadedFiles.value && basicInfoUploadedFiles.value.length > 0;
+    
+    // Check professional photo change directly from data (more reliable than flags)
+    const originalPhoto = original?.professional_photo || null;
+    const currentPhoto = current?.professional_photo || null;
+    const hasPhotoChanged = originalPhoto !== currentPhoto;
+    
+    // Check if there's a new professional photo file uploaded (but not yet applied to employeeData)
+    const hasNewPhotoFile = basicInfoProfessionalPhoto.value !== null;
+    
+    // Check if there are any changes: data changes OR professional photo change OR new photo file
+    const hasAnyChanges = dataChanged || hasPhotoChanged || hasNewPhotoFile;
+    
+    // Only return true if there are changes AND KTP file is present
+    if (hasAnyChanges) {
+      return hasKTPFile;
+    }
+    
+    return false;
+  }
+
+  return dataChanged;
 });
 
 // Helper: Get data for a specific tab
@@ -1333,7 +1377,8 @@ const handlePhotoUpload = (photoData) => {
 
 // Handle KTP files from MultiDocumentUpload
 const handleBasicInfoFilesChanged = (files) => {
-  basicInfoUploadedFiles.value = files;
+  basicInfoUploadedFiles.value = files || [];
+  basicInfoAttachmentsChanged.value = true;
 };
 
 // Address KTP files (mirrors basic info flow but scoped to address)
@@ -1366,13 +1411,15 @@ const handleFamilyFilesChanged = (files) => {
 
 // Handle professional photo from PhotoUpload component
 const handleProfessionalPhotoChanged = (file) => {
-  basicInfoProfessionalPhoto.value = file;
+  basicInfoProfessionalPhoto.value = file || null;
+  basicInfoAttachmentsChanged.value = true;
 };
 
 // Clear basic information files after successful submission
 const clearBasicInfoFiles = () => {
   basicInfoUploadedFiles.value = [];
   basicInfoProfessionalPhoto.value = null;
+  basicInfoAttachmentsChanged.value = false;
   // Also clear files in the child component
   if (basicInfoSectionRef.value) {
     basicInfoSectionRef.value.clearFiles?.();
@@ -1911,8 +1958,8 @@ if (process.client) {
         cacheVersion.value = Date.now();
         // console.log('[SUBMIT SUCCESS] Cache version bumped:', cacheVersion.value);
 
-        // Step 3: Load fresh change requests from API
-        await loadChangeRequests();
+        // Step 3: Load fresh change requests from API (with deduplication)
+        await ensureChangeRequestsLoaded();
 
         // Step 4: Invalidate tab data cache for affected tabs
         tabDataCache.invalidateCache(tab, 'after-submit-success');
@@ -2484,7 +2531,9 @@ const getChangedFieldsOnly = () => {
         religion_id: 'religion_id',
         marital_status_id: 'marital_status_id',
         // Name field - keep API field name
-        name: 'name'
+        name: 'name',
+        // Professional photo - keep API field name
+        professional_photo: 'professional_photo'
       };
 
       // Helper function to convert string IDs to numbers
@@ -3839,8 +3888,8 @@ const handleSaveAsDraft = async () => {
         cacheVersion.value = Date.now();
         // console.log('[SAVE DRAFT SUCCESS] Cache version bumped:', cacheVersion.value);
 
-        // Step 3: Load fresh change requests from API
-        await loadChangeRequests();
+        // Step 3: Load fresh change requests from API (with deduplication)
+        await ensureChangeRequestsLoaded();
 
         // Step 4: ✅ CRITICAL - Force update ALL tabs cache untuk real-time check
         await tabManagement.forceUpdateAllTabsCache();
@@ -3914,7 +3963,7 @@ const handleSaveAsDraft = async () => {
       // Trigger background refresh (non-blocking)
       setTimeout(async () => {
         try {
-          await loadChangeRequests();
+          await ensureChangeRequestsLoaded();
           await tabManagement.forceUpdateAllTabsCache();
           // console.log('[SAVE DRAFT FINALLY] ✅ Safety refresh completed');
         } catch (e) {
@@ -3936,8 +3985,49 @@ const handleDiscardChanges = async () => {
     // Reset all data to original values with better error handling
     await resetAllDataToOriginal();
 
+    // ✅ FIX: Clear all attachment states to prevent false positive change detection
+    // Clear basic information files
+    if (activeTab.value === 'basic-information') {
+      clearBasicInfoFiles();
+    }
+    // Clear other tab files
+    if (activeTab.value === 'address') {
+      addressUploadedFiles.value = [];
+    }
+    if (activeTab.value === 'payroll-account') {
+      payrollAccountUploadedFiles.value = [];
+    }
+    if (activeTab.value === 'social-security') {
+      socialSecurityUploadedFiles.value = [];
+    }
+    if (activeTab.value === 'family') {
+      familyUploadedFiles.value = [];
+    }
+
     // Wait for next tick to ensure all reactive updates are processed
     await nextTick();
+
+    // ✅ FIX: Update originalData to currentData after reset to prevent false positive detection
+    // This ensures that when entering edit mode again, hasCurrentTabChanged will be false
+    if (activeTab.value === 'basic-information') {
+      personalData.originalData.value = { ...personalData.employeeData.value };
+    } else if (activeTab.value === 'address') {
+      personalData.originalAddressData.value = { ...personalData.addressData.value };
+    } else if (activeTab.value === 'emergency-contact') {
+      personalData.originalEmergencyContactData.value = [...personalData.emergencyContactData.value];
+    } else if (activeTab.value === 'payroll-account') {
+      personalData.originalPayrollAccountData.value = { ...personalData.payrollAccountData.value };
+    } else if (activeTab.value === 'family') {
+      personalData.originalFamilyData.value = [...personalData.familyData.value];
+    } else if (activeTab.value === 'education') {
+      personalData.originalEducationData.value = [...personalData.educationData.value];
+    } else if (activeTab.value === 'social-security') {
+      personalData.originalSocialSecurityData.value = { ...personalData.socialSecurityData.value };
+    } else if (activeTab.value === 'medical-record') {
+      personalData.originalMedicalRecordData.value = { ...personalData.medicalRecordData.value };
+    } else if (activeTab.value === 'employment-information') {
+      personalData.originalEmploymentInfoData.value = { ...personalData.employmentInfoData.value };
+    }
 
     // Clear any pending changes
     allTabChanges.value = {};
@@ -4121,7 +4211,8 @@ function handleToggleActiveEmergencyContact(idx, val) {
 const loadChangeRequestsWithLoading = async () => {
   try {
     isLoadingChangeRequests.value = true;
-    await loadChangeRequests();
+    // ✅ OPTIMIZED: Use ensureChangeRequestsLoaded to avoid duplicate API calls
+    await ensureChangeRequestsLoaded();
   } catch (error) {
   } finally {
     isLoadingChangeRequests.value = false;
@@ -4280,8 +4371,8 @@ onMounted(async () => {
         tabManagement.resetChangeRequestsCache();
 
         // Step 2: Load change requests dari API (FRESH DATA)
-        await loadChangeRequests();
-        // console.log('[MOUNT] ✅ Change requests loaded, total:', changeRequests.value?.length || 0);
+        await ensureChangeRequestsLoaded();
+        console.log('[MOUNT] ✅ Change requests loaded, total:', changeRequests.value?.length || 0);
 
         // Step 3: Force update ALL tabs cache untuk real-time check
         // Ini akan check setiap tab apakah ada draft/waiting/need-revision
@@ -4531,8 +4622,8 @@ onMounted(async () => {
 
       try {
         tabManagement.resetChangeRequestsCache();
-        await loadChangeRequests();
-        // console.log(`[TAB SWITCH GUARD] ✅ Fresh changeRequests loaded, total: ${changeRequests.value?.length || 0}`);
+        await ensureChangeRequestsLoaded();
+        console.log(`[TAB SWITCH GUARD] ✅ Fresh changeRequests loaded, total: ${changeRequests.value?.length || 0}`);
 
         tabManagement.invalidateTabCache(newTab);
         await tabManagement.updateTabStatusCache(newTab, true);
@@ -4655,6 +4746,7 @@ onMounted(async () => {
   let smartRefreshInterval = null;
 
   // Add navigation event listener for browser navigation
+  // Store reference outside to prevent undefined error in onUnmounted
   const handleNavigationChange = async () => {
     try {
       // Invalidate cache
@@ -4668,6 +4760,9 @@ onMounted(async () => {
       // console.error('[Update-Data] ❌ Error during navigation change:', error);
     }
   };
+  
+  // Store reference for cleanup
+  const handleNavigationChangeRef = handleNavigationChange;
 
   // Page visibility API for better refresh timing
   const handleVisibilityChange = async () => {
@@ -4710,7 +4805,7 @@ onMounted(async () => {
 
           // Step 3: Load FRESH changeRequests dari API
           isLoadingChangeRequests.value = true;
-          await loadChangeRequests();
+          await ensureChangeRequestsLoaded();
           isLoadingChangeRequests.value = false;
 
           // console.log('[REMOUNT via NAVIGATION] ✅ Fresh changeRequests loaded, total:', changeRequests.value?.length || 0);
@@ -4776,8 +4871,8 @@ onMounted(async () => {
   }, { immediate: false });
 
   // Listen for navigation and visibility events
-  window.addEventListener('popstate', handleNavigationChange);
-  window.addEventListener('beforeunload', handleNavigationChange);
+  window.addEventListener('popstate', handleNavigationChangeRef);
+  window.addEventListener('beforeunload', handleNavigationChangeRef);
   document.addEventListener('visibilitychange', handleVisibilityChange);
 
   // Smart auto-refresh system - only refresh when needed
@@ -4812,9 +4907,9 @@ onActivated(async () => {
 
     // Step 3: Load FRESH changeRequests dari API
     isLoadingChangeRequests.value = true;
-    // console.log('[REMOUNT] 📡 Loading change requests...');
-    await loadChangeRequests();
-    // console.log('[REMOUNT] ✅ Change requests loaded');
+    console.log('[REMOUNT] 📡 Loading change requests...');
+    await ensureChangeRequestsLoaded();
+    console.log('[REMOUNT] ✅ Change requests loaded');
     isLoadingChangeRequests.value = false;
 
     // console.log('[REMOUNT] ✅ Fresh changeRequests loaded, total:', changeRequests.value?.length || 0);
@@ -4869,9 +4964,9 @@ onUnmounted(() => {
     try { window.removeEventListener('requestStatusChanged', handleRequestHistoryUpdated); } catch {}
     try { window.removeEventListener('draftDeleted', handleRequestDeleted); } catch {}
     try { window.removeEventListener('forceRefreshUpdateData', handleRequestHistoryUpdated); } catch {}
-    window.removeEventListener('popstate', handleNavigationChange);
-    window.removeEventListener('beforeunload', handleNavigationChange);
-    document.removeEventListener('visibilitychange', handleVisibilityChange);
+    try { window.removeEventListener('popstate', handleNavigationChangeRef); } catch {}
+    try { window.removeEventListener('beforeunload', handleNavigationChangeRef); } catch {}
+    try { document.removeEventListener('visibilitychange', handleVisibilityChange); } catch {}
     clearInterval(smartRefreshInterval);
 
     // Clear cache invalidation timeout
@@ -5315,7 +5410,7 @@ const validateBasicInformationChangesWithoutAttachments = () => {
   const editableFields = [
     'no_ktp', 'main_phone_number', 'private_email', 'secondary_phone_number',
     'birth_date', 'birth_place', 'gender_id', 'marital_status_id', 'religion_id',
-    'nationality_id', 'clothing_size_id', 'passport_number'
+    'nationality_id', 'clothing_size_id', 'passport_number', 'professional_photo'
   ];
 
   // Check if any editable fields have been changed
@@ -5503,7 +5598,6 @@ const scrollToDocumentUpload = () => {
   }
 };
 
-// Expose debug function to window for manual testing
 </script>
 
 <style scoped>

@@ -1,10 +1,10 @@
 import { ref } from "vue";
-import { useApi } from "~/composables/useApi";
+import { useMasterData } from "~/composables/useMasterData";
 
-// ✅ OPTIMIZED: Centralized master options loader with enhanced caching
-// Attempts to fetch option lists from master API and falls back to a small nationality list
+// ✅ OPTIMIZED: Centralized master options loader using useMasterData to avoid duplicate API calls
+// This now uses useMasterData which has better caching and deduplication
 export const useMasterOptions = () => {
-  const { apiGet } = useApi();
+  const { getOptions } = useMasterData();
 
   const options = ref({
     gender: [],
@@ -45,21 +45,20 @@ export const useMasterOptions = () => {
     };
   };
 
-  // Endpoints are guessed; adjust if your master API differs.
-  // Use master-api pattern: /master-api/{CATEGORY} or /master-api/{CATEGORY}/{subcategory}
-  const endpoints = {
-    gender: "/master-api/?category=GENDER",
-    religion: "/master-api/?category=RELIGION",
-    maritalStatus: "/master-api/?category=MARITAL_STATUS",
-    // Clothing sizes requested via query parameters per requested pattern
-    clothingSize: "/master-api/?category=clothing&subcategory=size"
+  // ✅ FIXED: Use useMasterData categories (uppercase) to match FormField usage
+  // This ensures we use the same endpoint as FormField components
+  const categoryMapping = {
+    gender: 'GENDER',
+    religion: 'RELIGION',
+    maritalStatus: 'MARITAL_STATUS',
+    clothingSize: 'CLOTHING' // with subcategory 'size'
   };
 
-  // ✅ OPTIMIZED: Load master options with enhanced caching and rate limiting
+  // ✅ OPTIMIZED: Load master options using useMasterData to avoid duplicate API calls
   const loadMasterOptions = async (forceReload = false) => {
     // ✅ CHECK 1: Return cached data if valid and not forcing reload
     if (!forceReload && !shouldReload()) {
-      const hasValidCache = Object.keys(endpoints).every(key =>
+      const hasValidCache = Object.keys(categoryMapping).every(key =>
         options.value[key] && options.value[key].length > 0
       );
 
@@ -83,36 +82,48 @@ export const useMasterOptions = () => {
     // Create loading promise
     const loadPromise = (async () => {
       try {
-        // ✅ NEW: Sequential loading with delays to prevent server overload
-        for (const [key, endpoint] of Object.entries(endpoints)) {
-          try {
-            // Add delay between requests to prevent server overload
-            if (key !== 'gender') { // Skip delay for first request
-              await new Promise(resolve => setTimeout(resolve, 300)); // 300ms delay
-            }
-
-
-            const res = await apiGet(endpoint);
-
-            if (res && (res.success === true || res.status === true) && res.data) {
-              // master endpoints commonly return { status: true, data: { master_data: [...] } }
-              const payload = res.data.master_data ?? res.data;
-              const arr = Array.isArray(payload) ? payload : (Array.isArray(payload.items) ? payload.items : []);
-              const normalizedOptions = arr.map(normalize).filter(Boolean);
-
-              // ✅ NEW: Set cache with expiry
-              options.value[key] = normalizedOptions;
-              cache.set(key, normalizedOptions);
-              cacheExpiry.set(key, Date.now() + CACHE_TTL);
-
-            } else {
-            }
-          } catch (error) {
-            // Keep existing data if available
-            if (options.value[key] && options.value[key].length > 0) {
-            }
-          }
-        }
+        // ✅ FIXED: Use useMasterData.getOptions instead of direct API calls
+        // This ensures we use the same endpoint and caching as FormField components
+        const loadPromises = [];
+        
+        // Load gender
+        loadPromises.push(
+          getOptions('GENDER').then(data => {
+            options.value.gender = data.map(normalize).filter(Boolean);
+            cache.set('gender', options.value.gender);
+            cacheExpiry.set('gender', Date.now() + CACHE_TTL);
+          }).catch(() => {})
+        );
+        
+        // Load religion
+        loadPromises.push(
+          getOptions('RELIGION').then(data => {
+            options.value.religion = data.map(normalize).filter(Boolean);
+            cache.set('religion', options.value.religion);
+            cacheExpiry.set('religion', Date.now() + CACHE_TTL);
+          }).catch(() => {})
+        );
+        
+        // Load marital status
+        loadPromises.push(
+          getOptions('MARITAL_STATUS').then(data => {
+            options.value.maritalStatus = data.map(normalize).filter(Boolean);
+            cache.set('maritalStatus', options.value.maritalStatus);
+            cacheExpiry.set('maritalStatus', Date.now() + CACHE_TTL);
+          }).catch(() => {})
+        );
+        
+        // Load clothing size
+        loadPromises.push(
+          getOptions('CLOTHING', 'size').then(data => {
+            options.value.clothingSize = data.map(normalize).filter(Boolean);
+            cache.set('clothingSize', options.value.clothingSize);
+            cacheExpiry.set('clothingSize', Date.now() + CACHE_TTL);
+          }).catch(() => {})
+        );
+        
+        // Wait for all to complete
+        await Promise.allSettled(loadPromises);
 
       } catch (error) {
       } finally {
@@ -148,7 +159,7 @@ export const useMasterOptions = () => {
       cacheExpiry.delete(key);
     } else {
       // Clear all
-      Object.keys(endpoints).forEach(k => {
+      Object.keys(categoryMapping).forEach(k => {
         options.value[k] = [];
         cache.delete(k);
         cacheExpiry.delete(k);

@@ -45,6 +45,7 @@ export const useMasterData = () => {
     'EDUCATION_MAJOR',
     'TAX_STATUS',
     'EMP_HEALTH',
+    'EMP_DOCUMENT', // ✅ ADDED: For document types
   ];
 
   // ✅ NEW: Check if cache is still valid
@@ -128,7 +129,7 @@ export const useMasterData = () => {
         let endpoint = null;
 
         // Categories that use query param ?category=...
-        const queryCategories = ['GENDER', 'RELIGION', 'MARITAL_STATUS', 'FAMILY_RELATION', 'MEMBER_STATUS', 'CLOTHING', 'EMP_HEALTH', 'FAMILY'];
+        const queryCategories = ['GENDER', 'RELIGION', 'MARITAL_STATUS', 'FAMILY_RELATION', 'MEMBER_STATUS', 'CLOTHING', 'EMP_HEALTH', 'EMP_DOCUMENT', 'FAMILY'];
 
         if (queryCategories.includes(category)) {
           // Special handling for FAMILY_RELATION - API uses lowercase
@@ -140,6 +141,9 @@ export const useMasterData = () => {
           } else if (category === 'EMP_HEALTH') {
             // Special handling for EMP_HEALTH with subcategory support
             endpoint = `/master-api/?category=emp_health${subcategory ? `&sub_category=${subcategory}` : ''}`;
+          } else if (category === 'EMP_DOCUMENT') {
+            // Special handling for EMP_DOCUMENT - API uses lowercase
+            endpoint = `/master-api/?category=emp_document`;
           } else {
             endpoint = `/master-api/?category=${category.toLowerCase()}`;
           }
@@ -507,33 +511,30 @@ export const useMasterData = () => {
     }
     
     try {
-      // ✅ NEW: Sequential loading with delays to prevent server overload
-      for (const [cat, subcat] of commonCategories) {
-        try {
-          // ✅ CACHE CHECK: Skip if already loaded and valid
-          const cacheKey = subcat ? `${cat}_${subcat}` : cat;
-          if (masterData.value[cacheKey] && isCacheValid(cacheKey)) {
-            // Already cached, skipping
-            continue;
-          }
-          
-          // Add delay between requests to prevent server overload
-          if (cat !== 'GENDER') { // Skip delay for first request
-            await new Promise(resolve => setTimeout(resolve, 100)); // 100ms delay for faster preload
-          }
-          
-          await loadMasterData(cat, subcat);
-          // Only log in development
-          if (process.dev) {
-            // Preloaded category
-          }
-        } catch (e) {
-          // Only log in development
-          if (process.dev) {
-            // Failed to preload category
-          }
+      // ✅ OPTIMIZED: Parallel loading for faster preload (with rate limiting)
+      const loadPromises = [];
+      commonCategories.forEach(([cat, subcat], index) => {
+        // ✅ CACHE CHECK: Skip if already loaded and valid
+        const cacheKey = subcat ? `${cat}_${subcat}` : cat;
+        if (masterData.value[cacheKey] && isCacheValid(cacheKey)) {
+          // Already cached, skipping
+          return;
         }
-      }
+        
+        // ✅ OPTIMIZED: Load in parallel with small delay to prevent server overload
+        const loadPromise = (async () => {
+          // Small delay to stagger requests slightly
+          if (index > 0) {
+            await new Promise(resolve => setTimeout(resolve, index * 20)); // 20ms stagger instead of 100ms
+          }
+          await loadMasterData(cat, subcat);
+        })();
+        
+        loadPromises.push(loadPromise);
+      });
+      
+      // Wait for all loads to complete
+      await Promise.allSettled(loadPromises);
       // Only log in development
       if (process.dev) {
         // Common categories preloading completed

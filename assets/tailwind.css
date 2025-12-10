@@ -9,6 +9,20 @@
   --p-datepicker-header-color: white !important;
   --p-datepicker-header-border-color: var(--color-primary-500) !important;
   --p-datepicker-selected-color: var(--color-primary-500) !important;
+  
+  /* ✅ DatePicker Design Tokens - Selected Date */
+  --p-datepicker-date-selected-background: var(--color-primary-500) !important;
+  --p-datepicker-date-selected-color: white !important;
+  
+  /* ✅ DatePicker Design Tokens - Today Date */
+  --p-datepicker-today-background: var(--color-primary-500) !important;
+  --p-datepicker-today-color: white !important;
+  
+  /* ✅ Override PrimeVue default highlight colors (usually green) */
+  --p-highlight: var(--color-primary-500) !important;
+  --p-highlight-text-color: white !important;
+  --p-primary-color: var(--color-primary-500) !important;
+  --p-primary-color-text: white !important;
 }
 
 /* Header styling - Force override all possible selectors */
@@ -50,24 +64,80 @@ div.p-datepicker .p-datepicker-header {
   color: white !important;
 }
 
-/* Selected date */
+/* ✅ Selected date - Using design tokens with all possible selectors */
 .p-datepicker .p-datepicker-calendar td.p-datepicker-selected span,
+.p-datepicker .p-datepicker-calendar td .p-datepicker-day-selected,
+.p-datepicker .p-datepicker-calendar td.p-datepicker-day-cell .p-datepicker-day-selected,
 .p-component .p-datepicker .p-datepicker-calendar td.p-datepicker-selected span,
-div.p-datepicker .p-datepicker-calendar td.p-datepicker-selected span {
+.p-component .p-datepicker .p-datepicker-calendar td .p-datepicker-day-selected,
+div.p-datepicker .p-datepicker-calendar td.p-datepicker-selected span,
+div.p-datepicker .p-datepicker-calendar td .p-datepicker-day-selected {
+  background: var(--p-datepicker-date-selected-background) !important;
+  background-color: var(--p-datepicker-date-selected-background) !important;
+  color: var(--p-datepicker-date-selected-color) !important;
+  border-color: var(--p-datepicker-date-selected-background) !important;
+}
+
+/* ✅ Today's date - Using design tokens with all possible selectors */
+.p-datepicker .p-datepicker-calendar td.p-datepicker-today span,
+.p-datepicker .p-datepicker-calendar td.p-datepicker-today .p-datepicker-day,
+.p-datepicker .p-datepicker-calendar td.p-datepicker-day-cell.p-datepicker-today .p-datepicker-day,
+.p-component .p-datepicker .p-datepicker-calendar td.p-datepicker-today span,
+.p-component .p-datepicker .p-datepicker-calendar td.p-datepicker-today .p-datepicker-day,
+div.p-datepicker .p-datepicker-calendar td.p-datepicker-today span,
+div.p-datepicker .p-datepicker-calendar td.p-datepicker-today .p-datepicker-day {
+  background: var(--p-datepicker-today-background) !important;
+  background-color: var(--p-datepicker-today-background) !important;
+  color: var(--p-datepicker-today-color) !important;
+  border-color: var(--p-datepicker-today-background) !important;
+}
+
+/* ✅ Today date when also selected - should use selected styling */
+.p-datepicker .p-datepicker-calendar td.p-datepicker-today.p-datepicker-selected span,
+.p-datepicker .p-datepicker-calendar td.p-datepicker-today .p-datepicker-day-selected,
+.p-datepicker .p-datepicker-calendar td.p-datepicker-day-cell.p-datepicker-today .p-datepicker-day-selected,
+.p-component .p-datepicker .p-datepicker-calendar td.p-datepicker-today.p-datepicker-selected span,
+.p-component .p-datepicker .p-datepicker-calendar td.p-datepicker-today .p-datepicker-day-selected,
+div.p-datepicker .p-datepicker-calendar td.p-datepicker-today.p-datepicker-selected span,
+div.p-datepicker .p-datepicker-calendar td.p-datepicker-today .p-datepicker-day-selected {
+  background: var(--p-datepicker-date-selected-background) !important;
+  background-color: var(--p-datepicker-date-selected-background) !important;
+  color: var(--p-datepicker-date-selected-color) !important;
+  border-color: var(--p-datepicker-date-selected-background) !important;
+}
+
+/* ✅ PrimeVue DatePicker - Selected Date berdasarkan HTML yang di-inspect */
+/* Class yang digunakan: p-datepicker-day p-datepicker-day-selected */
+.p-datepicker-day-selected,
+.p-datepicker-day.p-datepicker-day-selected,
+.p-datepicker .p-datepicker-day-selected,
+.p-datepicker table td .p-datepicker-day-selected,
+.p-datepicker-calendar .p-datepicker-day-selected,
+.custom-datepicker-day.p-datepicker-day-selected {
   background: var(--color-primary-500) !important;
   background-color: var(--color-primary-500) !important;
   color: white !important;
   border-color: var(--color-primary-500) !important;
 }
 
-/* Today's date */
-.p-datepicker .p-datepicker-calendar td.p-datepicker-today span,
-.p-component .p-datepicker .p-datepicker-calendar td.p-datepicker-today span,
-div.p-datepicker .p-datepicker-calendar td.p-datepicker-today span {
+/* ✅ PrimeVue DatePicker - Highlight class */
+.p-highlight,
+.p-datepicker .p-highlight,
+.p-datepicker-calendar .p-highlight,
+.p-datepicker table .p-highlight,
+.p-datepicker table td .p-highlight {
   background: var(--color-primary-500) !important;
   background-color: var(--color-primary-500) !important;
   color: white !important;
-  border-color: var(--color-primary-500) !important;
+}
+
+/* ✅ PrimeVue DatePicker - Today Date */
+.p-datepicker-today:not(.p-datepicker-day-selected),
+.p-datepicker-day.p-datepicker-today:not(.p-datepicker-day-selected),
+.p-datepicker .p-datepicker-today:not(.p-datepicker-day-selected) {
+  background: var(--color-primary-500) !important;
+  background-color: var(--color-primary-500) !important;
+  color: white !important;
 }
 
 /* Date hover */
@@ -96,7 +166,4 @@ div.p-datepicker .p-datepicker-buttonbar .p-button:hover {
   background-color: var(--color-primary-600) !important;
   border-color: var(--color-primary-600) !important;
   color: white !important;
-}
-}
-}
 }

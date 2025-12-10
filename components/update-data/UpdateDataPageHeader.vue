@@ -47,7 +47,7 @@
       </UiButton>
 
       <UiButton
-        v-if="editMode && canEditCompletely"
+        v-if="editMode && canEditCompletely && !isInInsertMode"
         variant="secondary"
         size="small"
         :disabled="!hasCurrentTabChanged || !isCurrentTabFormValid || isSavingDraft"
@@ -108,6 +108,7 @@
               </button>
 
               <button
+                v-if="!isInInsertMode"
                 class="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 rounded-md flex items-center disabled:opacity-50"
                 :disabled="!hasCurrentTabChanged || !isCurrentTabFormValid || isSavingDraft || !canEditCompletely"
                 :title="isSavingDraft ? 'Saving draft...' :
@@ -186,6 +187,7 @@ const props = defineProps({
   isCurrentTabFormValid: { type: Boolean, required: true },
   isSavingDraft: { type: Boolean, required: true },
   isSubmittingUpdate: { type: Boolean, required: true },
+  isInInsertMode: { type: Boolean, default: false },
 })
 
 const emit = defineEmits(['download', 'edit', 'cancel', 'save-draft', 'submit'])
