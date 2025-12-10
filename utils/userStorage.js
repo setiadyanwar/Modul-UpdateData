@@ -37,8 +37,9 @@ function validateUserData(data) {
     return null;
   }
 
-  // Required fields check - at least one ID must exist
-  if (!data.user_id && !data.employee_id) {
+  // Required fields check - accept multiple possible ID keys
+  const normalizedId = data.user_id || data.employee_id || data.id || data.userId || data.employeeId;
+  if (!normalizedId) {
     console.warn('[UserStorage] User data missing required ID fields');
     return null;
   }
@@ -46,8 +47,8 @@ function validateUserData(data) {
   // Normalize structure - ensure all expected fields exist with fallbacks
   return {
     // IDs (ensure both exist)
-    user_id: data.user_id || data.employee_id,
-    employee_id: data.employee_id || data.user_id,
+    user_id: data.user_id || data.employee_id || data.id || data.userId || data.employeeId,
+    employee_id: data.employee_id || data.user_id || data.id || data.userId || data.employeeId,
 
     // Basic info
     employee_name: data.employee_name || data.name || '',

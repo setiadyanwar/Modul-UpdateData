@@ -246,6 +246,8 @@ const isPopulatingDraft = ref(false); // Flag to prevent concurrent populate ope
 
 // Navigation timeout for cleanup
 let navigationRefreshTimeout = null;
+let smartRefreshInterval = null;
+let cacheInvalidationTimeout = null;
 
 // Basic Information Files State
 const basicInfoUploadedFiles = ref([]);
@@ -4743,7 +4745,6 @@ onMounted(async () => {
   const lastRefreshTime = ref(Date.now());
 
   // ✅ FIXED BUG #2: Enhanced navigation detection with force re-render and debounce protection
-  let smartRefreshInterval = null;
 
   // Add navigation event listener for browser navigation
   // Store reference outside to prevent undefined error in onUnmounted

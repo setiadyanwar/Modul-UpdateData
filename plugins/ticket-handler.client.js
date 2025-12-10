@@ -176,13 +176,65 @@ export default defineNuxtPlugin((nuxtApp) => {
 
         // ✅ CRITICAL: Store the ticket ID so we don't re-process on reload
         localStorage.setItem('last_processed_ticket', ticket);
-        // console.log('[Ticket Handler] ✅ Saved last_processed_ticket:', ticket.substring(0, 20) + '...');
-
-        // console.log('[Ticket Handler] ✅ Tokens saved to localStorage');
 
         // ✅ Save user data using centralized utility (validates and normalizes)
+        // Ensure ID fields exist using JWT payload fallback (sub/user_id/employee_id)
+        let jwtPayload = null;
+        try {
+          const parseJWTPayload = (token) => {
+            const parts = token.split('.');
+            if (parts.length !== 3) return {};
+            const decoded = atob(parts[1]);
+            return JSON.parse(decoded);
+          };
+          jwtPayload = parseJWTPayload(accessToken);
+        } catch (e) {
+          jwtPayload = null;
+        }
+
         if (response.data) {
-          UserStorage.saveUser(response.data);
+          const raw = response.data;
+          const findId = (obj) => {
+            if (!obj || typeof obj !== 'object') return null;
+            const keys = ['user_id','employee_id','id','userId','employeeId','user_code','employee_code','nik'];
+            for (const k of keys) {
+              const v = obj[k];
+              if (v !== undefined && v !== null && String(v).trim() !== '') {
+                return String(v).trim();
+              }
+            }
+            return null;
+          };
+
+          const idFromToken = findId(jwtPayload) || jwtPayload?.sub || null;
+          const idFromResponse = findId(raw);
+          const finalId = idFromResponse || idFromToken || null;
+
+          if (finalId) {
+            const userData = {
+              user_id: raw.user_id || finalId,
+              employee_id: raw.employee_id || finalId,
+              id: raw.id || finalId,
+              employeeId: raw.employeeId || raw.employee_id || finalId,
+              userId: raw.userId || raw.user_id || finalId,
+              user_code: raw.user_code,
+              employee_code: raw.employee_code || raw.nik,
+              nik: raw.nik,
+              email: raw.email || raw.user_email || '',
+              name: raw.name || raw.employee_name || '',
+              employee_name: raw.employee_name || raw.name || '',
+              photo: raw.photo || raw.photo_profile_ess || '',
+              photo_profile_ess: raw.photo_profile_ess || raw.photo || ''
+            };
+
+            try {
+              UserStorage.saveUser(userData);
+            } catch (err) {
+              console.warn('[Ticket Handler] Skipping saveUser due to error:', err?.message);
+            }
+          } else {
+            console.warn('[Ticket Handler] Skipping saveUser: no ID found in response or token');
+          }
         }
 
         // Step 2a: Parse JWT to extract roles and permissions early
@@ -323,8 +375,46 @@ export default defineNuxtPlugin((nuxtApp) => {
               ? userDetailResponse.data.data
               : userDetailResponse.data;
             if (payload && typeof payload === 'object') {
-              UserStorage.saveUser(payload);
-              // console.log('[Ticket Handler] ✅ Full user data updated');
+              const findId = (obj) => {
+                if (!obj || typeof obj !== 'object') return null;
+                const keys = ['user_id','employee_id','id','userId','employeeId','user_code','employee_code','nik'];
+                for (const k of keys) {
+                  const v = obj[k];
+                  if (v !== undefined && v !== null && String(v).trim() !== '') {
+                    return String(v).trim();
+                  }
+                }
+                return null;
+              };
+
+              const idFromPayload = findId(payload) || (jwtPayload ? findId(jwtPayload) || jwtPayload?.sub : null);
+
+              if (idFromPayload) {
+                const normalizedUser = {
+                  user_id: payload.user_id || idFromPayload,
+                  employee_id: payload.employee_id || idFromPayload,
+                  id: payload.id || idFromPayload,
+                  employeeId: payload.employeeId || payload.employee_id || idFromPayload,
+                  userId: payload.userId || payload.user_id || idFromPayload,
+                  user_code: payload.user_code,
+                  employee_code: payload.employee_code || payload.nik,
+                  nik: payload.nik,
+                  email: payload.email || payload.user_email || '',
+                  name: payload.name || payload.employee_name || '',
+                  employee_name: payload.employee_name || payload.name || '',
+                  photo: payload.photo || payload.photo_profile_ess || '',
+                  photo_profile_ess: payload.photo_profile_ess || payload.photo || ''
+                };
+
+                try {
+                  UserStorage.saveUser(normalizedUser);
+                  // console.log('[Ticket Handler] ✅ Full user data updated');
+                } catch (e) {
+                  console.warn('[Ticket Handler] Skipping saveUser (detail payload) due to error:', e?.message);
+                }
+              } else {
+                console.warn('[Ticket Handler] Skipping saveUser (detail payload): no ID found');
+              }
 
               // Store roles if available (normalized to array of { role_id?, role_name })
               const rawRoles = payload.user_roles || payload.roles || payload.role_list || payload.userRoles;
