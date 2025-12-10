@@ -121,7 +121,17 @@ apiService.interceptors.response.use(
     const isServerUnavailable =
       [502, 503, 504].includes(error.response?.status);
 
-    if (isNetworkError || isServerUnavailable) {
+    // Don't redirect to login if:
+    // 1. We're in iframe (parent will handle auth)
+    // 2. Error is from ticket exchange/auth endpoints (expected to fail sometimes)
+    // 3. Error is 502 from proxy (might be API error, not connection error)
+    const isInIframe = process.client && window.parent !== window;
+    const isAuthEndpoint = error.config?.url?.includes('/auth/') || 
+                          error.config?.url?.includes('/ticket');
+    const is502FromProxy = error.response?.status === 502 && 
+                          error.response?.data?.statusCode === 502;
+
+    if ((isNetworkError || isServerUnavailable) && !isInIframe && !isAuthEndpoint && !is502FromProxy) {
       // Hapus token
       localStorage.removeItem("auth-token");
       localStorage.removeItem("access_token");

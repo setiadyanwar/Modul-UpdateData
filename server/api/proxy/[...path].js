@@ -1,9 +1,9 @@
 import envConfig from '~/config/environment';
-import { $fetch } from 'ofetch';
 import {
   defineEventHandler,
   getQuery,
   setResponseHeaders,
+  setResponseStatus,
   readBody,
 } from 'h3';
 
@@ -34,8 +34,9 @@ export default defineEventHandler(async (event) => {
   const incomingAuth = event.req.headers['authorization'];
 
   // Prepare headers
+  // Default headers. Use */* so binary download endpoints are accepted.
   const headers = {
-    Accept: 'application/json',
+    Accept: '*/*',
   };
   if (incomingAuth) headers['Authorization'] = incomingAuth;
 
@@ -49,19 +50,74 @@ export default defineEventHandler(async (event) => {
   }
 
   const baseURL = envConfig.API_BASE_URL || process.env.API_BASE_URL;
+  const apiUrl = `${baseURL}${endpoint}`;
 
   try {
-    const response = await $fetch(endpoint, {
+    // Use fetch directly to properly handle response status codes
+    const fetchOptions = {
       method,
-      baseURL,
       headers,
-      body,
-      ignoreResponseError: true,
-    });
-    return response;
+    };
+
+    // Add body for mutating methods
+    if (body && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
+      fetchOptions.body = typeof body === 'string' ? body : JSON.stringify(body);
+    }
+
+    const response = await fetch(apiUrl, fetchOptions);
+
+    // Get response data
+    let responseData;
+    const responseContentType = response.headers.get('content-type');
+    const responseStatus = response.status;
+
+    // Set the response status code from API first (before processing body)
+    setResponseStatus(event, responseStatus);
+
+    // Handle JSON responses
+    if (responseContentType && responseContentType.includes('application/json')) {
+      responseData = await response.json();
+      return responseData;
+    }
+
+    // Handle binary / file / non-JSON responses
+    // For successful responses (<400) return raw binary (Buffer) and forward headers
+    if (responseStatus < 400) {
+      const arrayBuffer = await response.arrayBuffer();
+
+      // Forward important headers
+      const forwardHeaders = {};
+      const contentDisposition = response.headers.get('content-disposition');
+      if (contentDisposition) forwardHeaders['content-disposition'] = contentDisposition;
+      if (responseContentType) forwardHeaders['content-type'] = responseContentType;
+
+      // Preserve content-length if available
+      const contentLength = response.headers.get('content-length');
+      if (contentLength) forwardHeaders['content-length'] = contentLength;
+
+      setResponseHeaders(event, forwardHeaders);
+
+      // Return as Buffer so Nuxt sends it as binary
+      return Buffer.from(arrayBuffer);
+    }
+
+    // For error responses (4xx/5xx) try to parse as text/JSON and wrap consistently
+    const text = await response.text();
+    try {
+      responseData = JSON.parse(text);
+    } catch (e) {
+      responseData = {
+        status: false,
+        message: response.statusText || 'Request failed',
+        error: text.substring(0, 500),
+        statusCode: responseStatus
+      };
+    }
+
+    return responseData;
   } catch (error) {
     throw createError({
-      statusCode: error.status || error.statusCode || 500,
+      statusCode: error.statusCode || error.status || 500,
       statusMessage: error.message || 'Proxy request failed',
       data: error.data
     });

@@ -133,7 +133,7 @@ const parsePhotoId = (photoString) => {
   let parent_id = '';
   let item_id = '';
 
-  // Prefer comma-delimited payloads (can have more than two segments, join the tail back)
+  // Prefer comma-delimited payloads: parent_id,item_id or parent_id,...,item_id
   if (sanitized.includes(',')) {
     const parts = sanitized
       .split(',')
@@ -141,8 +141,12 @@ const parsePhotoId = (photoString) => {
       .filter((part) => part.length > 0);
 
     if (parts.length >= 2) {
+      // Ambil bagian pertama sebagai parent_id, bagian terakhir sebagai item_id.
+      // Contoh:
+      // - 2 bagian: parent,item
+      // - 3+ bagian: parent,folder,item => item = bagian terakhir
       parent_id = parts[0];
-      item_id = parts.slice(1).join(',');
+      item_id = parts[parts.length - 1];
     }
   }
 

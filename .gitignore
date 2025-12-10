@@ -28,3 +28,6 @@ logs
 # Project config
 config/
 mango/
+
+documentation.rmd
+update-data-documentation.rmd
