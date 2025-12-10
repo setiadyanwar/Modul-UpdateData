@@ -118,6 +118,10 @@ const props = defineProps({
 
 const previewPhotoUrl = ref('');
 const isLoadingPreview = ref(false);
+const lastFetchedUrl = ref(null);
+const lastRequestedUrl = ref(null);
+let inFlightRequest = null;
+const isFetching = ref(false);
 const fileInput = ref(null);
 const isCropperOpen = ref(false);
 const selectedFileForCrop = ref(null);
@@ -166,6 +170,13 @@ const parsePhotoId = (photoString) => {
 const getPhotoDirectUrl = async (photoString) => {
   const photoIds = parsePhotoId(photoString);
   if (!photoIds) return null; // invalid id, skip
+  // Deduplicate identical requests (including concurrent calls)
+  if (lastFetchedUrl.value === photoString && previewPhotoUrl.value) {
+    return previewPhotoUrl.value;
+  }
+  if (inFlightRequest && lastRequestedUrl.value === photoString) {
+    return inFlightRequest;
+  }
 
   try {
     const { useAuth } = await import('~/composables/useAuth');
@@ -187,14 +198,19 @@ const getPhotoDirectUrl = async (photoString) => {
 
     if (!response.ok) return null;
 
-    // Check if this is an image
-    const contentType = response.headers.get('content-type');
-    if (!contentType || !contentType.startsWith('image/')) {
+    // Check if this is an image (relax for backends that return octet-stream)
+    const contentType = response.headers.get('content-type') || '';
+    const isImageLike =
+      contentType.startsWith('image/') ||
+      contentType === '' ||
+      contentType === 'application/octet-stream';
+    if (!isImageLike) {
       return null;
     }
 
     // Convert response to blob and create object URL
     const blob = await response.blob();
+    if (!blob || blob.size === 0) return null;
     const objectUrl = URL.createObjectURL(blob);
 
     return objectUrl;
@@ -212,19 +228,20 @@ watch(() => props.photoUrl, async (newPhotoUrl) => {
     previewPhotoUrl.value = '';
   }
 
-  if (!newPhotoUrl || newPhotoUrl === 'null' || newPhotoUrl === 'undefined' || newPhotoUrl.trim() === '') {
+  const normalizedUrl = (newPhotoUrl || '').trim();
+  if (!normalizedUrl || normalizedUrl === 'null' || normalizedUrl === 'undefined') {
     return;
   }
 
   // Check if it's a regular URL or parent_id,item_id format
-  if (newPhotoUrl.startsWith('http') || newPhotoUrl.startsWith('blob:')) {
+  if (normalizedUrl.startsWith('http') || normalizedUrl.startsWith('blob:')) {
     // Regular URL or blob URL, use as is
-    previewPhotoUrl.value = newPhotoUrl;
+    previewPhotoUrl.value = normalizedUrl;
     return;
   }
 
   // Assume it's parent_id,item_id format
-  const photoIds = parsePhotoId(newPhotoUrl);
+  const photoIds = parsePhotoId(normalizedUrl);
   if (!photoIds) {
     return;
   }
@@ -233,17 +250,34 @@ watch(() => props.photoUrl, async (newPhotoUrl) => {
   if (props.parentLoading) {
     return;
   }
+
+  // Guard against duplicate in-flight or already fetched
+  if ((normalizedUrl === lastRequestedUrl.value && isFetching.value) || normalizedUrl === lastFetchedUrl.value) {
+    return;
+  }
   
   isLoadingPreview.value = true;
+  isFetching.value = true;
   try {
-    const url = await getPhotoDirectUrl(newPhotoUrl);
+    lastRequestedUrl.value = normalizedUrl;
+    inFlightRequest = getPhotoDirectUrl(normalizedUrl);
+    const url = await inFlightRequest;
+    inFlightRequest = null;
+
     if (url) {
+      // Cleanup previous blob if any
+      if (previewPhotoUrl.value && previewPhotoUrl.value.startsWith('blob:')) {
+        URL.revokeObjectURL(previewPhotoUrl.value);
+      }
       previewPhotoUrl.value = url;
+      lastFetchedUrl.value = normalizedUrl;
     }
   } catch (error) {
     console.error('Photo preview load error:', error);
   } finally {
     isLoadingPreview.value = false;
+    isFetching.value = false;
+    inFlightRequest = null;
   }
 }, { immediate: true });
 

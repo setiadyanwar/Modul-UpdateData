@@ -27,6 +27,7 @@ logs
  
 # Project config
 config/
+!config/environment.js
 mango/
 
 documentation.rmd
