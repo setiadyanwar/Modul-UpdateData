@@ -79,7 +79,7 @@
           'pi pi-home flex-shrink-0',
           isSidebarCollapsed ? 'text-base' : 'text-lg'
         ]"></i>
-        <span v-if="!isSidebarCollapsed" class="ml-3 text-sm font-medium">Back to Dashboard</span>
+        <span v-if="!isSidebarCollapsed" class="ml-3 text-sm font-medium">Back to Dashboarded</span>
 
         <div
           v-if="isSidebarCollapsed"
