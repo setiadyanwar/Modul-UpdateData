@@ -13,21 +13,18 @@ export default defineNuxtRouteMiddleware((to) => {
         return;
       }
 
-      // Check if ticket is being processed - don't redirect yet
+      // Check if ticket is being processed
       const ticketProcessing = sessionStorage.getItem('ticket_processing');
       if (ticketProcessing === 'true') {
-        console.log('[Root Redirect] ⏳ Ticket processing - waiting for result');
-        // Don't redirect - wait for ticket handler to finish
-        return;
+        console.log('[Root Redirect] ⏳ Ticket processing - redirecting to /update-data with ticket');
+        return navigateTo({ path: '/update-data', query }, { redirectCode: 302 });
       }
 
       // ✅ CRITICAL: If in iframe with ticket, NEVER redirect - always let ticket handler process first
       // This prevents /update-data from opening before we know if login will succeed
       if (to.query.ticket && window.parent !== window) {
-        console.log('[Root Redirect] 📦 Ticket in iframe - NEVER redirect, let ticket handler process first');
-        // Don't redirect - ticket handler will handle redirect after successful login
-        // If login fails, ESSHost will handle redirect via postMessage
-        return;
+        console.log('[Root Redirect] 📦 Ticket in iframe - redirecting to /update-data with ticket');
+        return navigateTo({ path: '/update-data', query }, { redirectCode: 302 });
       }
     }
 
