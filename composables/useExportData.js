@@ -90,7 +90,7 @@ export const useExportData = () => {
     },
     {
       id: "medical_record",
-      title: "Medical Report",
+      title: "Medical Record",
       description: "Health data and medical records",
       icon: "pi-heart",
       selected: false,
