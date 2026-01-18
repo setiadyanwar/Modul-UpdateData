@@ -30,39 +30,7 @@ export default defineNuxtConfig({
   },
 
   nitro: {
-    preset: 'node-server',
-    compressPublicAssets: false,
-    minify: false,
-    devProxy: {
-      '/_nuxt/': {
-        target: 'http://localhost:3001',
-        changeOrigin: true
-      }
-    },
-    // Security headers for iframe embedding
-    routeRules: {
-      '/**': {
-        headers: {
-          // Modern CSP with frame-ancestors (replaces deprecated X-Frame-Options ALLOW-FROM)
-          'Content-Security-Policy': [
-            `frame-ancestors ${cspFrameAncestors}`,
-            "default-src 'self'",
-            "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com https://cdn.jsdelivr.net",
-            "style-src 'self' 'unsafe-inline' https://unpkg.com",
-            "img-src 'self' data: blob: https:",
-            "font-src 'self' data: https://fonts.gstatic.com",
-            "frame-src 'self' https://sigmacoid.sharepoint.com",
-            `connect-src 'self' blob: ${cspConnectSrc}`
-          ].join('; '),
-          // X-Frame-Options for older browsers (CSP takes precedence in modern browsers)
-          'X-Frame-Options': 'SAMEORIGIN',
-          // Other security headers
-          'X-Content-Type-Options': 'nosniff',
-          'X-XSS-Protection': '1; mode=block',
-          'Referrer-Policy': 'strict-origin-when-cross-origin'
-        }
-      }
-    }
+    preset: 'vercel', // Explicitly use Vercel preset
   },
 
   css: ["~/assets/css/main.css"],
@@ -155,31 +123,12 @@ export default defineNuxtConfig({
         '~/config': resolve(__dirname, './config')
       }
     },
-    build: {
-      rollupOptions: {
-        output: {
-          manualChunks: {
-            vendor: ["vue", "vue-router"],
-            primevue: ["primevue"],
-          },
-        },
-      },
-    },
-    optimizeDeps: {
-      include: ["primevue"],
-    },
-    ssr: {
-      noExternal: ["primevue"],
-    },
-    // Fix for dynamic import issues in iframe
+    // Fix for dynamic import issues in iframe & explicit env definition like reference
     define: {
-      'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'development')
-    },
-    // Fix for development server issues
-    server: {
-      hmr: {
-        port: 3001
-      }
+      'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'development'),
+      'process.env.API_BASE_URL': JSON.stringify(process.env.API_BASE_URL),
+      'process.env.REMOTE_APP_HOST_ORIGIN': JSON.stringify(process.env.REMOTE_APP_HOST_ORIGIN),
+      'process.env.ALLOWED_ORIGINS': JSON.stringify(process.env.ALLOWED_ORIGINS)
     }
   },
 
