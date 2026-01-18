@@ -26,22 +26,22 @@ import UserStorage from '~/utils/userStorage';
 // Global authentication state
 let authInstance = null;
 
-  // Configuration constants
-  const CONFIG = {
-    // Token lifetimes (in milliseconds)
-    ACCESS_TOKEN_LIFETIME: envConfig.SECURITY.JWT_EXPIRY || 1200000, // 20 minutes (CORRECTED!)
-    REFRESH_TOKEN_LIFETIME: envConfig.SECURITY.REFRESH_TOKEN_EXPIRY || 604800000, // 7 days
+// Configuration constants
+const CONFIG = {
+  // Token lifetimes (in milliseconds)
+  ACCESS_TOKEN_LIFETIME: envConfig.SECURITY.JWT_EXPIRY || 1200000, // 20 minutes (CORRECTED!)
+  REFRESH_TOKEN_LIFETIME: envConfig.SECURITY.REFRESH_TOKEN_EXPIRY || 604800000, // 7 days
 
-    // Session management - CORRECTED TIMING
-    SESSION_WARNING_TIME: envConfig.SECURITY.WARNING_TIMEOUT || 900000, // 15 minutes of inactivity before showing modal
-    COUNTDOWN_DURATION: envConfig.SECURITY.COUNTDOWN_DURATION || 300000, // 5 minutes countdown in modal
-    LAST_CHANCE_PERIOD: 300000, // 5 minutes before modal (10-15 min idle) untuk detect aktivitas
-    ACTIVITY_THROTTLE: envConfig.SECURITY.ACTIVITY_THROTTLE || 100, // 100ms throttle
-  
+  // Session management - CORRECTED TIMING
+  SESSION_WARNING_TIME: envConfig.SECURITY.WARNING_TIMEOUT || 900000, // 15 minutes of inactivity before showing modal
+  COUNTDOWN_DURATION: envConfig.SECURITY.COUNTDOWN_DURATION || 300000, // 5 minutes countdown in modal
+  LAST_CHANCE_PERIOD: 300000, // 5 minutes before modal (10-15 min idle) untuk detect aktivitas
+  ACTIVITY_THROTTLE: envConfig.SECURITY.ACTIVITY_THROTTLE || 100, // 100ms throttle
+
   // Security settings
   MAX_LOGIN_ATTEMPTS: envConfig.SECURITY.MAX_LOGIN_ATTEMPTS || 5,
   LOCKOUT_DURATION: envConfig.SECURITY.LOCKOUT_DURATION || 900000, // 15 minutes
-  
+
   // API endpoints
   ENDPOINTS: {
     LOGIN: '/api/auth/login',
@@ -73,7 +73,7 @@ export const useAuthenticationCore = () => {
   const user = ref(null);
   const isAuthenticated = ref(false);
   const isLoading = ref(false);
-  
+
   // Session management state
   const isSessionWarningVisible = ref(false);
   const sessionCountdownTime = ref(0);
@@ -81,18 +81,18 @@ export const useAuthenticationCore = () => {
   const sessionMonitorStartTime = ref(Date.now());
   const sessionMonitorTargetTime = ref(Date.now() + CONFIG.SESSION_WARNING_TIME);
   const isTabVisible = ref(true);
-  
+
   // Last chance monitoring state (≤5 min before modal)
   const isLastChanceMonitoringActive = ref(false);
   const lastChanceActivityDetected = ref(false);
   const lastChanceRefreshCount = ref(0);
   const lastRefreshTime = ref(null);
-  
+
   // Account lockout state
   const failedLoginAttempts = ref(0);
   const lockoutEndTime = ref(null);
   const lockedEmail = ref('');
-  
+
   // Internal timers
   let sessionWarningTimer = null;
   let sessionCountdownTimer = null;
@@ -187,7 +187,7 @@ export const useAuthenticationCore = () => {
   /**
    * Token Management Functions
    */
-  
+
   // Parse JWT token payload
   // const parseJWTPayload = (token) => {
   //   try {
@@ -209,66 +209,66 @@ export const useAuthenticationCore = () => {
  * >>> const payload = parseJWTPayload(token)
  * >>> console.log(payload.exp)
  */
-const parseJWTPayload = (token) => {
-  try {
-    if (!token || typeof token !== 'string') {
-      throw new Error('Invalid token format');
-    }
+  const parseJWTPayload = (token) => {
+    try {
+      if (!token || typeof token !== 'string') {
+        throw new Error('Invalid token format');
+      }
 
-    const parts = token.split('.');
-    if (parts.length !== 3) {
-      throw new Error('Invalid JWT format');
-    }
+      const parts = token.split('.');
+      if (parts.length !== 3) {
+        throw new Error('Invalid JWT format');
+      }
 
-    const payload = parts[1];
-    const decoded = atob(payload);
-    return JSON.parse(decoded);
-  } catch (error) {
-    logger.authError('JWT_PARSE_FAILED', error, { token: token?.substring(0, 20) + '...' });
-    return {};
-  }
-};
+      const payload = parts[1];
+      const decoded = atob(payload);
+      return JSON.parse(decoded);
+    } catch (error) {
+      logger.authError('JWT_PARSE_FAILED', error, { token: token?.substring(0, 20) + '...' });
+      return {};
+    }
+  };
 
   // Check if token is expired or needs refresh
   const getTokenStatus = (token) => {
     if (!token) return 'MISSING';
-    
+
     const payload = parseJWTPayload(token);
     if (!payload) return 'INVALID';
-    
+
     const expirationTime = payload.exp * 1000;
     const currentTime = Date.now();
     const timeUntilExpiry = expirationTime - currentTime;
-    
+
     if (process.dev) {
       // Debug token status
     }
-    
+
     if (timeUntilExpiry <= 0) {
       return 'EXPIRED';
     }
-    
+
     // Token needs refresh if expires in less than 5 minutes
     if (timeUntilExpiry < 300000) {
       return 'NEEDS_REFRESH';
     }
-    
+
     return 'VALID';
   };
 
   // Get valid access token (smart refresh untuk mencegah premature logout)
   const getValidAccessToken = async () => {
     if (process.server) return null;
-    
+
     const accessToken = localStorage.getItem('access_token');
     const refreshToken = localStorage.getItem('refresh_token');
-    
+
     if (!accessToken || !refreshToken) {
       return null;
     }
-    
+
     const tokenStatus = getTokenStatus(accessToken);
-    
+
     switch (tokenStatus) {
       case 'VALID':
         return accessToken;
@@ -298,7 +298,7 @@ const parseJWTPayload = (token) => {
               message: 'User masih dalam periode aktif, refresh token'
             });
           }
-          
+
           try {
             // Coba refresh token
             const newToken = await refreshAccessToken();
@@ -348,7 +348,7 @@ const parseJWTPayload = (token) => {
   // Refresh access token
   const refreshAccessToken = async () => {
     if (process.server) return null;
-    
+
     const refreshToken = localStorage.getItem('refresh_token');
     if (!refreshToken) {
       await forceLogout('No refresh token available');
@@ -366,22 +366,22 @@ const parseJWTPayload = (token) => {
         // Handle different response structures
         const accessToken = response.token?.access_token || response.data?.access_token;
         const refreshToken = response.token?.refresh_token || response.data?.refresh_token;
-        
+
         if (accessToken) {
           // Update tokens
           localStorage.setItem('access_token', accessToken);
           if (refreshToken) {
             localStorage.setItem('refresh_token', refreshToken);
           }
-          
+
           // DON'T reset activity timer on token refresh
           // This would interfere with inactivity monitoring
           if (process.dev) {
           }
-          
+
           // Reschedule token monitoring (but no auto refresh) based on new token expiry
           scheduleTokenRefresh(accessToken);
-          
+
           if (process.dev) {
             // Enhanced debug logging for token refresh
             try {
@@ -391,7 +391,7 @@ const parseJWTPayload = (token) => {
               const timeUntilExpiry = expirationTime - currentTime;
               const minutesUntilExpiry = Math.floor(timeUntilExpiry / 60000);
               const secondsUntilExpiry = Math.floor((timeUntilExpiry % 60000) / 1000);
-              
+
               logger.tokenEvent('TOKEN_REFRESHED_SUCCESS', {
                 userId: user.value?.id,
                 tokenExpiryMinutes: minutesUntilExpiry,
@@ -423,7 +423,7 @@ const parseJWTPayload = (token) => {
 
       // ✅ FIXED: Handle 503 network errors - DON'T force logout!
       if (error.status === 503 || error.statusCode === 503 ||
-          (error.message && error.message.includes('Network error'))) {
+        (error.message && error.message.includes('Network error'))) {
         // console.warn('[AUTH] ⚠️ Network error saat refresh token (503) - TIDAK logout, keep session');
         // console.warn('[AUTH] Kemungkinan: VPN disconnect, koneksi tidak stabil, atau server maintenance');
 
@@ -455,20 +455,20 @@ const parseJWTPayload = (token) => {
     if (tokenRefreshTimer) {
       clearTimeout(tokenRefreshTimer);
     }
-    
+
     const payload = parseJWTPayload(token);
     if (!payload) return;
-    
+
     const expirationTime = payload.exp * 1000;
     const currentTime = Date.now();
     const timeUntilExpiry = expirationTime - currentTime;
-    
+
     if (process.dev) {
       const minutes = Math.floor(timeUntilExpiry / 60000);
       const seconds = Math.floor((timeUntilExpiry % 60000) / 1000);
       console.log(`[AUTH] 🎫 Token expires in ${minutes}m ${seconds}s`);
     }
-    
+
     // ✅ FIX: Stop existing monitoring timers first to prevent conflicts
     if (sessionWarningTimer) {
       clearTimeout(sessionWarningTimer);
@@ -478,7 +478,7 @@ const parseJWTPayload = (token) => {
       clearTimeout(lastChanceScheduleTimer);
       lastChanceScheduleTimer = null;
     }
-    
+
     // Start inactivity monitoring - modal akan muncul setelah 15 menit idle
     // Last chance monitoring akan start otomatis di menit ke-10 (5 menit sebelum modal)
     startInactivityMonitoring();
@@ -495,16 +495,16 @@ const parseJWTPayload = (token) => {
       clearTimeout(lastChanceScheduleTimer);
       lastChanceScheduleTimer = null;
     }
-    
+
     sessionMonitorStartTime.value = Date.now();
     sessionMonitorTargetTime.value = sessionMonitorStartTime.value + CONFIG.SESSION_WARNING_TIME;
-    
+
     if (process.dev) {
       const warningTime = new Date(sessionMonitorTargetTime.value).toLocaleTimeString();
       console.log(`[AUTH] ⏰ Session countdown started - Modal target at ${warningTime}`);
       startDebugStatusLogging();
     }
-    
+
     // Schedule last chance monitoring (5 minutes before modal)
     const lastChanceDelay = Math.max(0, CONFIG.SESSION_WARNING_TIME - CONFIG.LAST_CHANCE_PERIOD);
     lastChanceScheduleTimer = setTimeout(() => {
@@ -515,7 +515,7 @@ const parseJWTPayload = (token) => {
         startLastChanceMonitoring();
       }
     }, lastChanceDelay);
-    
+
     // Schedule modal
     sessionWarningTimer = setTimeout(() => {
       if (!isAuthenticated.value || isSessionWarningVisible.value) {
@@ -532,28 +532,28 @@ const parseJWTPayload = (token) => {
    * Last Chance Monitoring Functions
    * Aktivasi monitoring khusus saat token tersisa ≤5 menit
    */
-  
+
   // Start last chance monitoring - pantau mouse/keyboard 5 menit sebelum modal (menit 10-15)
   const startLastChanceMonitoring = () => {
     if (isLastChanceMonitoringActive.value) {
       return; // Already active
     }
-    
+
     if (process.dev) {
       console.log('[AUTH] 🎯 Last Chance Monitoring STARTED - 5 min window (idle 10-15 min)');
     }
-    
+
     isLastChanceMonitoringActive.value = true;
     lastChanceActivityDetected.value = false;
-    
+
     // Setup listener khusus untuk mouse/keyboard
     setupLastChanceListeners();
-    
+
     // Timer untuk auto-stop setelah 5 menit (saat modal akan muncul)
     if (lastChanceTimer) {
       clearTimeout(lastChanceTimer);
     }
-    
+
     lastChanceTimer = setTimeout(() => {
       if (process.dev) {
         console.log('[AUTH] ⏰ Last Chance window habis - Modal seharusnya muncul');
@@ -561,13 +561,13 @@ const parseJWTPayload = (token) => {
       stopLastChanceMonitoring('window_expired');
     }, CONFIG.LAST_CHANCE_PERIOD); // 5 minutes
   };
-  
+
   // Stop last chance monitoring
   const stopLastChanceMonitoring = (reason = 'unknown') => {
     if (!isLastChanceMonitoringActive.value) {
       return;
     }
-    
+
     if (process.dev) {
       logger.tokenEvent('LAST_CHANCE_MONITORING_STOPPED', {
         userId: user.value?.id,
@@ -575,14 +575,14 @@ const parseJWTPayload = (token) => {
         activityDetected: lastChanceActivityDetected.value
       });
     }
-    
+
     isLastChanceMonitoringActive.value = false;
     lastChanceActivityDetected.value = false;
     // Don't reset refresh count - keep for debugging
-    
+
     // Remove listener khusus
     removeLastChanceListeners();
-    
+
     // Clear timers
     if (lastChanceTimer) {
       clearTimeout(lastChanceTimer);
@@ -601,7 +601,7 @@ const parseJWTPayload = (token) => {
       lastChanceThrottleTimer = null;
     }
   };
-  
+
   // Handler untuk last chance activity detection
   const handleLastChanceActivity = async () => {
     // Hanya proses jika mode aktif dan belum detect aktivitas
@@ -627,7 +627,7 @@ const parseJWTPayload = (token) => {
         // Track refresh
         lastChanceRefreshCount.value++;
         lastRefreshTime.value = Date.now();
-        
+
         if (process.dev) {
           console.log('[AUTH] ✅ Token refreshed successfully - Extended 20 minutes');
           console.log('[AUTH] 🔄 Restarting inactivity monitoring...');
@@ -662,20 +662,20 @@ const parseJWTPayload = (token) => {
       }
     }
   };
-  
+
   // Setup listener khusus untuk last chance monitoring
   const setupLastChanceListeners = () => {
     if (process.server) return;
-    
+
     LAST_CHANCE_EVENTS.forEach(event => {
       document.addEventListener(event, handleLastChanceActivity, { passive: true });
     });
   };
-  
+
   // Remove listener khusus untuk last chance monitoring
   const removeLastChanceListeners = () => {
     if (process.server) return;
-    
+
     LAST_CHANCE_EVENTS.forEach(event => {
       document.removeEventListener(event, handleLastChanceActivity);
     });
@@ -684,7 +684,7 @@ const parseJWTPayload = (token) => {
   /**
    * Session Management Functions
    */
-  
+
   // Reset activity timer (called on user activity)
   // CORRECTED: Hanya update timestamp, TIDAK restart inactivity timer
   const resetActivityTimer = (isUserActivity = true) => {
@@ -698,18 +698,18 @@ const parseJWTPayload = (token) => {
       activityThrottleTimer = setTimeout(() => {
         activityThrottleTimer = null;
       }, CONFIG.ACTIVITY_THROTTLE); // Use config value (100ms)
-      
+
       // Debug log for activity detection
       if (process.dev && localStorage.getItem('debug_auth_activity')) {
         const currentTime = new Date().toLocaleTimeString();
         console.log(`[AUTH] 📝 Activity detected at ${currentTime} - UPDATE lastActivityTime only`);
       }
-      
+
       // IMPORTANT: Hanya update lastActivityTime
       // TIDAK restart inactivity timer - biarkan timer asli jalan terus dari login
       // Last chance monitoring yang akan handle refresh token jika ada aktivitas
     }
-    
+
     // Always update activity time untuk tracking inactivity
     lastActivityTime.value = Date.now();
 
@@ -726,7 +726,7 @@ const parseJWTPayload = (token) => {
     // REMOVED: JANGAN restart inactivity monitoring setiap aktivitas
     // Timer harus jalan dari login dan TIDAK di-reset
     // Hanya last chance monitoring yang detect aktivitas untuk refresh token
-    
+
   };
 
   // REMOVED: checkAndRefreshTokenOnActivity - tidak diperlukan lagi
@@ -737,63 +737,63 @@ const parseJWTPayload = (token) => {
   // Show session warning modal
   const showSessionWarning = () => {
     if (!isAuthenticated.value) return;
-    
+
     // Prevent multiple modals
     if (isSessionWarningVisible.value) return;
-    
+
     // Stop last chance monitoring karena modal sudah muncul
     if (isLastChanceMonitoringActive.value) {
       stopLastChanceMonitoring('modal_shown');
     }
-    
+
     // Update monitor target to now
     sessionMonitorTargetTime.value = Date.now();
-    
+
     // Check current token status before showing modal
     const currentToken = localStorage.getItem('access_token');
     if (!currentToken) {
       forceLogout('No token found');
       return;
     }
-    
+
     const tokenStatus = getTokenStatus(currentToken);
     if (tokenStatus === 'EXPIRED' || tokenStatus === 'INVALID') {
       forceLogout('Token already expired');
       return;
     }
-    
+
     // CORRECTED: Use 5-minute countdown
     // This gives users 5 minutes to decide extend atau logout
     sessionCountdownTime.value = CONFIG.COUNTDOWN_DURATION / 1000; // 5 minutes = 300 seconds
-    
+
     if (process.dev) {
       console.log('[AUTH] 🚨 SessionTimeoutModal SHOWN - Countdown: 5 minutes');
     }
-    
+
     // Check if there's reasonable time remaining
     const payload = parseJWTPayload(currentToken);
     if (payload) {
       const expirationTime = payload.exp * 1000;
       const currentTime = Date.now();
       const actualTimeRemaining = Math.floor((expirationTime - currentTime) / 1000);
-      
+
       // Only show modal if there's reasonable time remaining
       if (actualTimeRemaining <= 30) {
         forceLogout('Token expired');
         return;
       }
     }
-    
+
     isSessionWarningVisible.value = true;
-    
+
     // Clear any existing countdown timer
     if (sessionCountdownTimer) {
       clearInterval(sessionCountdownTimer);
     }
-    
+
     sessionCountdownTimer = setInterval(() => {
       sessionCountdownTime.value--;
-      
+
       if (sessionCountdownTime.value <= 0) {
         clearInterval(sessionCountdownTimer);
         sessionCountdownTimer = null;
@@ -807,7 +807,7 @@ const parseJWTPayload = (token) => {
   const hideSessionWarning = () => {
     isSessionWarningVisible.value = false;
     sessionCountdownTime.value = 0;
-    
+
     if (sessionCountdownTimer) {
       clearInterval(sessionCountdownTimer);
       sessionCountdownTimer = null;
@@ -826,7 +826,7 @@ const parseJWTPayload = (token) => {
         // ✅ FIX: Stop last chance monitoring and reset flag
         // This prepares for the NEXT last-chance window
         stopLastChanceMonitoring('manual_extend');
-        
+
         // Reset refresh count for new session cycle
         lastChanceRefreshCount.value = 0;
         lastRefreshTime.value = null;
@@ -852,15 +852,15 @@ const parseJWTPayload = (token) => {
   /**
    * Activity Monitoring Functions
    */
-  
+
   // Setup activity event listeners
   const setupActivityListeners = () => {
     if (process.server) return;
-    
+
     ACTIVITY_EVENTS.forEach(event => {
       document.addEventListener(event, resetActivityTimer, { passive: true });
     });
-    
+
     // Monitor tab visibility
     document.addEventListener('visibilitychange', handleVisibilityChange);
   };
@@ -868,11 +868,11 @@ const parseJWTPayload = (token) => {
   // Remove activity event listeners
   const removeActivityListeners = () => {
     if (process.server) return;
-    
+
     ACTIVITY_EVENTS.forEach(event => {
       document.removeEventListener(event, resetActivityTimer);
     });
-    
+
     document.removeEventListener('visibilitychange', handleVisibilityChange);
   };
 
@@ -880,17 +880,17 @@ const parseJWTPayload = (token) => {
   const handleVisibilityChange = async () => {
     const isVisible = !document.hidden;
     isTabVisible.value = isVisible;
-    
+
     if (process.dev) {
       // Debug token status
     }
-    
+
     if (isVisible) {
       if (visibilityTimer) {
         clearTimeout(visibilityTimer);
         visibilityTimer = null;
       }
-      
+
       // ✅ FIX: Check and refresh token when tab becomes visible
       // This prevents 401 errors when user returns to tab after token expired
       if (isAuthenticated.value) {
@@ -898,11 +898,11 @@ const parseJWTPayload = (token) => {
           const accessToken = localStorage.getItem('access_token');
           if (accessToken) {
             const tokenStatus = getTokenStatus(accessToken);
-            
+
             // If token is expired or needs refresh, try to refresh it
             if (tokenStatus === 'EXPIRED' || tokenStatus === 'NEEDS_REFRESH') {
               const timeSinceActivity = Date.now() - lastActivityTime.value;
-              
+
               // Only refresh if user was recently active (within 20 minutes)
               // This prevents refresh attempts for long-inactive sessions
               if (timeSinceActivity < CONFIG.ACCESS_TOKEN_LIFETIME) {
@@ -913,13 +913,13 @@ const parseJWTPayload = (token) => {
                     timeSinceActivity: Math.floor(timeSinceActivity / 1000) + 's'
                   });
                 }
-                
+
                 const newToken = await refreshAccessToken();
                 if (newToken) {
                   // Token refreshed successfully, restart monitoring
                   scheduleTokenRefresh(newToken);
                   resetActivityTimer(true);
-                  
+
                   if (process.dev) {
                     logger.tokenEvent('TAB_VISIBLE_TOKEN_REFRESHED', {
                       userId: user.value?.id
@@ -943,13 +943,13 @@ const parseJWTPayload = (token) => {
           }
         }
       }
-      
+
       const remaining = sessionMonitorTargetTime.value - Date.now();
       if (remaining <= 0 && !isSessionWarningVisible.value) {
         showSessionWarning();
         return;
       }
-      
+
       if (!sessionWarningTimer && remaining > 0) {
         sessionWarningTimer = setTimeout(() => {
           if (!isSessionWarningVisible.value && isAuthenticated.value) {
@@ -962,7 +962,7 @@ const parseJWTPayload = (token) => {
         clearTimeout(sessionWarningTimer);
         sessionWarningTimer = null;
       }
-      
+
       const remaining = sessionMonitorTargetTime.value - Date.now();
       const delay = remaining > 0 ? remaining : 1000;
       visibilityTimer = setTimeout(() => {
@@ -976,7 +976,7 @@ const parseJWTPayload = (token) => {
   /**
    * Authentication Functions
    */
-  
+
   // Login function
   const login = async (email, password) => {
     if (process.server) {
@@ -993,7 +993,7 @@ const parseJWTPayload = (token) => {
     }
 
     isLoading.value = true;
-    
+
     try {
       const response = await $fetch(CONFIG.ENDPOINTS.LOGIN, {
         method: 'POST',
@@ -1020,7 +1020,7 @@ const parseJWTPayload = (token) => {
         // Initialize session management
         setupActivityListeners();
         resetActivityTimer(false); // System call
-        
+
         // Schedule token refresh and session warning based on actual token expiry
         scheduleTokenRefresh(response.token.access_token);
 
@@ -1067,12 +1067,12 @@ const parseJWTPayload = (token) => {
             }
           }));
         }
-        
+
         return { success: true };
       } else {
         // Handle API response with status: false
         const message = response.messages || response.message || 'Login failed';
-        
+
         // Check if this is a lockout message with time information
         if (message.includes('locked due to too many failed login attempts')) {
           // Extract time information from message
@@ -1082,13 +1082,13 @@ const parseJWTPayload = (token) => {
           let timeMatch = message.match(/Please try again in (.+?)\./);
           let timeStr = '';
           let lockoutDuration = 20 * 60 * 1000; // Default 20 minutes
-          
+
           if (timeMatch) {
             // Format 1: "18 minutes 59 seconds"
             timeStr = timeMatch[1];
             const minutesMatch = timeStr.match(/(\d+)\s*minutes?/);
             const secondsMatch = timeStr.match(/(\d+)\s*seconds?/);
-            
+
             if (minutesMatch) {
               lockoutDuration = parseInt(minutesMatch[1]) * 60 * 1000;
             }
@@ -1104,26 +1104,26 @@ const parseJWTPayload = (token) => {
               lockoutDuration = (minutes * 60 + seconds) * 1000;
             }
           }
-          
+
           // Set lockout state
           lockoutEndTime.value = Date.now() + lockoutDuration;
           lockedEmail.value = email;
-          
+
           logger.authEvent('ACCOUNT_LOCKED_API_RESPONSE', {
             userEmail: email,
             lockoutDuration: lockoutDuration,
             timeString: timeStr,
             message: message
           });
-          
-          return { 
-            success: false, 
+
+          return {
+            success: false,
             message: message,
             locked: true,
             timeString: timeStr // Pass the time string for display
           };
         }
-        
+
         return { success: false, message: message };
       }
     } catch (error) {
@@ -1146,7 +1146,7 @@ const parseJWTPayload = (token) => {
         // Lock account after max attempts
         if (failedLoginAttempts.value >= CONFIG.MAX_LOGIN_ATTEMPTS) {
           lockoutEndTime.value = Date.now() + CONFIG.LOCKOUT_DURATION;
-          
+
           logger.authEvent('ACCOUNT_LOCKED_MAX_ATTEMPTS', {
             userEmail: email,
             attempts: failedLoginAttempts.value,
@@ -1159,12 +1159,12 @@ const parseJWTPayload = (token) => {
       if (error.status === 423 && error.data) {
         lockoutEndTime.value = error.data.lockoutEndTime || (Date.now() + CONFIG.LOCKOUT_DURATION);
         lockedEmail.value = email;
-        
+
         logger.authEvent('ACCOUNT_LOCKED_SERVER_SIDE', {
           userEmail: email,
           lockoutEndTime: lockoutEndTime.value
         });
-        
+
         return {
           success: false,
           message: error.data.message || 'Account temporarily locked',
@@ -1257,11 +1257,11 @@ const parseJWTPayload = (token) => {
       // Clear any other auth-related keys
       localStorage.removeItem('auth:login');
       localStorage.removeItem('auth:logout');
-      
+
       // ✅ Clear route restoration data (reset for next login)
       localStorage.removeItem('last_visited_route');
       sessionStorage.removeItem('app_visited');
-      
+
       // Clear all sessionStorage (like mango implementation)
       sessionStorage.clear();
 
@@ -1297,7 +1297,7 @@ const parseJWTPayload = (token) => {
         };
 
         const parentOrigin = getParentOrigin();
-        
+
         // IMPORTANT: Send postMessage IMMEDIATELY
         console.log('[AUTH] 🚪 Sending LOGOUT_REQUEST to parent:', {
           origin: parentOrigin,
@@ -1322,7 +1322,7 @@ const parseJWTPayload = (token) => {
               app_name: 'Update Data',
               timestamp: new Date().toISOString()
             }, parentOrigin);
-            
+
             console.log('[AUTH] ✅ Sent LOGOUT_COMPLETE to parent');
             resolve();
           }, 300); // Reduced from 500ms to 300ms for faster response
@@ -1380,23 +1380,23 @@ const parseJWTPayload = (token) => {
       try {
         const parsedUser = storedUser; // Already parsed by UserStorage
         const tokenStatus = getTokenStatus(accessToken);
-        
+
         if (tokenStatus === 'VALID' || tokenStatus === 'NEEDS_REFRESH') {
           user.value = parsedUser;
           isAuthenticated.value = true;
-          
+
           // Initialize session management
           setupActivityListeners();
           resetActivityTimer(false); // System call
-          
+
           // Schedule token refresh and session warning based on actual token expiry
           scheduleTokenRefresh(accessToken);
-          
+
           // Refresh token if needed
           if (tokenStatus === 'NEEDS_REFRESH') {
             await refreshAccessToken();
           }
-          
+
         } else {
           // Token is expired or invalid
           await forceLogout('Session expired');
@@ -1410,7 +1410,7 @@ const parseJWTPayload = (token) => {
   /**
    * Utility Functions
    */
-  
+
   // Clear all timers
   const clearAllTimers = () => {
     if (sessionWarningTimer) {
@@ -1449,292 +1449,304 @@ const parseJWTPayload = (token) => {
       clearTimeout(lastChanceThrottleTimer);
       lastChanceThrottleTimer = null;
     }
-    
+
     // Stop last chance monitoring
     stopLastChanceMonitoring('cleanup');
   };
 
-/**
- * Get detailed user profile information
- * Fetches comprehensive user data from the API
- * 
- * @returns {Promise<Object>} User profile data with success status
- * 
- * Example:
- * >>> const { data, success } = await getUserDetail()
- * >>> if (success) console.log(data.employee_name)
- */
-const getUserDetail = async () => {
-  if (process.server) {
-    return { success: false, message: 'User detail only available on client side' };
-  }
-
-  if (!isAuthenticated.value) {
-    return { success: false, message: 'User not authenticated' };
-  }
-
-  isLoading.value = true;
-
-  try {
-    const token = await getValidAccessToken();
-    if (!token) {
-      return { success: false, message: 'No valid access token available' };
+  /**
+   * Get detailed user profile information
+   * Fetches comprehensive user data from the API
+   * 
+   * @returns {Promise<Object>} User profile data with success status
+   * 
+   * Example:
+   * >>> const { data, success } = await getUserDetail()
+   * >>> if (success) console.log(data.employee_name)
+   */
+  const getUserDetail = async () => {
+    if (process.server) {
+      return { success: false, message: 'User detail only available on client side' };
     }
 
-    // Fetch user basic information
-    const response = await $fetch(`/api/proxy/user/${user.value?.user_id}`, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
+    if (!isAuthenticated.value) {
+      return { success: false, message: 'User not authenticated' };
+    }
+
+    isLoading.value = true;
+
+    try {
+      const token = await getValidAccessToken();
+      if (!token) {
+        return { success: false, message: 'No valid access token available' };
       }
-    });
 
-    if (response.status && response.data) {
-      // Update user data with detailed information
-      user.value = {
-        ...user.value,
-        ...response.data,
-        // Ensure we have the essential fields
-        id: response.data.user_id || user.value?.user_id,
-        email: response.data.email || user.value?.email,
-        name: response.data.name || user.value?.name
-      };
+      // Fetch user basic information
+      const response = await $fetch(`/api/proxy/user/${user.value?.user_id}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
 
+      if (response.status && response.data) {
+        // Update user data with detailed information
+        user.value = {
+          ...user.value,
+          ...response.data,
+          // Ensure we have the essential fields
+          id: response.data.user_id || user.value?.user_id,
+          email: response.data.email || user.value?.email,
+          name: response.data.name || user.value?.name
+        };
+
+        // Store updated user data using centralized utility
+        UserStorage.saveUser(user.value);
+
+        // Log successful user detail fetch
+        logger.authEvent('USER_DETAIL_FETCHED', {
+          userId: response.data.employee_id,
+          userEmail: response.data.email
+        });
+
+        return {
+          success: true,
+          data: response.data,
+          message: 'User detail fetched successfully'
+        };
+      } else {
+        return {
+          success: false,
+          message: response.message || 'Failed to fetch user detail'
+        };
+      }
+    } catch (error) {
+      // Log error
+      logger.authError('USER_DETAIL_FETCH_FAILED', error, {
+        userId: user.value?.id,
+        userEmail: user.value?.email
+      });
+
+      // Return appropriate error message
+      let errorMessage = 'Failed to fetch user detail';
+      if (error.status === 401) {
+        errorMessage = 'Authentication required';
+      } else if (error.status === 403) {
+        errorMessage = 'Access denied to user detail';
+      } else if (error.status === 404) {
+        errorMessage = 'User detail not found';
+      } else if (error.data?.message) {
+        errorMessage = error.data.message;
+      }
+
+      return { success: false, message: errorMessage };
+    } finally {
       // Store updated user data using centralized utility
-      UserStorage.saveUser(user.value);
+      if (user.value) {
+        UserStorage.saveUser(user.value);
+        if (user.value.roles) {
+          UserStorage.saveRoles(user.value.roles);
+        }
+      }
 
-      // Log successful user detail fetch
-      logger.authEvent('USER_DETAIL_FETCHED', {
-        userId: response.data.employee_id,
-        userEmail: response.data.email
+      isLoading.value = false;
+    }
+  };
+
+  /**
+   * Get user role permissions
+   * Fetches user permissions and roles from JWT token and API
+   * 
+   * @returns {Promise<Object>} User permissions data with success status
+   * 
+   * Example:
+   * >>> const { permissions, roles, success } = await getUserPermissions()
+   * >>> if (success) console.log(permissions)
+   */
+  const getUserPermissions = async () => {
+    if (process.server) {
+      return { success: false, message: 'User permissions only available on client side' };
+    }
+
+    if (!isAuthenticated.value) {
+      return { success: false, message: 'User not authenticated' };
+    }
+
+    try {
+      const token = await getValidAccessToken();
+      if (!token) {
+        return { success: false, message: 'No valid access token available' };
+      }
+
+      // Parse JWT token to extract permissions and roles
+      const payload = parseJWTPayload(token);
+      const directPermissions = payload.access || [];
+      const userRoles = payload.role || payload.roles || [];
+      const userPermissions = [];
+
+      if (localStorage.getItem('user_roles')) {
+        const userRolesStored = JSON.parse(localStorage.getItem('user_roles'));
+
+        // Parallelize permission fetching
+        const permissionPromises = userRolesStored.map(role =>
+          $fetch(`/api/proxy/role/${role.role_id}`, {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            }
+          }).then(res => res.data?.permissions || [])
+            .catch(err => {
+              // console.warn(`Failed to fetch permissions for role ${role.role_id}`, err);
+              return [];
+            })
+        );
+
+        const results = await Promise.all(permissionPromises);
+
+        // Flatten results into userPermissions array
+        results.forEach(perms => {
+          if (Array.isArray(perms)) {
+            userPermissions.push(...perms);
+          }
+        });
+      }
+      localStorage.setItem('user_permissions', JSON.stringify(userPermissions));
+      // console.log("User Permissions", userPermissions);
+
+      // Convert roles to permissions using RBAC mapping
+      const rolePermissions = [];
+      if (Array.isArray(userRoles)) {
+        userRoles.forEach(role => {
+          const exactMatch = ROLE_PERMISSIONS[role];
+          const caseInsensitiveMatch = ROLE_PERMISSIONS[role?.toLowerCase()] || ROLE_PERMISSIONS[role?.toUpperCase()];
+          const match = exactMatch || caseInsensitiveMatch;
+
+          if (match) {
+            rolePermissions.push(...match);
+          }
+        });
+      } else if (typeof userRoles === 'string') {
+        const exactMatch = ROLE_PERMISSIONS[userRoles];
+        const caseInsensitiveMatch = ROLE_PERMISSIONS[userRoles?.toLowerCase()] || ROLE_PERMISSIONS[userRoles?.toUpperCase()];
+        const match = exactMatch || caseInsensitiveMatch;
+
+        if (match) {
+          rolePermissions.push(...match);
+        }
+      }
+
+      // Combine and deduplicate permissions
+      const allPermissions = [...new Set([...directPermissions, ...rolePermissions])];
+
+      // Log successful permission fetch
+      logger.authEvent('USER_PERMISSIONS_FETCHED', {
+        userId: user.value?.id,
+        userEmail: user.value?.email,
+        permissions: allPermissions,
+        roles: userRoles
       });
 
       return {
         success: true,
-        data: response.data,
-        message: 'User detail fetched successfully'
+        data: {
+          permissions: allPermissions,
+          roles: userRoles,
+          directPermissions,
+          rolePermissions
+        },
+        message: 'User permissions fetched successfully'
       };
-    } else {
-      return { 
-        success: false, 
-        message: response.message || 'Failed to fetch user detail' 
-      };
-    }
-  } catch (error) {
-    // Log error
-    logger.authError('USER_DETAIL_FETCH_FAILED', error, {
-      userId: user.value?.id,
-      userEmail: user.value?.email
-    });
-
-    // Return appropriate error message
-    let errorMessage = 'Failed to fetch user detail';
-    if (error.status === 401) {
-      errorMessage = 'Authentication required';
-    } else if (error.status === 403) {
-      errorMessage = 'Access denied to user detail';
-    } else if (error.status === 404) {
-      errorMessage = 'User detail not found';
-    } else if (error.data?.message) {
-      errorMessage = error.data.message;
-    }
-
-    return { success: false, message: errorMessage };
-  } finally {
-    // Store updated user data using centralized utility
-    if (user.value) {
-      UserStorage.saveUser(user.value);
-      if (user.value.roles) {
-        UserStorage.saveRoles(user.value.roles);
-      }
-    }
-
-    isLoading.value = false;
-  }
-};
-
-/**
- * Get user role permissions
- * Fetches user permissions and roles from JWT token and API
- * 
- * @returns {Promise<Object>} User permissions data with success status
- * 
- * Example:
- * >>> const { permissions, roles, success } = await getUserPermissions()
- * >>> if (success) console.log(permissions)
- */
-const getUserPermissions = async () => {
-  if (process.server) {
-    return { success: false, message: 'User permissions only available on client side' };
-  }
-
-  if (!isAuthenticated.value) {
-    return { success: false, message: 'User not authenticated' };
-  }
-
-  try {
-    const token = await getValidAccessToken();
-    if (!token) {
-      return { success: false, message: 'No valid access token available' };
-    }
-
-    // Parse JWT token to extract permissions and roles
-    const payload = parseJWTPayload(token);
-    const directPermissions = payload.access || [];
-    const userRoles = payload.role || payload.roles || [];
-    const userPermissions = [];
-
-    if (localStorage.getItem('user_roles')) {
-      const userRoles = JSON.parse(localStorage.getItem('user_roles'));
-      for (const role of userRoles) {
-        const userPermissionsResponse = await $fetch(`/api/proxy/role/${role.role_id}`, {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        });
-        if (userPermissionsResponse.data) {
-          userPermissions.push(...userPermissionsResponse.data.permissions);
-        }
-      }
-      localStorage.setItem('user_permissions', JSON.stringify(userPermissions));
-    }
-    // console.log("User Permissions", userPermissions);
-
-    // Convert roles to permissions using RBAC mapping
-    const rolePermissions = [];
-    if (Array.isArray(userRoles)) {
-      userRoles.forEach(role => {
-        const exactMatch = ROLE_PERMISSIONS[role];
-        const caseInsensitiveMatch = ROLE_PERMISSIONS[role?.toLowerCase()] || ROLE_PERMISSIONS[role?.toUpperCase()];
-        const match = exactMatch || caseInsensitiveMatch;
-        
-        if (match) {
-          rolePermissions.push(...match);
-        }
-      });
-    } else if (typeof userRoles === 'string') {
-      const exactMatch = ROLE_PERMISSIONS[userRoles];
-      const caseInsensitiveMatch = ROLE_PERMISSIONS[userRoles?.toLowerCase()] || ROLE_PERMISSIONS[userRoles?.toUpperCase()];
-      const match = exactMatch || caseInsensitiveMatch;
-      
-      if (match) {
-        rolePermissions.push(...match);
-      }
-    }
-
-    // Combine and deduplicate permissions
-    const allPermissions = [...new Set([...directPermissions, ...rolePermissions])];
-
-    // Log successful permission fetch
-    logger.authEvent('USER_PERMISSIONS_FETCHED', {
-      userId: user.value?.id,
-      userEmail: user.value?.email,
-      permissions: allPermissions,
-      roles: userRoles
-    });
-
-    return {
-      success: true,
-      data: {
-        permissions: allPermissions,
-        roles: userRoles,
-        directPermissions,
-        rolePermissions
-      },
-      message: 'User permissions fetched successfully'
-    };
-  } catch (error) {
-    // Log error
-    logger.authError('USER_PERMISSIONS_FETCH_FAILED', error, {
-      userId: user.value?.id,
-      userEmail: user.value?.email
-    });
-
-    return { 
-      success: false, 
-      message: 'Failed to fetch user permissions' 
-    };
-  }
-};
-
-/**
- * Initialize user data after successful login
- * Fetches both user detail and permissions
- * 
- * @returns {Promise<Object>} Combined user data and permissions
- * 
- * Example:
- * >>> const { userDetail, permissions, success } = await initializeUserData()
- * >>> if (success) console.log('User initialized:', userDetail, permissions)
- */
-const initializeUserData = async () => {
-  if (process.server) {
-    return { success: false, message: 'User initialization only available on client side' };
-  }
-
-  if (!isAuthenticated.value) {
-    return { success: false, message: 'User not authenticated' };
-  }
-
-  isLoading.value = true;
-
-  try {
-    // Fetch both user detail and permissions in parallel
-    const [userDetailResult, permissionsResult] = await Promise.all([
-      getUserDetail(),
-      getUserPermissions()
-    ]);
-
-    const results = {
-      success: userDetailResult.success && permissionsResult.success,
-      userDetail: userDetailResult.data,
-      permissions: permissionsResult.data,
-      errors: []
-    };
-
-    // Collect any errors
-    if (!userDetailResult.success) {
-      results.errors.push(`User detail: ${userDetailResult.message}`);
-    }
-    if (!permissionsResult.success) {
-      results.errors.push(`Permissions: ${permissionsResult.message}`);
-    }
-
-    // Log initialization result
-    if (results.success) {
-      logger.authEvent('USER_DATA_INITIALIZED', {
-        userId: userDetailResult.data?.employee_id,
-        userEmail: userDetailResult.data?.email,
-        permissions: permissionsResult.data?.permissions,
-        roles: permissionsResult.data?.roles
-      });
-    } else {
-      logger.authError('USER_DATA_INITIALIZATION_FAILED', new Error(results.errors.join('; ')), {
+    } catch (error) {
+      // Log error
+      logger.authError('USER_PERMISSIONS_FETCH_FAILED', error, {
         userId: user.value?.id,
         userEmail: user.value?.email
       });
+
+      return {
+        success: false,
+        message: 'Failed to fetch user permissions'
+      };
+    }
+  };
+
+  /**
+   * Initialize user data after successful login
+   * Fetches both user detail and permissions
+   * 
+   * @returns {Promise<Object>} Combined user data and permissions
+   * 
+   * Example:
+   * >>> const { userDetail, permissions, success } = await initializeUserData()
+   * >>> if (success) console.log('User initialized:', userDetail, permissions)
+   */
+  const initializeUserData = async () => {
+    if (process.server) {
+      return { success: false, message: 'User initialization only available on client side' };
     }
 
-    return results;
-  } catch (error) {
-    // Log error
-    logger.authError('USER_DATA_INITIALIZATION_ERROR', error, {
-      userId: user.value?.id,
-      userEmail: user.value?.email
-    });
+    if (!isAuthenticated.value) {
+      return { success: false, message: 'User not authenticated' };
+    }
 
-    return { 
-      success: false, 
-      message: 'Failed to initialize user data',
-      error: error.message
-    };
-  } finally {
-    isLoading.value = false;
-  }
-};
+    isLoading.value = true;
+
+    try {
+      // Fetch both user detail and permissions in parallel
+      const [userDetailResult, permissionsResult] = await Promise.all([
+        getUserDetail(),
+        getUserPermissions()
+      ]);
+
+      const results = {
+        success: userDetailResult.success && permissionsResult.success,
+        userDetail: userDetailResult.data,
+        permissions: permissionsResult.data,
+        errors: []
+      };
+
+      // Collect any errors
+      if (!userDetailResult.success) {
+        results.errors.push(`User detail: ${userDetailResult.message}`);
+      }
+      if (!permissionsResult.success) {
+        results.errors.push(`Permissions: ${permissionsResult.message}`);
+      }
+
+      // Log initialization result
+      if (results.success) {
+        logger.authEvent('USER_DATA_INITIALIZED', {
+          userId: userDetailResult.data?.employee_id,
+          userEmail: userDetailResult.data?.email,
+          permissions: permissionsResult.data?.permissions,
+          roles: permissionsResult.data?.roles
+        });
+      } else {
+        logger.authError('USER_DATA_INITIALIZATION_FAILED', new Error(results.errors.join('; ')), {
+          userId: user.value?.id,
+          userEmail: user.value?.email
+        });
+      }
+
+      return results;
+    } catch (error) {
+      // Log error
+      logger.authError('USER_DATA_INITIALIZATION_ERROR', error, {
+        userId: user.value?.id,
+        userEmail: user.value?.email
+      });
+
+      return {
+        success: false,
+        message: 'Failed to initialize user data',
+        error: error.message
+      };
+    } finally {
+      isLoading.value = false;
+    }
+  };
 
   // Initialize authentication on client
   if (process.client) {
@@ -1755,7 +1767,7 @@ const initializeUserData = async () => {
       if (event.detail?.accessToken) {
         const accessToken = event.detail.accessToken;
         const refreshToken = event.detail.refreshToken;
-        
+
         // Update tokens in localStorage (already done by interceptor, but ensure consistency)
         if (accessToken) {
           localStorage.setItem('access_token', accessToken);
@@ -1763,13 +1775,13 @@ const initializeUserData = async () => {
         if (refreshToken) {
           localStorage.setItem('refresh_token', refreshToken);
         }
-        
+
         // Reschedule token monitoring based on new token expiry
         scheduleTokenRefresh(accessToken);
-        
+
         // Reset activity timer to reflect new session
         resetActivityTimer(true);
-        
+
         if (process.dev) {
           logger.tokenEvent('TOKEN_REFRESHED_VIA_INTERCEPTOR', {
             userId: user.value?.id
@@ -1785,7 +1797,7 @@ const initializeUserData = async () => {
     user: computed(() => user.value),
     isAuthenticated: computed(() => isAuthenticated.value),
     isLoading: computed(() => isLoading.value),
-    
+
     // Session state
     isSessionWarningVisible: computed(() => isSessionWarningVisible.value),
     sessionCountdownTime: computed(() => sessionCountdownTime.value),
@@ -1796,33 +1808,33 @@ const initializeUserData = async () => {
     lastChanceActivityDetected: computed(() => lastChanceActivityDetected.value),
     lastChanceRefreshCount: computed(() => lastChanceRefreshCount.value),
     lastRefreshTime: computed(() => lastRefreshTime.value),
-    
+
     // Account lockout state
     failedLoginAttempts: computed(() => failedLoginAttempts.value),
     maxLoginAttempts: CONFIG.MAX_LOGIN_ATTEMPTS,
     isAccountLocked,
     formattedRemainingTime,
     getCurrentLockedEmail: () => lockedEmail.value,
-    
+
     // Authentication functions
     login,
     logout,
     checkAuth,
-    
+
     // Token management
     getValidAccessToken,
     refreshAccessToken,
-    
+
     // Session management
     extendSession,
     resetActivityTimer,
     showSessionWarning, // For debug panel
-    
+
     // ADDED: User data functions
     getUserDetail,
     getUserPermissions,
     initializeUserData,
-    
+
     // Utilities
     timeSinceLastActivity
   };

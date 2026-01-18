@@ -4354,12 +4354,9 @@ onMounted(async () => {
   // ✅ FIXED: Start critical loading processes in PARALLEL for faster initial load
   const loadingPromises = [];
 
-  // Load medical options in background (non-blocking) - delayed to not block initial load
-  setTimeout(() => {
-    loadMedicalOptions().catch(() => { });
-  }, 2000);
-
-  // This makes skeleton loading appear simultaneously for warning banner AND form
+  // Load medical options in background (non-blocking) - start immediately
+  // No need to wait 2 seconds, let the browser schedule it
+  loadMedicalOptions().catch(() => { });
 
   // Promise 1: Load change requests + REAL-TIME check untuk re-validate tabs
   loadingPromises.push(
@@ -4374,16 +4371,13 @@ onMounted(async () => {
 
         // Step 2: Load change requests dari API (FRESH DATA)
         await ensureChangeRequestsLoaded();
-        console.log('[MOUNT] ✅ Change requests loaded, total:', changeRequests.value?.length || 0);
+        // console.log('[MOUNT] ✅ Change requests loaded, total:', changeRequests.value?.length || 0);
 
         // Step 3: Force update ALL tabs cache untuk real-time check
-        // Ini akan check setiap tab apakah ada draft/waiting/need-revision
         await tabManagement.forceUpdateAllTabsCache();
 
         // Step 4: Refresh tab management untuk sync UI
         await tabManagement.smartRefresh(true);
-
-        // console.log('[MOUNT] ✅ Tab validation completed - tabs sudah divalidasi dengan changeRequests terbaru');
       } catch (error) {
         // console.error('[MOUNT] ❌ Failed to load change requests:', error);
       } finally {
@@ -4393,6 +4387,7 @@ onMounted(async () => {
   );
 
   // Promise 2: Load basic information in parallel
+  // This is critical for the main view
   loadingPromises.push(
     (async () => {
       try {

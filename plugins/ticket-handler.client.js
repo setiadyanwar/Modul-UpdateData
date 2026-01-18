@@ -10,14 +10,14 @@ export default defineNuxtPlugin((nuxtApp) => {
   if (process.server) return;
   const route = useRoute();
   const router = useRouter();
-  
+
   // ✅ CRITICAL: Set processing flag immediately if ticket exists in URL
   // This must be done BEFORE any middleware runs to prevent premature redirects
   if (process.client && route.query.ticket) {
     sessionStorage.setItem('ticket_processing', 'true');
     console.log('[Ticket Handler] 🚦 Set ticket_processing flag immediately');
   }
-  
+
   /**
    * Process ticket exchange
    * Exchanges SSO ticket directly with essbe API (POST /auth/ticket/login)
@@ -43,14 +43,14 @@ export default defineNuxtPlugin((nuxtApp) => {
       let response;
       let responseStatus = null;
       let isErrorResponse = false;
-      
+
       try {
         response = await apiPost('/auth/ticket/login', { ticket });
-        
+
         // ✅ CRITICAL: Check if response is actually an error
         // Axios with validateStatus < 500 doesn't throw for 4xx, so we need to check manually
         // Check for various error indicators:
-        isErrorResponse = 
+        isErrorResponse =
           // Standard error format
           (response.status === false) ||
           // Missing token (required for success)
@@ -65,7 +65,7 @@ export default defineNuxtPlugin((nuxtApp) => {
           (typeof response === 'string') ||
           // Response is null/undefined
           (!response || response === null);
-          
+
         // Try to extract status code from response if available
         if (response?.statusCode) {
           responseStatus = response.statusCode;
@@ -76,7 +76,7 @@ export default defineNuxtPlugin((nuxtApp) => {
         // API call threw an error (network, timeout, 5xx, etc.)
         isErrorResponse = true;
         responseStatus = apiError?.response?.status || apiError?.status || 500;
-        
+
         // Extract error message and data
         const errorData = apiError?.response?.data || apiError?.data;
         response = {
@@ -87,7 +87,7 @@ export default defineNuxtPlugin((nuxtApp) => {
           data: errorData
         };
       }
-      
+
       // Set flag early if login failed - BEFORE any redirect logic
       if (isErrorResponse || response.status === false || !response.token) {
         if (process.client) {
@@ -109,14 +109,14 @@ export default defineNuxtPlugin((nuxtApp) => {
         // Ticket login failed - immediately clear everything and notify parent
         const errorMessage = response.message || response.error || 'Authentication failed. Please try again.';
         const statusCode = responseStatus || response.statusCode || response.status === false ? 400 : 500;
-        
+
         // Clear all flags and routes IMMEDIATELY
         if (process.client) {
           localStorage.removeItem('last_visited_route');
           sessionStorage.removeItem('ticket_processing');
           sessionStorage.setItem('ticket_login_failed', 'true'); // Set flag to block navigation
         }
-        
+
         // Notify parent (ESSHost) IMMEDIATELY - don't wait, don't navigate anywhere
         if (window.parent !== window) {
           const getHostOrigin = () => {
@@ -132,7 +132,7 @@ export default defineNuxtPlugin((nuxtApp) => {
               return '*';
             }
           };
-          
+
           const hostOrigin = getHostOrigin();
           const postMessageData = {
             type: 'AUTH_FAILED',
@@ -147,7 +147,7 @@ export default defineNuxtPlugin((nuxtApp) => {
               errorCode: response.error_code
             }
           };
-          
+
           console.log('[Ticket Handler] ❌ Login failed - sending postMessage immediately, blocking all navigation', {
             statusCode,
             errorMessage,
@@ -155,11 +155,11 @@ export default defineNuxtPlugin((nuxtApp) => {
           });
           window.parent.postMessage(postMessageData, hostOrigin);
         }
-        
+
         // Exit immediately - don't navigate anywhere, don't render anything
         return false;
       }
-      
+
       if (response.status === true && response.token) {
         const accessToken = response.token.access_token;
         const refreshToken = response.token.refresh_token || '';
@@ -196,7 +196,7 @@ export default defineNuxtPlugin((nuxtApp) => {
           const raw = response.data;
           const findId = (obj) => {
             if (!obj || typeof obj !== 'object') return null;
-            const keys = ['user_id','employee_id','id','userId','employeeId','user_code','employee_code','nik'];
+            const keys = ['user_id', 'employee_id', 'id', 'userId', 'employeeId', 'user_code', 'employee_code', 'nik'];
             for (const k of keys) {
               const v = obj[k];
               if (v !== undefined && v !== null && String(v).trim() !== '') {
@@ -291,10 +291,13 @@ export default defineNuxtPlugin((nuxtApp) => {
         try {
           const { useAuthenticationCore } = await import('~/composables/useAuthenticationCore');
           const auth = useAuthenticationCore();
-          // Ensure minimal user state exists for auth core
-          // Save basic user data first so checkAuth can pick it up (already saved above via UserStorage)
-          // Let auth core read tokens and user from localStorage
-          await auth.checkAuth();
+
+          // ✅ OPTIMIZED: Skip explicit checkAuth, initializeUserData handles it.
+          // Also prevents double-fetch of user detail if already populated.
+          // We pass { userDetail: userData } if we want to hydrate it directly? 
+          // Currently initializeUserData fetches fresh data, which is good for consistency.
+          // But we can rely on parallel execution inside it.
+
           const initResult = await auth.initializeUserData();
           // console.log('[Ticket Handler] Auth core initializeUserData result:', initResult?.success);
         } catch (e) {
@@ -358,7 +361,7 @@ export default defineNuxtPlugin((nuxtApp) => {
           // Endpoint: /employee/basic-information (proven to work, used throughout the app)
           // Note: /auth/me and /employees/profile don't exist in backend
           let userDetailResponse;
-          
+
           try {
             userDetailResponse = await apiService.get('/employee/basic-information');
             // console.log('[Ticket Handler] Employee basic information response:', userDetailResponse.data);
@@ -377,7 +380,7 @@ export default defineNuxtPlugin((nuxtApp) => {
             if (payload && typeof payload === 'object') {
               const findId = (obj) => {
                 if (!obj || typeof obj !== 'object') return null;
-                const keys = ['user_id','employee_id','id','userId','employeeId','user_code','employee_code','nik'];
+                const keys = ['user_id', 'employee_id', 'id', 'userId', 'employeeId', 'user_code', 'employee_code', 'nik'];
                 for (const k of keys) {
                   const v = obj[k];
                   if (v !== undefined && v !== null && String(v).trim() !== '') {
@@ -512,21 +515,21 @@ export default defineNuxtPlugin((nuxtApp) => {
       // - 5xx server errors (thrown by axios)
       // - Unexpected response formats
       // - Any other unhandled errors
-      
+
       // Improve diagnostics - extract all possible error information
       const status = error?.response?.status || error?.status;
       const data = error?.response?.data || error?.data;
       const errorCode = error?.code; // Network error codes (ECONNABORTED, etc.)
-      const errorMessage = 
-        data?.message || 
-        error?.message || 
+      const errorMessage =
+        data?.message ||
+        error?.message ||
         (errorCode === 'ECONNABORTED' ? 'Request timeout. Please check your connection.' : '') ||
         (error?.message?.includes('Network Error') ? 'Network error. Please check your connection.' : '') ||
         (error?.message?.includes('Failed to fetch') ? 'Failed to connect to server. Please check your connection.' : '') ||
         'Authentication failed. Please try again.';
-      
+
       const statusCode = status || (errorCode ? 0 : 500); // 0 for network errors
-      
+
       // console.error('[Ticket Handler] ❌ Error exchanging ticket', {
       //   url: '/auth/ticket/login',
       //   status,
@@ -559,7 +562,7 @@ export default defineNuxtPlugin((nuxtApp) => {
             return '*';
           }
         };
-        
+
         const hostOrigin = getHostOrigin();
         const postMessageData = {
           type: 'AUTH_FAILED',
@@ -575,7 +578,7 @@ export default defineNuxtPlugin((nuxtApp) => {
             errorType: errorCode ? 'network' : (status >= 500 ? 'server' : 'client')
           }
         };
-        
+
         console.log('[Ticket Handler] ❌ Error - sending postMessage immediately:', {
           ...postMessageData,
           originalError: error?.message
@@ -810,7 +813,7 @@ export default defineNuxtPlugin((nuxtApp) => {
     setTimeout(async () => {
       try {
         const result = await processTicket(ticket);
-        
+
         // If ticket processing failed, don't allow any redirect
         if (result === false) {
           console.log('[Ticket Handler] ⚠️ Ticket processing failed - preventing redirect');
