@@ -1,4 +1,8 @@
 {
-    "outputDirectory": ".output/public",
-    "ignoreCommand": "git diff --quiet HEAD^ HEAD ./"
+    "rewrites": [
+        {
+            "source": "/(.*)",
+            "destination": "/200.html"
+        }
+    ]
 }
