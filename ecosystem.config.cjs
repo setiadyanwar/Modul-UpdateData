@@ -17,12 +17,12 @@ module.exports = {
                 // Local portal for testing
                 "HOST_ORIGIN": "http://localhost:3000",
                 // Production portal
-                "HOST_ORIGIN_PROD": "https://people-dev.telkomsigma.co.id",
+                "HOST_ORIGIN_PROD": "https://ess-telkomsigma.vercel.app",
 
                 // Production URLs
                 // PRODUCTION_URL: URL where this remote app is deployed (standalone)
                 // REMOTE_PATH: Path where remote app is exposed in host app
-                "PRODUCTION_URL": "https://people-dev.telkomsigma.co.id",
+                "PRODUCTION_URL": "https://ess-telkomsigma.vercel.app",
                 "REMOTE_PATH": "/update-data",
 
                 // Local testing (keep localhost:3001 available for dev)
