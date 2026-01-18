@@ -1,16 +1,4 @@
 {
-    "version": 2,
-    "builds": [
-        {
-            "src": "nuxt.config.ts",
-            "use": "@nuxtjs/vercel-builder",
-            "config": {
-                "serverFiles": [
-                    "package.json",
-                    "config/**"
-                ]
-            }
-        }
-    ],
-    "outputDirectory": ".output"
+    "outputDirectory": ".output/public",
+    "ignoreCommand": "git diff --quiet HEAD^ HEAD ./"
 }
