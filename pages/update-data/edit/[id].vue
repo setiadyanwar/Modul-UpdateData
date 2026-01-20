@@ -135,7 +135,6 @@ import { mapAddress, resolveAddress, resolveEmergency, resolveEducation, resolve
 import { 
   generateClientKey, 
   mapRequestTypeToTab, 
-  enrichEducationDataWithLabels, 
   mapAttachmentsToEducationRecords,
   formatDate,
   getTabIcon,
@@ -219,59 +218,9 @@ const enrichEducationDataWithLabels = async (educationData) => {
   }
 };
 
-// GLOBAL HELPER: Map request type to tab ID
-const mapRequestTypeToTab = (type) => {
-  const mapping = {
-    BSC: 'basic-information',
-    ADR: 'address',
-    PYR: 'payroll-account',
-    EMC: 'emergency-contact',
-    EDC: 'education',
-    SSI: 'social-security',
-    MDR: 'medical-record',
-    FMY: 'family'
-  };
-  return mapping[type] || 'basic-information'; // Default to basic-information if type not found
-};
+// mapRequestTypeToTab is now imported from composables
 
-// Function to map attachments to education records by client_key
-const mapAttachmentsToEducationRecords = (educationRecords, attachments) => {
-  if (!Array.isArray(attachments) || attachments.length === 0) {
-    return [];
-  }
-
-  // Map attachments by client_key to education records
-  const result = educationRecords.map((record, index) => {
-    const recordClientKey = record.client_key;
-
-    if (!recordClientKey) {
-      return null;
-    }
-
-    // Find attachment by matching client_key
-    const attachment = attachments.find(att => att.client_key === recordClientKey);
-
-    if (!attachment) {
-      return null;
-    }
-
-    const mappedAttachment = {
-      item_id: attachment.item_id,
-      document_type: attachment.document_type,
-      file_name: attachment.file_name,
-      file_size: attachment.file_size,
-      uploaded_date: attachment.uploaded_date,
-      file_size_display: attachment.file_size_display,
-      client_key: attachment.client_key,
-      // Add preview and download URLs
-      preview_url: `/employee/attachments/${attachment.item_id}/preview`,
-      download_url: `/employee/attachments/${attachment.item_id}/download`,
-      info_url: `/employee/attachments/${attachment.item_id}/information`,
-    };
-    return mappedAttachment;
-  });
-  return result;
-};
+// mapAttachmentsToEducationRecords is now imported from composables
 
 // Main Edit Page Components
 import EditPageHeader from "~/components/update-data/EditPage/main/EditPageHeader.vue";
@@ -397,12 +346,7 @@ const needRevisionBaseline = shallowRef(null);
 // Track user-edited field keys to prevent background sync from overwriting
 const editedFieldKeys = ref(new Set());
 
-// Client key generator
-const generateClientKey = () => {
-  return ([1e7] + -1e3 + -4e3 + -8e3 + -1e11).replace(/[018]/g, c =>
-    (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
-  );
-};
+// generateClientKey is now imported from composables
 
 // Initialize global flags for form state management
 window.isInitialLoad = true;
@@ -521,66 +465,6 @@ const urlCategory = computed(() => {
   }
 });
 
-// Tab configurations
-const tabConfigs = {
-  "basic-information": {
-    id: "basic-information",
-    label: "Basic Information",
-    icon: "pi-user",
-    component: null, // Handled separately by EditDataBasicInformation
-    skeleton: BasicInformationSkeleton,
-  },
-  address: {
-    id: "address",
-    label: "Address",
-    icon: "pi-map-marker",
-    component: null, // Handled separately by EditDataAddress/ReviseDataAddress
-    skeleton: AddressSkeleton,
-  },
-  "emergency-contact": {
-    id: "emergency-contact",
-    label: "Emergency Contact",
-    icon: "pi-phone",
-    component: EmergencyContactForm,
-    skeleton: EmergencyContactSkeleton,
-  },
-  family: {
-    id: "family",
-    label: "Family",
-    icon: "pi-users",
-    component: FamilyForm,
-    skeleton: FamilySkeleton,
-  },
-  education: {
-    id: "education",
-    label: "Education",
-    icon: "pi-book",
-    component: EducationForm,
-    skeleton: EducationSkeleton,
-  },
-  "payroll-account": {
-    id: "payroll-account",
-    label: "Payroll Account",
-    icon: "pi-credit-card",
-    component: UpdateDataPayrollAccountSection,
-    skeleton: PayrollAccountSkeleton,
-  },
-  "social-security": {
-    id: "social-security",
-    label: "Benefit",
-    icon: "pi-shield",
-    component: UpdateDataSocialSecuritySection,
-    skeleton: SocialSecuritySkeleton,
-  },
-  "medical-record": {
-    id: "medical-record",
-    label: "Medical Record",
-    icon: "pi-heart",
-    component: UpdateDataMedicalRecordSection,
-    skeleton: MedicalRecordSkeleton,
-  },
-};
-
 // Memoized computed properties with safer access
 const breadcrumbItems = computed(() => {
   const items = [
@@ -692,21 +576,7 @@ const lastUpdatedDate = computed(() => {
   return formatDate(dateString);
 });
 
-// Helper function to get appropriate icon for each tab category
-const getTabIcon = (category) => {
-  const iconMap = {
-    'basic-information': 'pi-user',
-    'address': 'pi-map-marker',
-    'emergency-contact': 'pi-phone',
-    'payroll-account': 'pi-credit-card',
-    'family': 'pi-users',
-    'education': 'pi-graduation-cap',
-    'social-security': 'pi-shield',
-    'medical-record': 'pi-heart'
-  };
 
-  return iconMap[category] || 'pi-circle';
-};
 
 const dynamicTabs = computed(() => {
 
@@ -2544,55 +2414,11 @@ const reviewNotesForNeedRevision = computed(() => {
   return [];
 });
 
-// Determine if current request is in Need Revision context
-const isNeedRevisionStatus = computed(() => {
-  const detail = requestDetail.value || {};
-  const raw = (detail.status_label || detail.status_alias || detail.status || '').toString().toLowerCase();
-  return detail.status === '3' || detail.status === 3 || raw.includes('revision') || raw === 'need_revision' || raw === 'rejected';
-});
 
-// Helper function to normalize status from various API response formats
-const normalizeStatus = (statusData) => {
-  if (!statusData) return null;
 
-  // Extract status from different possible formats
-  const status = statusData.status || statusData.status_raw || statusData;
-  const statusAlias = statusData.status_alias;
 
-  // Normalize to consistent format
-  if (status === true || status === '1' || status === 1 || statusAlias === 'draft') {
-    return { normalized: '1', isDraft: true, isRejected: false };
-  }
-  if (status === '2' || status === 2 || statusAlias === 'waiting_approval') {
-    return { normalized: '2', isDraft: false, isRejected: false };
-  }
-  if (status === '3' || status === 3 || statusAlias === 'rejected' || statusAlias === 'need_revision') {
-    return { normalized: '3', isDraft: false, isRejected: true };
-  }
-  if (status === '4' || status === 4 || statusAlias === 'approved') {
-    return { normalized: '4', isDraft: false, isRejected: false };
-  }
-
-  // Default fallback
-  return { normalized: status, isDraft: false, isRejected: false };
-};
 
 // Methods with proper error handling and recursion prevention
-
-const formatDate = (dateString) => {
-  if (!dateString) return "-";
-
-  try {
-    const date = new Date(dateString);
-    return date.toLocaleDateString("id-ID", {
-      day: "2-digit",
-      month: "long",
-      year: "numeric",
-    });
-  } catch (error) {
-    return "-";
-  }
-};
 
 // Handle form data updates with debouncing to prevent excessive updates
 let formUpdateTimeout = null;
@@ -2872,20 +2698,7 @@ const getChangesForCurrentTab = () => {
   return {};
 };
 
-// Function untuk mendapatkan request type dari tab
-const getRequestTypeFromTab = (tabId) => {
-  const typeMap = {
-    'basic-information': 'BSC',
-    'address': 'ADR',
-    'emergency-contact': 'EMC',
-    'family': 'FMY',
-    'education': 'EDC',
-    'payroll-account': 'PYR',
-    'social-security': 'SSI',
-    'medical-record': 'MDR',
-  };
-  return typeMap[tabId] || 'BSC';
-};
+
 
 // Function untuk mendapatkan field structure berdasarkan tab category
 const getFieldStructureForTab = (tabId) => {
@@ -3333,277 +3146,8 @@ const openDocumentPreview = (doc) => {
   isDocumentPreviewOpen.value = true
 }
 
-// Map API field names to form field names for all categories
-const mapApiToFormFields = (apiData, category) => {
-  switch (category) {
-    case 'basic-information':
-      return {
-        // Basic Information fields - using exact field names from BasicInformationForm
-        // Map API field names to form field names based on actual API response
-        nik: apiData.nik || '',
-        name: apiData.name || '',
-        // Use no_ktp field directly
-        no_ktp: apiData.no_ktp || '',
-        business_email: apiData.business_email || '',
-        private_email: apiData.private_email || '',
-        main_phone_number: apiData.main_phone_number || apiData.phone || '',
-        secondary_phone_number: apiData.secondary_phone_number || '',
-        birth_date: apiData.birth_date || '',
-        birth_place: apiData.birth_place || '',
-        // FIX: Ensure gender_id is properly mapped - handle numeric IDs correctly
-        gender_id: (() => {
 
-          // Priority: gender_id (numeric/string) > gender text mapping > empty
-          if (apiData.gender_id !== null && apiData.gender_id !== undefined && apiData.gender_id !== '') {
-            return String(apiData.gender_id);
-          }
 
-          // Fallback: Try to map from gender text
-          if (apiData.gender) {
-            const genderMap = {
-              'LAKI-LAKI': '1',
-              'MALE': '1',
-              'L': '1',
-              'PEREMPUAN': '2',
-              'FEMALE': '2'
-            };
-            const mappedGender = genderMap[String(apiData.gender).toUpperCase()] || '';
-            return mappedGender;
-          }
-
-          return '';
-        })(),
-        marital_status_id: (() => {
-          // Return marital_status_id directly if available
-          // Note: marital_status_id can be 0 (SINGLE), so we check for !== null and !== undefined
-          if (apiData.marital_status_id !== null && apiData.marital_status_id !== undefined) {
-            return String(apiData.marital_status_id);
-          }
-          return '';
-        })(),
-        religion_id: (() => {
-
-          // Priority: religion_id > religion text mapping > empty
-          if (apiData.religion_id !== null && apiData.religion_id !== undefined && apiData.religion_id !== '') {
-            return String(apiData.religion_id);
-          }
-
-          // Fallback: Try to map from religion text
-          if (apiData.religion) {
-            const religionMap = {
-              'ISLAM': '1',
-              'KRISTEN': '2',
-              'KATOLIK': '3',
-              'HINDU': '4',
-              'BUDDHA': '5',
-              'KONGHUCU': '6',
-              'LAINNYA': '7'
-            };
-            const mappedReligion = religionMap[String(apiData.religion).toUpperCase()] || '';
-            return mappedReligion;
-          }
-
-          return '';
-        })(),
-        nationality_id: (() => {
-
-          // Priority: nationality_id > nationality text mapping > empty
-          if (apiData.nationality_id !== null && apiData.nationality_id !== undefined && apiData.nationality_id !== '') {
-            return String(apiData.nationality_id);
-          }
-
-          // Fallback: Try to map from nationality text
-          if (apiData.nationality) {
-            const nationalityMap = {
-              'INDONESIA': '1',
-              'WNI': '1'
-            };
-            const mappedNationality = nationalityMap[String(apiData.nationality).toUpperCase()] || '';
-            return mappedNationality;
-          }
-
-          return '';
-        })(),
-        clothing_size_id: String(apiData.clothing_size_id || ''),
-        passport_number: apiData.passport_number || '',
-        ktp_doc: apiData.ktp_doc || '',
-        professional_photo: apiData.professional_photo || apiData.photo || '',
-      };
-
-    case 'address':
-
-      // Use the mapAddress function from dataResolver for consistent mapping
-      const mappedData = mapAddress(apiData);
-
-      return mappedData;
-
-    case 'emergency-contact':
-      return {
-        emergency_contact_name: apiData.emergency_contact_name || apiData.name || '',
-        emergency_contact_relationship: apiData.emergency_contact_relationship || apiData.relationship || '',
-        emergency_contact_phone: apiData.emergency_contact_phone || apiData.phone_number || '',
-        emergency_contact_address: apiData.emergency_contact_address || apiData.address || '',
-      };
-
-    case 'payroll-account':
-      // Convert string IDs to numbers for bank_id and tax_status_id
-      const convertToNumber = (value) => {
-        if (value === null || value === undefined || value === '') return undefined;
-        const num = Number(value);
-        return isNaN(num) ? undefined : num;
-      };
-
-      return {
-        bank_id: convertToNumber(apiData.bank_id || apiData.bank),
-        number_rekening: apiData.number_rekening || apiData.account_number || '',
-        holder_name: apiData.holder_name || '',
-        tax_status_id: convertToNumber(apiData.tax_status_id || apiData.tax_status),
-        npwp: apiData.npwp || '',
-        npwp_doc: apiData.npwp_doc || '',
-        saving_book_doc: apiData.saving_book_doc || '',
-      };
-
-    case 'family':
-      return {
-        family_name: apiData.family_name || apiData.name || '',
-        family_relationship: apiData.family_relationship || apiData.relationship || '',
-        family_birth_date: apiData.family_birth_date || apiData.birth_date || '',
-        family_gender: apiData.family_gender || apiData.gender || '',
-        family_occupation: apiData.family_occupation || apiData.occupation || '',
-        family_document: apiData.family_document || '',
-        kk_doc: apiData.kk_doc || '',
-      };
-
-    case 'education':
-      // Education is array data - return as array
-      if (Array.isArray(apiData)) {
-        return apiData.map(education => ({
-          id_education: education.id_education || education.id || '',
-          edu_level_id: education.edu_level_id || education.id_edu_level || education.edu_level || '',
-          edu_level: education.edu_level || education.education_level || education.level || '',
-          edu_major_id: education.edu_major_id || education.id_edu_major || education.edu_major || '',
-          edu_major: education.edu_major || education.major || education.field_of_study || '',
-          edu_institution_id: education.edu_institution_id || education.id_edu_institution || education.edu_institution || '',
-          edu_institution: education.edu_institution || education.institution || education.school_name || '',
-          start_date: education.start_date || education.edu_start_date || '',
-          end_date: education.end_date || education.edu_end_date || '',
-          // Remove ijazah_doc_id and ijazah_doc as they are handled by attachments API
-          // ijazah_doc_id: education.ijazah_doc_id || education.ijazah_doc || null,
-          // ijazah_doc: education.ijazah_doc || null,
-          status: education.status !== undefined ? education.status : 1,
-        }));
-      }
-      return [];
-
-    case 'social-security':
-      return {
-        no_bpjs_tk: apiData.bpjs_tk_number || apiData.no_bpjs_tk || '',
-        bpjs_tk_effective_date: apiData.bpjs_tk_effective_date || '',
-        no_bpjs: apiData.bpjs_health_number || apiData.no_bpjs || '',
-        bpjs_doc: apiData.bpjs_doc || '',
-        no_telkomedika: apiData.no_telkomedika || apiData.telkomedika_card_number || '',
-        telkomedika_doc: apiData.telkomedika_doc || '',
-      };
-
-    case 'medical-record':
-      return {
-        // Medical Record fields - using camelCase to match dataResolver.ts
-        bloodType: apiData.blood_type || apiData.bloodType || '',
-        heightCm: apiData.height || apiData.heightCm || '',
-        weightKg: apiData.weight || apiData.weightKg || '',
-        headSize: apiData.head_size || apiData.headSize || '',
-        healthStatus: (() => {
-          // Handle both health_status_id and health_status
-          const rawStatus = apiData.health_status_id || apiData.health_status || apiData.healthStatus || '';
-          if (!rawStatus) return '';
-
-          // If it's a number (ID), we need to resolve it to label
-          if (typeof rawStatus === 'number' || /^\d+$/.test(rawStatus)) {
-            // For now, return the ID as string - will be resolved by master data
-            return String(rawStatus);
-          }
-
-          // Valid health status options
-          const validOptions = ['Fit', 'Unfit', 'Under Treatment', 'Requires Monitoring'];
-
-          // Try exact match first
-          if (validOptions.includes(rawStatus)) {
-            return rawStatus;
-          }
-
-          // Try case-insensitive match
-          const normalizedValue = String(rawStatus).toLowerCase().trim();
-          const match = validOptions.find(option =>
-            option.toLowerCase() === normalizedValue
-          );
-
-          return match || String(rawStatus);
-        })(),
-        lastMcuDate: apiData.last_mcu_date || apiData.lastMcuDate || '',
-        hasDisability: apiData.has_disability || apiData.hasDisability || false,
-        healthConcern: apiData.health_concern || apiData.healthConcern || '',
-        medicalTreatmentRecord: apiData.medical_treatment_record || apiData.medicalTreatmentRecord || '',
-        vaccinationRecord: apiData.vaccination_record || apiData.vaccinationRecord || '',
-        specialConditions: apiData.special_conditions || apiData.specialConditions || '',
-
-        // Additional fields from API response
-        nik: apiData.nik || '',
-        employeeName: apiData.employee_name || apiData.employeeName || '',
-      };
-
-    case 'employment-information':
-      // Employment Info is read-only, no field mapping needed
-      return {};
-
-    default:
-      // Return all fields as-is if category not specified
-      return apiData;
-  }
-};
-
-// Helper: Map Address form fields (used in UI) back to API field names
-const mapAddressFormToAPI = (formData) => {
-  const apiData = {};
-  const acceptedFields = {
-    // Official address (KTP)
-    'official_address_detail': 'detail_ktp',
-    'official_address_province': 'province_ktp_id',
-    'official_address_city': 'city_ktp_id',
-    'official_address_postal_code': 'postal_code_ktp',
-    'official_address_subdistrict': 'sub_distric_ktp',
-    'official_address_administrative_village': 'administrative_village_ktp',
-    'official_address_rt': 'rt_ktp',
-    'official_address_rw': 'rw_ktp',
-    'official_address_street': 'street_name_ktp',
-    'official_address_house_number': 'house_number_ktp',
-
-    // Domicile address
-    'domicile_address_detail': 'detail_domicile',
-    'domicile_address_province': 'province_domicile_id',
-    'domicile_address_city': 'city_domicile_id',
-    'domicile_address_postal_code': 'postal_code_domicile',
-    'domicile_address_subdistrict': 'sub_distric_domicile',
-    'domicile_address_administrative_village': 'administrative_village_domicile',
-    'domicile_address_rt': 'rt_domicile',
-    'domicile_address_rw': 'rw_domicile',
-    'domicile_address_street': 'street_name_domicile',
-    'domicile_address_house_number': 'house_number_domicile'
-  };
-
-  Object.keys(acceptedFields).forEach((formField) => {
-    if (formData && Object.prototype.hasOwnProperty.call(formData, formField)) {
-      const apiField = acceptedFields[formField];
-      const value = formData[formField];
-      if (['province_ktp_id', 'city_ktp_id', 'province_domicile_id', 'city_domicile_id'].includes(apiField)) {
-        apiData[apiField] = value === '' || value === null || value === undefined ? '' : Number(value);
-      } else {
-        apiData[apiField] = value;
-      }
-    }
-  });
-
-  return apiData;
-};
 
 // Load request detail with recursion prevention
 const loadRequestDetail = async () => {
