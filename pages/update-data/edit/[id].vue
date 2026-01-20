@@ -131,6 +131,49 @@ import { useMasterData } from "~/composables/useMasterData";
 import { useAttachments } from "~/composables/useAttachments";
 import { mapAddress, resolveAddress, resolveEmergency, resolveEducation, resolvePayroll, resolveSocial, resolveMedical, mapEmergencyArray, mapFamilyArray, mapPayroll, mapSocial } from "~/utils/dataResolver";
 
+// Import extracted composables
+import { 
+  generateClientKey, 
+  mapRequestTypeToTab, 
+  enrichEducationDataWithLabels, 
+  mapAttachmentsToEducationRecords,
+  formatDate,
+  getTabIcon,
+  normalizeStatus,
+  getRequestTypeFromTab
+} from "~/composables/editpage/helpers/useEditPageHelpers";
+
+import { 
+  getStatusSteps,
+  getBreadcrumbItems,
+  formatCategoryName,
+  getReviewerName,
+  getReviewerAvatar,
+  getLastUpdatedDate,
+  getReviewNotesForNeedRevision,
+  isNeedRevisionStatus
+} from "~/composables/editpage/helpers/useStatusHelpers";
+
+import {
+  tabConfigs,
+  getRequiredDocuments,
+  getDocumentUploadTitle,
+  getDocumentUploadSubtitle,
+  getRequiredDocumentCount,
+  getSideEditPageCategory
+} from "~/composables/editpage/config/useEditPageTabConfig";
+
+import {
+  getDynamicTabs,
+  getEditableFields,
+  getFormConfig
+} from "~/composables/editpage/config/useDynamicTabsConfig";
+
+import {
+  mapApiToFormFields,
+  mapAddressFormToAPI
+} from "~/composables/editpage/mappers/useFieldMappers";
+
 // Function to enrich education data with labels for DocumentSection
 const enrichEducationDataWithLabels = async (educationData) => {
   if (!Array.isArray(educationData) || educationData.length === 0) {
