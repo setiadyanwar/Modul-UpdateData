@@ -103,20 +103,15 @@ const { preloadCommonData, masterData } = useMasterData();
 const isMasterDataReady = ref(false);
 
 // Listen for focus mode toggle events
-onMounted(async () => {
+onMounted(() => {
   if (process.client) {
     window.addEventListener('toggleFocusMode', (event) => {
       isFocusMode.value = event.detail.isFocusMode;
     });
 
-    // ✅ PRELOAD: Load master data once for all update-data pages
-    try {
-      await preloadCommonData();
-      isMasterDataReady.value = true;
-    } catch (error) {
-      // Even on error, allow components to load so they can handle fallback
-      isMasterDataReady.value = true;
-    }
+    // NOTE: Master data preloading removed to allow history page to load faster.
+    // Child pages (Edit/View) will fetch data on-demand via useMasterData.
+    isMasterDataReady.value = true;
   }
 });
 
