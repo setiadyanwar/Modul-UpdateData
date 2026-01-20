@@ -9573,137 +9573,15 @@ const getMaxFiles = (tabName) => {
   return maxFilesMap[tabName] || 1;
 };
 
-// Get required documents based on category
-const getRequiredDocuments = (tabName) => {
-  const documentMap = {
-    'basic-information': [
-      {
-        code: 'ktp',
-        label: 'ID Card (KTP)',
-        required: true,
-        description: 'Upload your KTP/ID Card (required for personal data changes)'
-      }
-    ],
-    'address': [
-      {
-        code: 'ktp',
-        label: 'ID Card (KTP)',
-        required: true,
-        description: 'Upload your KTP/ID Card (required for address changes)'
-      }
-    ],
-    'family': [
-      {
-        code: 'kk',
-        label: 'Family Card (KK)',
-        required: true,
-        description: 'Upload your Family Card (KK) document'
-      }
-    ],
-    'payroll-account': [
-      {
-        code: 'account_book',
-        label: 'Bank Account Book',
-        required: true,
-        description: 'Upload your bank account book or statement'
-      },
-      {
-        code: 'npwp',
-        label: 'NPWP Document',
-        required: false,
-        description: 'Upload your NPWP document (optional)'
-      }
-    ],
-    'social-security': [
-      {
-        code: 'bpjs',
-        label: 'BPJS Card',
-        required: true,
-        description: 'Upload your BPJS card or certificate'
-      },
-      {
-        code: 'telkomedika',
-        label: 'Telkomedika Card',
-        required: false,
-        description: 'Upload your Telkomedika card (optional)'
-      }
-    ]
-  };
 
-  return documentMap[tabName] || [];
-};
 
-// Get document upload title based on category
-const getDocumentUploadTitle = (tabName) => {
-  const titleMap = {
-    'basic-information': 'KTP Document Upload',
-    'address': 'KTP Document Upload',
-    'family': 'Family Card (KK) Document Upload',
-    'payroll-account': 'Bank Account Document Upload',
-    'social-security': 'BPJS Document Upload'
-  };
 
-  return titleMap[tabName] || 'Document Upload';
-};
 
-// Get document upload subtitle based on category
-const getDocumentUploadSubtitle = (tabName) => {
-  const subtitleMap = {
-    'basic-information': 'Upload your <span class="text-primary-500 font-bold">KTP</span> document (required)',
-    'address': 'Upload your <span class="text-primary-500 font-bold">KTP</span> document (required)',
-    'family': 'Upload your <span class="text-primary-500 font-bold">Family Card (KK)</span> document (required)',
-    'payroll-account': 'Upload your <span class="text-primary-500 font-bold">NPWP Document</span> and <span class="text-primary-500 font-bold">Saving Book Document</span> (required)',
-    'social-security': 'Upload your <span class="text-primary-500 font-bold">Telkomedika Card Photo</span> and <span class="text-primary-500 font-bold">BPJS Card Photo</span> (required)'
-  };
 
-  return subtitleMap[tabName] || 'Upload supporting documents for this category.';
-};
 
-// Get required document count based on category
-const getRequiredDocumentCount = (tabName) => {
-  const countMap = {
-    'basic-information': 1, // KTP required
-    'address': 1, // KTP required
-    'family': 1, // Family Card required
-    'payroll-account': 1, // Bank Account Book required (NPWP optional)
-    'social-security': 1, // BPJS required (Telkomedika optional)
-    'education': 1 // At least one certificate required
-  };
 
-  return countMap[tabName] || 1;
-};
 
-// Dynamic category function using requestDetail data
-const getSideEditPageCategory = (tabName) => {
-  // If no requestDetail, fallback to tab-based mapping
-  if (!requestDetail.value) {
-    const tabCategoryMap = {
-      'basic-information': 'Basic Information',
-      'address': 'Address',
-      'payroll-account': 'Payroll Account',
-      'social-security': 'Benefit',
-      'education': 'Education',
-      'family': 'Family',
-      'emergency-contact': 'Emergency Contact'
-    };
-    return tabCategoryMap[tabName] || 'Document Upload';
-  }
-  
-  const requestType = requestDetail.value.request_type;
-  
-  // Map request type to category label (SideEditPage expects string, not object)
-  const categoryMap = {
-    'BSC': 'Basic Information',
-    'ADR': 'Address', 
-    'EMC': 'Emergency Contact',
-    'PYR': 'Payroll Account',
-    'FMY': 'Family',
-    'EDC': 'Education',
-    'SSI': 'Benefit'
-  };
-  
-  return categoryMap[requestType] || 'Update Data';
-};
+
 
   // Dynamic document types and selector behavior for MultiDocumentUpload
   // Mirror behavior from UpdateData sections
