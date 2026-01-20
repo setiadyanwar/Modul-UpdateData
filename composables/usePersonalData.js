@@ -183,7 +183,7 @@ export const usePersonalData = () => {
   const isLoadingSocialSecurity = ref(true);
   const isLoadingMedicalRecord = ref(true);
   const isLoadingEmploymentInfo = ref(true);
-  
+
   // Reset state to prevent infinite loops
   const isResetting = ref(false);
 
@@ -257,13 +257,13 @@ export const usePersonalData = () => {
   // Load functions with proper error handling and data initialization
   // ✅ DEDUPLICATION: Prevent multiple simultaneous calls
   let loadingBasicInfoPromise = null;
-  
+
   const loadBasicInformation = async () => {
     // ✅ DEDUPLICATION: Return existing promise if already loading
     if (loadingBasicInfoPromise) {
       return loadingBasicInfoPromise;
     }
-    
+
     loadingBasicInfoPromise = (async () => {
       try {
         // ✅ GUARD: Wait for token to be available before making API calls
@@ -299,7 +299,7 @@ export const usePersonalData = () => {
 
         // Check if we have valid API response
         let apiData = null;
-        
+
         if (response && response.success && response.data) {
           apiData = response.data;
         } else if (response && response.data) {
@@ -310,11 +310,12 @@ export const usePersonalData = () => {
         } else {
           throw new Error("Invalid API response structure");
         }
-        
+
         // Transform API data to match our form structure
         const transformedData = {
           nik: apiData.nik || "", // Add missing NIK field
-          name: apiData.name || "",
+          name: apiData.name || apiData.employee_name || "",
+          employee_name: apiData.employee_name || apiData.name || "",
           gender: apiData.gender || "", // Tambah field gender (bukan hanya gender_id)
           gender_id: apiData.gender_id || "",
           religion: apiData.religion || "", // Tambah field religion (bukan hanya religion_id)
@@ -336,11 +337,11 @@ export const usePersonalData = () => {
           ktp_doc: apiData.ktp_doc || "",
           professional_photo: apiData.professional_photo || "", // Perbaiki field name
         };
-        
+
         // Removed debug logs
 
         const mergedData = safeMergeData(employeeData.value, transformedData);
-        
+
         employeeData.value = mergedData;
         originalData.value = JSON.parse(JSON.stringify(employeeData.value));
       } catch (error) {
@@ -351,31 +352,31 @@ export const usePersonalData = () => {
         loadingBasicInfoPromise = null; // ✅ Reset promise when done
       }
     })();
-    
+
     return loadingBasicInfoPromise;
   };
 
   // Helper function to convert date format to DD-MM-YYYY
   const convertDateFormat = (dateString) => {
     if (!dateString) return "";
-    
+
     // If already in DD-MM-YYYY format, return as is
     if (/^\d{2}-\d{2}-\d{4}$/.test(dateString)) {
       return dateString;
     }
-    
+
     // If in YYYY-MM-DD format, convert to DD-MM-YYYY
     if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
       const parts = dateString.split('-');
       return `${parts[2]}-${parts[1]}-${parts[0]}`;
     }
-    
+
     // If in DD/MM/YYYY format, convert to DD-MM-YYYY
     if (/^\d{2}\/\d{2}\/\d{4}$/.test(dateString)) {
       const parts = dateString.split('/');
       return `${parts[0]}-${parts[1]}-${parts[2]}`;
     }
-    
+
     // If in other format, try to parse and convert
     try {
       const date = new Date(dateString);
@@ -388,7 +389,7 @@ export const usePersonalData = () => {
     } catch {
       // ignore parse errors
     }
-    
+
     return dateString; // Return original if can't parse
   };
 
@@ -396,7 +397,7 @@ export const usePersonalData = () => {
     try {
       isLoadingAddress.value = true;
       isResetting.value = true; // 🔧 Set flag to prevent watchers from triggering
-      
+
       // Updated endpoint according to new API contract
       const response = await apiGet("/employee/address");
 
@@ -414,7 +415,7 @@ export const usePersonalData = () => {
           official_address_rw: response.data.rw_ktp || "",
           official_address_street: response.data.street_name_ktp || "",
           official_address_house_number: response.data.house_number_ktp || "",
-          
+
           // Domicile address fields 
           domicile_address_detail: response.data.detail_domicile || "",
           domicile_address_province: response.data.province_domicile_id || response.data.province_domicile || "",
@@ -427,16 +428,16 @@ export const usePersonalData = () => {
           domicile_address_street: response.data.street_name_domicile || "",
           domicile_address_house_number: response.data.house_number_domicile || ""
         };
-        
-  // debug logs removed
-        
+
+        // debug logs removed
+
         addressData.value = safeMergeData(addressData.value, transformedData);
         // Store both: raw and flat original for reliable rendering and comparison
         // Prefer flat original for UI consumption so original values appear correctly
         const flatOriginal = { ...transformedData };
         originalAddressData.value = JSON.parse(JSON.stringify(flatOriginal));
-        
-  // debug logs removed
+
+        // debug logs removed
       } else {
         // No data available, initialize with empty values
         originalAddressData.value = JSON.parse(JSON.stringify(addressData.value));
@@ -450,7 +451,7 @@ export const usePersonalData = () => {
   const loadEmergencyContact = async () => {
     try {
       isResetting.value = true; // 🔧 Set flag to prevent watchers from triggering
-      
+
       // Updated endpoint according to new API contract
       const response = await apiGet("/employee/emergency-contact");
 
@@ -475,19 +476,19 @@ export const usePersonalData = () => {
       }
       // FIXED: Keep original status from API, don't modify it
       if (contacts.length > 0) {
-        contacts = contacts.map((c) => ({ 
-          ...c, 
+        contacts = contacts.map((c) => ({
+          ...c,
           // Keep original status from API
           status: c.status !== undefined ? c.status : 1,
           // Set active based on status
           active: c.status === 1
         }));
       }
-      
+
       // FIXED: Transform data using mapEmergencyArray to ensure proper field mapping
       const { mapEmergencyArray } = await import('~/utils/dataResolver');
       const transformedContacts = mapEmergencyArray(contacts);
-      
+
       emergencyContactData.value = transformedContacts;
       originalEmergencyContactData.value = JSON.parse(JSON.stringify(emergencyContactData.value));
       if (contacts.length === 0) {
@@ -528,7 +529,7 @@ export const usePersonalData = () => {
           npwp_doc: response.data.npwp_doc || "",
           saving_book_doc: response.data.saving_book_doc || "",
         };
-        
+
         payrollAccountData.value = safeMergeData(
           payrollAccountData.value,
           mappedData
@@ -541,7 +542,7 @@ export const usePersonalData = () => {
         // If API returned message, surface it
         payrollAccountMessage.value = response && response.message ? response.message : "Payroll account not available";
       }
-  } catch (error) {
+    } catch (error) {
       // If endpoint not found (404) treat as no data available instead of erroring
       const msg = (error && error.message) ? String(error.message).toLowerCase() : '';
       if (msg.includes('404') || msg.includes('not found')) {
@@ -585,7 +586,7 @@ export const usePersonalData = () => {
           familyMembers = [response.data];
         }
       }
-      
+
       // Normalize API response to the internal shape used by forms/components
       // Ensure we have master options loaded (non-blocking)
       try {
@@ -692,11 +693,11 @@ export const usePersonalData = () => {
       const medicalRecordFields = [
         'health_status_id',
         'health_status',
-        'last_mcu_date', 
+        'last_mcu_date',
         'blood_type_id',
         'blood_type',
         'height',
-        'weight', 
+        'weight',
         'has_disability_id',
         'has_disability',
         'head_size',
@@ -710,7 +711,7 @@ export const usePersonalData = () => {
           response.data,
           medicalRecordFields
         );
-        
+
         // Convert fields to proper types
         if (medicalRecordData.value.height) {
           medicalRecordData.value.height = parseFloat(medicalRecordData.value.height);
@@ -730,7 +731,7 @@ export const usePersonalData = () => {
         if (medicalRecordData.value.has_disability_id !== undefined) {
           medicalRecordData.value.has_disability_id = Boolean(parseInt(medicalRecordData.value.has_disability_id));
         }
-        
+
         originalMedicalRecordData.value = JSON.parse(JSON.stringify(medicalRecordData.value));
       } else {
         // No data available, initialize with empty values
@@ -849,7 +850,7 @@ export const usePersonalData = () => {
   const submitPayrollAccount = async () => {
     try {
       isSubmittingPayrollAccount.value = true;
-      
+
       // Map form data to API field names if needed
       const apiData = {
         number_rekening: payrollAccountData.value.number_rekening || "",
@@ -860,7 +861,7 @@ export const usePersonalData = () => {
         npwp_doc: payrollAccountData.value.npwp_doc || "",
         saving_book_doc: payrollAccountData.value.saving_book_doc || "",
       };
-      
+
       const formData = new FormData();
       formData.append("data", JSON.stringify(apiData));
 
@@ -970,11 +971,11 @@ export const usePersonalData = () => {
   const submitMedicalRecord = async () => {
     try {
       isSubmittingMedicalRecord.value = true;
-      
+
       // Get only changed fields by comparing with original data
       const original = originalMedicalRecordData.value;
       const current = medicalRecordData.value;
-      
+
       if (!original || !current) {
         return false;
       }
@@ -984,24 +985,24 @@ export const usePersonalData = () => {
       Object.keys(current).forEach(key => {
         const originalValue = original[key];
         const currentValue = current[key];
-        
+
         // Special handling for numeric fields
         if (['height', 'weight', 'head_size'].includes(key)) {
           const originalNum = originalValue === null || originalValue === undefined || originalValue === '' ? null : parseFloat(originalValue);
           const currentNum = currentValue === null || currentValue === undefined || currentValue === '' ? null : parseFloat(currentValue);
-          
+
           // Both null/empty means no change
           if (originalNum === null && currentNum === null) {
             // No change
           } else if (originalNum !== currentNum) {
             changedFields[key] = currentValue;
           }
-        } 
+        }
         // Special handling for ID fields (should be compared as numbers)
         else if (['health_status_id', 'blood_type_id'].includes(key)) {
           const originalId = originalValue === null || originalValue === undefined || originalValue === '' ? null : parseInt(originalValue);
           const currentId = currentValue === null || currentValue === undefined || currentValue === '' ? null : parseInt(currentValue);
-          
+
           if (originalId !== currentId) {
             changedFields[key] = currentValue;
           }
@@ -1010,16 +1011,16 @@ export const usePersonalData = () => {
         else if (['has_disability_id'].includes(key)) {
           const originalBool = Boolean(originalValue);
           const currentBool = Boolean(currentValue);
-          
+
           if (originalBool !== currentBool) {
             changedFields[key] = currentValue;
           }
-        } 
+        }
         // For text fields, normalize values for comparison
         else {
           const normalizedOriginal = originalValue === null || originalValue === undefined ? '' : String(originalValue);
           const normalizedCurrent = currentValue === null || currentValue === undefined ? '' : String(currentValue);
-          
+
           if (normalizedOriginal !== normalizedCurrent) {
             changedFields[key] = currentValue;
           }
@@ -1100,14 +1101,14 @@ export const usePersonalData = () => {
       kk_doc: "",
       status: 1
     });
-    
+
     // Auto scroll to the new family member after it's rendered
     nextTick(() => {
       const familyMembers = document.querySelectorAll('.bg-white.dark\\:bg-grey-800.rounded-md.shadow-sm.border');
       if (familyMembers.length > 0) {
         const lastMember = familyMembers[familyMembers.length - 1];
-        lastMember.scrollIntoView({ 
-          behavior: 'smooth', 
+        lastMember.scrollIntoView({
+          behavior: 'smooth',
           block: 'start',
           inline: 'nearest'
         });
@@ -1129,14 +1130,14 @@ export const usePersonalData = () => {
       ijazah_doc: "",
       status: 1, // Default to active status (required by API)
     });
-    
+
     // Auto scroll to the new education record after it's rendered
     nextTick(() => {
       const educationRecords = document.querySelectorAll('.bg-white.dark\\:bg-grey-800.rounded-md.shadow-sm.border');
       if (educationRecords.length > 0) {
         const lastRecord = educationRecords[educationRecords.length - 1];
-        lastRecord.scrollIntoView({ 
-          behavior: 'smooth', 
+        lastRecord.scrollIntoView({
+          behavior: 'smooth',
           block: 'start',
           inline: 'nearest'
         });
@@ -1152,7 +1153,7 @@ export const usePersonalData = () => {
   const resetAllDataToOriginal = async () => {
     // Set resetting flag to prevent watchers from triggering
     isResetting.value = true;
-    
+
     // Use nextTick to prevent infinite loops during reactive updates
     await nextTick();
 
@@ -1236,13 +1237,13 @@ export const usePersonalData = () => {
   return {
     // Dummy options for select fields
     dummyOptions,
-    
+
     // Data models
     employeeData,
     addressData,
     emergencyContactData,
-  payrollAccountData,
-  payrollAccountMessage,
+    payrollAccountData,
+    payrollAccountMessage,
     familyData,
     educationData,
     socialSecurityData,
@@ -1310,7 +1311,7 @@ export const usePersonalData = () => {
     addEducationRecord,
     removeEducationRecord,
     resetAllDataToOriginal,
-    
+
     // Reset state flag
     isResetting,
   };

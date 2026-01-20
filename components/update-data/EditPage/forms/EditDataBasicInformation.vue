@@ -147,6 +147,12 @@ const dynamicFormData = computed(() => {
     };
   }
 
+  // FORCE FIX: Ensure name is populated if employee_name exists but name is empty
+  // This handles cases where API returns employee_name (legacy) but form expects name
+  if ((!baseData.name || baseData.name === '') && baseData.employee_name) {
+    baseData.name = baseData.employee_name;
+  }
+
   return baseData;
 });
 
@@ -218,6 +224,13 @@ watch(dynamicFormData, (newData) => {
         formData.value.professional_photo = currentPhoto;
       }
     }
+    
+    // Check if name is still missing after update
+    if (!formData.value.name || formData.value.name === '') {
+       if (formData.value.employee_name) {
+         formData.value.name = formData.value.employee_name;
+       }
+    }
   }
 }, { immediate: true });
 
@@ -240,7 +253,59 @@ defineExpose({
 });
 
 // Initialize on mount
-onMounted(() => {
+onMounted(async () => {
+  // Check if we need to load data
+  let needsLoad = false;
+  
+  // If data is empty or name is missing
+  if (!dynamicFormData.value || Object.keys(dynamicFormData.value).length === 0) {
+    needsLoad = true;
+  } else if (!dynamicFormData.value.name && !dynamicFormData.value.employee_name) {
+    // If name is missing, we might need to fetch it
+    // But check if it's just in a different field
+    needsLoad = true;
+  }
+  
+  if (needsLoad) {
+    try {
+      isLoadingBasicInfo.value = true;
+      // Call loadBasicInformation to fetch fresh data
+      // We need to access it from personalData composable
+      // Note: we need to use the imported loadBasicInformation function, 
+      // but it was not destructured in the original code.
+      // We'll rely on the parent or the fact that usePersonalData shares state.
+      // If we can't call it directly, we assume parent handles it or we rely on shared state update.
+      
+      // Let's re-acquire the function explicitly
+      const { loadBasicInformation } = usePersonalData();
+      await loadBasicInformation();
+      
+      // After load, update local state
+      nextTick(() => {
+        if (originalEmployeeData.value) {
+          const newData = { ...originalEmployeeData.value };
+          
+          // Apply old_data from requestDetail if available (to preserve edits)
+          if (props.requestDetail?.old_data) {
+             Object.assign(newData, props.requestDetail.old_data);
+          }
+          
+          // Apply new_data if draft/rejected
+          const statusInfo = normalizeStatus(props.requestDetail);
+           if ((statusInfo.isDraft || statusInfo.isRejected) && props.requestDetail?.new_data) {
+               Object.assign(newData, props.requestDetail.new_data?.data || props.requestDetail.new_data || {});
+           }
+           
+          formData.value = newData;
+        }
+      });
+    } catch (e) {
+      console.error("Error loading basic info in EditDataBasicInformation:", e);
+    } finally {
+      isLoadingBasicInfo.value = false;
+    }
+  }
+
   if (dynamicFormData.value && Object.keys(dynamicFormData.value).length > 0) {
     // Don't override if formData already has content (like uploaded photo)
     if (!formData.value || Object.keys(formData.value).length === 0) {
