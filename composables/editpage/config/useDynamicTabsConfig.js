@@ -5,7 +5,7 @@
  * Extracted from pages/update-data/edit/[id].vue
  */
 
-import { getTabIcon } from './useEditPageHelpers'
+import { getTabIcon } from '../helpers/useEditPageHelpers'
 
 /**
  * Generate dynamic tabs based on request detail
