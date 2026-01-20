@@ -216,10 +216,10 @@ onMounted(async () => {
         const v = obj[k];
         if (typeof v === 'object' && v && !Array.isArray(v)) {
           ids.push(...collectIds(v));
-        } else if (/city_.*_id|_city_id|city_domicile_id|city_ktp_id/i.test(k) && v) {
-          ids.push({ type: 'CITY', id: String(v) });
-        } else if (/province_.*_id|_province_id|province_domicile_id|province_ktp_id/i.test(k) && v) {
-          ids.push({ type: 'PROVINCE', id: String(v) });
+        } else if ((/city|kabupaten|kota/i.test(k) && /id|code/i.test(k)) || /city_.*_id|_city_id|city_domicile_id|city_ktp_id|official_address_city|domicile_address_city/i.test(k)) {
+          if (v) ids.push({ type: 'CITY', id: String(v) });
+        } else if ((/province|provinsi/i.test(k) && /id|code/i.test(k)) || /province_.*_id|_province_id|province_domicile_id|province_ktp_id|official_address_province|domicile_address_province/i.test(k)) {
+          if (v) ids.push({ type: 'PROVINCE', id: String(v) });
         }
       });
       return ids;
@@ -276,6 +276,8 @@ const formatFieldName = (fieldName) => {
     'employee_name': 'Employee Name',
     'first_name': 'First Name',
     'last_name': 'Last Name',
+    // ... rest of map is unchanged, handled by context replacement ...
+
     'name': 'Name',
     'gender': 'Gender',
     'gender_id': 'Gender',
@@ -762,50 +764,8 @@ const getMasterValue = (fieldName, code) => {
     }
   }
 
-  // If still not found, attempt on-demand fetch by ID and merge into cache, then UI will re-compute
-  try {
-    if (masterDataCategory === 'CITY' && codeStr) {
-      const url = `/master-api/cities?id_city=${encodeURIComponent(codeStr)}&limit=1000`;
-      apiGet(url).then(res => {
-        const items = res?.data?.items || res?.data?.data || res?.items || [];
-        if (Array.isArray(items) && items.length > 0) {
-          const it = items[0];
-          const normalized = {
-            code: String(it.id_city ?? it.id ?? codeStr),
-            value: it.city_name ?? it.value ?? it.name ?? '',
-            label: it.city_name ?? it.value ?? it.name ?? ''
-          };
-          const key = masterData.value.CITY ? 'CITY' : (masterData.value.CITIES ? 'CITIES' : 'CITY');
-          const arr = masterData.value[key] || [];
-          // Avoid duplicates
-          if (!arr.some(x => String(x.code) === normalized.code)) {
-            masterData.value[key] = [...arr, normalized];
-            // Force recompute after async add
-            try { refreshTick.value++; } catch {}
-          }
-        }
-      }).catch(() => {});
-    } else if (masterDataCategory === 'PROVINCE' && codeStr) {
-      const url = `/master-api/provinces?id_province=${encodeURIComponent(codeStr)}&limit=1000`;
-      apiGet(url).then(res => {
-        const items = res?.data?.items || res?.data?.data || res?.items || [];
-        if (Array.isArray(items) && items.length > 0) {
-          const it = items[0];
-          const normalized = {
-            code: String(it.id_province ?? it.id ?? codeStr),
-            value: it.province_name ?? it.value ?? it.name ?? '',
-            label: it.province_name ?? it.value ?? it.name ?? ''
-          };
-          const key = masterData.value.PROVINCE ? 'PROVINCE' : (masterData.value.PROVINCES ? 'PROVINCES' : 'PROVINCE');
-          const arr = masterData.value[key] || [];
-          if (!arr.some(x => String(x.code) === normalized.code)) {
-            masterData.value[key] = [...arr, normalized];
-            try { refreshTick.value++; } catch {}
-          }
-        }
-      }).catch(() => {});
-    }
-  } catch {}
+  // If still not found, return code (loading handled by onMounted pre-fetch)
+  return code;
   
   // Fallback: try generic options getter if available
   try {
