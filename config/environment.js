@@ -113,9 +113,12 @@ export default {
 
   // Security Configuration
   SECURITY: {
-    JWT_EXPIRY: 1800000,             // 30 minutes
+    JWT_EXPIRY: 1200000,             // 20 minutes (MUST match backend JWT_TTL)
     REFRESH_TOKEN_EXPIRY: 604800000, // 7 days
-    TOKEN_REFRESH_BUFFER: 300000     // 5 minutes buffer
+    TOKEN_REFRESH_BUFFER: 300000,    // 5 minutes buffer
+    WARNING_TIMEOUT: 900000,         // 15 minutes - show modal after 15 min idle
+    COUNTDOWN_DURATION: 300000,      // 5 minutes - countdown in modal
+    ACTIVITY_THROTTLE: 100           // 100ms throttle for activity detection
   },
 
   // App Configuration
