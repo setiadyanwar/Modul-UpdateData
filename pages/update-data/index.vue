@@ -4337,12 +4337,12 @@ onMounted(async () => {
   const { waitForAuth } = useAuthState(); // Call the composable
   // console.log('[Update-Data] ⏳ Waiting for auth before loading data...');
 
-  const authReady = await waitForAuth(5000); // Wait max 5 seconds
+  const authReady = await waitForAuth(2000); // Wait max 2 seconds (optimized from 5s)
 
   if (!authReady) {
-    // console.warn('[Update-Data] ⚠️ Auth not ready after timeout, proceeding anyway');
+    console.warn('[Update-Data] ⚠️ Auth not ready after 2s timeout, proceeding anyway');
   } else {
-    // console.log('[Update-Data] ✅ Auth ready, proceeding with data load');
+    console.log('[Update-Data] ✅ Auth ready, proceeding with data load');
   }
 
   // Clean up old draft system localStorage
@@ -4351,55 +4351,49 @@ onMounted(async () => {
   } catch (error) {
   }
 
-  // ✅ FIXED: Start critical loading processes in PARALLEL for faster initial load
-  const loadingPromises = [];
-
+  // ✅ OPTIMIZED: Start critical loading processes in PARALLEL for faster initial load
+  // Only wait for CRITICAL data (basic info), load everything else in background
+  
   // Load medical options in background (non-blocking) - start immediately
-  // No need to wait 2 seconds, let the browser schedule it
   loadMedicalOptions().catch(() => { });
 
-  // Promise 1: Load change requests + REAL-TIME check untuk re-validate tabs
-  loadingPromises.push(
-    (async () => {
-      try {
-        isLoadingChangeRequests.value = true;
-        // console.log('[MOUNT] 🔄 Loading fresh change requests untuk validasi tabs...');
+  // ✅ CRITICAL: Load basic information (blocks initial render)
+  // This is the ONLY blocking call - everything else loads in background
+  try {
+    isLoadingBasicInfo.value = true;
+    await loadBasicInformation();
+  } catch (error) {
+    console.error('[MOUNT] Failed to load basic info:', error);
+  } finally {
+    isLoadingBasicInfo.value = false;
+  }
 
-        // Step 1: Clear semua cache untuk force fresh check
-        tabManagement.invalidateAllCache();
-        tabManagement.resetChangeRequestsCache();
+  // ✅ LAZY: Load change requests in background (NON-BLOCKING)
+  // This doesn't block initial page render - loads asynchronously
+  (async () => {
+    try {
+      isLoadingChangeRequests.value = true;
+      console.log('[MOUNT] 🔄 Loading change requests in background...');
 
-        // Step 2: Load change requests dari API (FRESH DATA)
-        await ensureChangeRequestsLoaded();
-        // console.log('[MOUNT] ✅ Change requests loaded, total:', changeRequests.value?.length || 0);
+      // Step 1: Clear cache for fresh check
+      tabManagement.invalidateAllCache();
+      tabManagement.resetChangeRequestsCache();
 
-        // Step 3: Force update ALL tabs cache untuk real-time check
-        await tabManagement.forceUpdateAllTabsCache();
+      // Step 2: Load change requests from API
+      await ensureChangeRequestsLoaded();
+      console.log('[MOUNT] ✅ Change requests loaded:', changeRequests.value?.length || 0);
 
-        // Step 4: Refresh tab management untuk sync UI
-        await tabManagement.smartRefresh(true);
-      } catch (error) {
-        // console.error('[MOUNT] ❌ Failed to load change requests:', error);
-      } finally {
-        isLoadingChangeRequests.value = false;
-      }
-    })()
-  );
+      // Step 3: Update tabs cache
+      await tabManagement.forceUpdateAllTabsCache();
 
-  // Promise 2: Load basic information in parallel
-  // This is critical for the main view
-  loadingPromises.push(
-    (async () => {
-      try {
-        isLoadingBasicInfo.value = true;
-        await loadBasicInformation();
-      } catch (error) {
-        // console.error('[MOUNT] Failed to load basic info:', error);
-      } finally {
-        isLoadingBasicInfo.value = false;
-      }
-    })()
-  );
+      // Step 4: Refresh tab management
+      await tabManagement.smartRefresh(true);
+    } catch (error) {
+      console.error('[MOUNT] ❌ Failed to load change requests:', error);
+    } finally {
+      isLoadingChangeRequests.value = false;
+    }
+  })();
 
   // ❌ REMOVED: Preload data conflicting with useTabManagement watcher
   // This was causing duplicate API calls:
@@ -4483,8 +4477,7 @@ onMounted(async () => {
     }, 100); // Small delay to let page render first
   }
 
-  // Wait for all loading to complete
-  await Promise.all(loadingPromises);
+  // ✅ OPTIMIZED: No more blocking Promise.all - everything loads asynchronously
 
   // Populate form with draft data if available
   // STABILITY: Shorter delay for better UX
@@ -4887,6 +4880,83 @@ onMounted(async () => {
     tabManagement.smartRefresh('background_check');
     lastRefreshTime.value = Date.now();
   }, 300000); // Check every 5 minutes for background updates
+});
+
+// ✅ CRITICAL: Comprehensive cleanup to prevent memory leaks
+onBeforeUnmount(() => {
+  console.log('[Update-Data] 🧹 Cleaning up resources...');
+  
+  // 1. Clear all timers
+  if (navigationRefreshTimeout) {
+    clearTimeout(navigationRefreshTimeout);
+    navigationRefreshTimeout = null;
+  }
+  
+  if (smartRefreshInterval) {
+    clearInterval(smartRefreshInterval);
+    smartRefreshInterval = null;
+  }
+  
+  if (cacheInvalidationTimeout) {
+    clearTimeout(cacheInvalidationTimeout);
+    cacheInvalidationTimeout = null;
+  }
+  
+  // 2. Cleanup watchers
+  if (typeof cleanupConsolidatedWatcher === 'function') {
+    try {
+      cleanupConsolidatedWatcher();
+    } catch (error) {
+      console.warn('[Update-Data] Warning: Failed to cleanup watcher:', error);
+    }
+  }
+  
+  // 3. Remove event listeners
+  try {
+    window.removeEventListener('requestHistoryUpdated', handleRequestHistoryUpdated);
+    window.removeEventListener('requestDeleted', handleRequestDeleted);
+    window.removeEventListener('requestStatusChanged', handleRequestHistoryUpdated);
+    window.removeEventListener('draftDeleted', handleRequestDeleted);
+    window.removeEventListener('forceRefreshUpdateData', handleRequestHistoryUpdated);
+    
+    // Remove navigation event listeners
+    if (typeof handleNavigationChangeRef === 'function') {
+      window.removeEventListener('popstate', handleNavigationChangeRef);
+      window.removeEventListener('beforeunload', handleNavigationChangeRef);
+    }
+    
+    // Remove visibility change listener
+    if (typeof handleVisibilityChange === 'function') {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    }
+  } catch (error) {
+    console.warn('[Update-Data] Warning: Failed to remove event listeners:', error);
+  }
+  
+  // 4. Reset state
+  isMounted.value = false;
+  isInitialPageLoad.value = true;
+  isLoadingChangeRequests.value = false;
+  isRefreshing.value = false;
+  isTabSwitching.value = false;
+  isSavingDraft.value = false;
+  isSubmittingUpdate.value = false;
+  isPopulatingDraft.value = false;
+  
+  // 5. Clear file upload states
+  basicInfoUploadedFiles.value = [];
+  basicInfoProfessionalPhoto.value = null;
+  basicInfoAttachmentsChanged.value = false;
+  addressUploadedFiles.value = [];
+  payrollAccountUploadedFiles.value = [];
+  socialSecurityUploadedFiles.value = [];
+  familyUploadedFiles.value = [];
+  
+  // 6. Clear touched states
+  touchedFamilyIds.value.clear();
+  touchedFamilyFieldsById.value = {};
+  
+  console.log('[Update-Data] ✅ Cleanup completed - all resources released');
 });
 
 // ✅ REMOUNT: Setup onActivated untuk re-check changeRequests setiap kali buka /update-data
