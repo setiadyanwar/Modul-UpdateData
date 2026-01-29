@@ -8,7 +8,7 @@ export default {
   // Dev/Staging: https://apigwsand.telkomsigma.co.id/essbe
   // Production: https://apigw.telkomsigma.co.id/essbe (update when deploying to prod)
   // API_BASE_URL: 'https://apigwsand.telkomsigma.co.id/essbe',
-  API_BASE_URL: process.env.API_BASE_URL || 'https://essbe.domcloud.dev/api',
+  API_BASE_URL: process.env.API_BASE_URL || 'http://127.0.0.1:8000/api',
 
   // API Endpoints
   API_ENDPOINTS: {
@@ -113,7 +113,7 @@ export default {
 
   // Security Configuration
   SECURITY: {
-    JWT_EXPIRY: 1200000,             // 20 minutes (MUST match backend JWT_TTL)
+    JWT_EXPIRY: 1200000,             // 20 minutes
     REFRESH_TOKEN_EXPIRY: 604800000, // 7 days
     TOKEN_REFRESH_BUFFER: 300000,    // 5 minutes buffer
     WARNING_TIMEOUT: 900000,         // 15 minutes - show modal after 15 min idle

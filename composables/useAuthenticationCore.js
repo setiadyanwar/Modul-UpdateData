@@ -1588,29 +1588,38 @@ export const useAuthenticationCore = () => {
       if (localStorage.getItem('user_roles')) {
         const userRolesStored = JSON.parse(localStorage.getItem('user_roles'));
 
-        // Parallelize permission fetching
-        const permissionPromises = userRolesStored.map(role =>
-          $fetch(`/api/proxy/role/${role.role_id}`, {
-            method: 'GET',
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json'
-            }
-          }).then(res => res.data?.permissions || [])
-            .catch(err => {
-              // console.warn(`Failed to fetch permissions for role ${role.role_id}`, err);
-              return [];
-            })
+        // ✅ FIX: Filter out roles without role_id to prevent /api/proxy/role/undefined
+        const validRoles = userRolesStored.filter(role =>
+          role && role.role_id !== undefined && role.role_id !== null
         );
 
-        const results = await Promise.all(permissionPromises);
+        if (validRoles.length === 0) {
+          // console.warn('[AUTH] No valid roles with role_id found, skipping permission fetch');
+        } else {
+          // Parallelize permission fetching
+          const permissionPromises = validRoles.map(role =>
+            $fetch(`/api/proxy/role/${role.role_id}`, {
+              method: 'GET',
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+              }
+            }).then(res => res.data?.permissions || [])
+              .catch(err => {
+                // console.warn(`Failed to fetch permissions for role ${role.role_id}`, err);
+                return [];
+              })
+          );
 
-        // Flatten results into userPermissions array
-        results.forEach(perms => {
-          if (Array.isArray(perms)) {
-            userPermissions.push(...perms);
-          }
-        });
+          const results = await Promise.all(permissionPromises);
+
+          // Flatten results into userPermissions array
+          results.forEach(perms => {
+            if (Array.isArray(perms)) {
+              userPermissions.push(...perms);
+            }
+          });
+        }
       }
       localStorage.setItem('user_permissions', JSON.stringify(userPermissions));
       // console.log("User Permissions", userPermissions);
