@@ -5,9 +5,6 @@ export default {
   IS_DEVELOPMENT: process.env.NODE_ENV === 'development',
 
   // API Configuration
-  // Dev/Staging: https://apigwsand.telkomsigma.co.id/essbe
-  // Production: https://apigw.telkomsigma.co.id/essbe (update when deploying to prod)
-  // API_BASE_URL: 'https://apigwsand.telkomsigma.co.id/essbe',
   API_BASE_URL: process.env.API_BASE_URL || 'http://127.0.0.1:8000/api',
 
   // API Endpoints

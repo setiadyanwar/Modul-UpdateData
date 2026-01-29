@@ -124,7 +124,7 @@ export function useFormDataManagement() {
           edu_institution_id: edu.edu_institution_id || '',
           edu_major_id: edu.edu_major_id || '',
           graduation_year: edu.graduation_year || '',
-          gpa: edu.gpa || '',
+          graduation_year: edu.graduation_year || '',
           client_key: edu.client_key || generateClientKey()
         })) : []
 
@@ -494,14 +494,14 @@ export function useFormDataManagement() {
     const {
       // Remove forbidden fields (non-modifiable)
       name, nik, business_email,
-      
+
       // Remove label fields (only send IDs)
       gender, marital_status, religion, nationality, clothing_size,
-      
+
       // Remove other non-API fields
       employeeId, firstName, lastName, nationalId, place_of_birth,
       email, phone, dateOfBirth, photo, photo_ktp, professionalPhoto,
-      
+
       // Keep only modifiable fields
       ...filteredData
     } = data
@@ -518,10 +518,10 @@ export function useFormDataManagement() {
     const {
       // Remove label fields (only send IDs)
       bank, tax_status,
-      
+
       // Remove document fields (view only)
       npwp_doc, saving_book_doc, npwp_doc_id, saving_book_doc_id,
-      
+
       // Keep only modifiable fields
       ...filteredData
     } = data
@@ -541,7 +541,7 @@ export function useFormDataManagement() {
       const {
         // Remove label fields (only send IDs)
         gender, marital_status, relation,
-        
+
         // Keep only modifiable fields
         ...filteredItem
       } = item
@@ -562,7 +562,7 @@ export function useFormDataManagement() {
       const {
         // Remove label fields (only send IDs)
         degree, major, institution,
-        
+
         // Keep only modifiable fields
         ...filteredItem
       } = item
@@ -583,7 +583,7 @@ export function useFormDataManagement() {
       const {
         // Remove label fields (only send IDs)
         relationship,
-        
+
         // Keep only modifiable fields
         ...filteredItem
       } = item
@@ -614,7 +614,7 @@ export function useFormDataManagement() {
         'official_address_detail', 'official_address_province', 'official_address_city',
         'official_address_postal_code', 'official_address_subdistrict', 'official_address_administrative_village',
         'official_address_rt', 'official_address_rw', 'official_address_street', 'official_address_phone',
-        
+
         // Domicile address fields
         'domicile_address_detail', 'domicile_address_province', 'domicile_address_city',
         'domicile_address_postal_code', 'domicile_address_subdistrict', 'domicile_address_administrative_village',
@@ -627,7 +627,7 @@ export function useFormDataManagement() {
       ],
       'education': [
         'degree_id', 'major_id', 'institution_id', 'graduation_year',
-        'gpa', 'certificate_number', 'status'
+        'certificate_number', 'status'
       ],
       'emergency-contact': [
         'emgc_name', 'emgc_relationship_id', 'emgc_number', 'emgc_address', 'status'
@@ -725,10 +725,10 @@ export function useFormDataManagement() {
         const originalValue = originalData[field]
 
         // Only include if value has actually changed and is not empty
-        if (currentValue !== originalValue && 
-            currentValue !== undefined && 
-            currentValue !== null && 
-            currentValue !== '') {
+        if (currentValue !== originalValue &&
+          currentValue !== undefined &&
+          currentValue !== null &&
+          currentValue !== '') {
           changedFields[field] = currentValue
           oldData[field] = originalValue || ''
         }
@@ -744,10 +744,10 @@ export function useFormDataManagement() {
         const currentValue = filteredCurrentData[key]
         const originalValue = originalData[key]
 
-        if (currentValue !== originalValue && 
-            currentValue !== undefined && 
-            currentValue !== null && 
-            currentValue !== '') {
+        if (currentValue !== originalValue &&
+          currentValue !== undefined &&
+          currentValue !== null &&
+          currentValue !== '') {
           changedFields[key] = currentValue
           oldData[key] = originalValue || ''
         }
@@ -781,7 +781,7 @@ export function useFormDataManagement() {
     mapFamilyArray,
     mapEmergencyArray,
     processComplexData,
-    
+
     // Data filtering functions
     filterBasicInformationFields,
     filterPayrollAccountFields,

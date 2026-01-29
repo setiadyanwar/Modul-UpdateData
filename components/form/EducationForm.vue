@@ -772,7 +772,7 @@ const isSectionVisible = computed(() => {
 
   const educationFields = [
     'education_institution', 'education_level', 'education_major',
-    'graduation_year', 'gpa', 'education_certificate', 'academic_transcript'
+    'graduation_year', 'education_certificate', 'academic_transcript'
   ];
 
   return educationFields.some(field => props.formConfig.visibleFields.has(field));

@@ -466,7 +466,7 @@ const formatFieldName = (fieldName) => {
     'education_major': 'Major/Field of Study',
     'education_start_date': 'Start Date',
     'education_end_date': 'End Date',
-    'education_gpa': 'GPA',
+    'education_end_date': 'End Date',
     'education_certificate': 'Certificate',
     
     // Education (short form)
@@ -478,7 +478,7 @@ const formatFieldName = (fieldName) => {
     'edu_major_id': 'Major/Field of Study',
     'edu_start_date': 'Start Date',
     'edu_end_date': 'End Date',
-    'edu_gpa': 'GPA',
+    'edu_end_date': 'End Date',
     'edu_certificate': 'Certificate',
   };
   
