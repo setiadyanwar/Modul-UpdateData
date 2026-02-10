@@ -23,10 +23,23 @@ export const useAuthState = () => {
    * @returns {Promise<boolean>} - Resolves true when auth ready, false on timeout
    */
   const waitForAuth = async (timeout = 5000) => {
-    // If already ready, return immediately
+    // ✅ FIX #4: Enhanced check - verify permissions are also loaded
+    // If already ready AND permissions are loaded, return immediately
     if (authReady.value) {
-      // console.log('[useAuthState] ✅ Auth already ready');
-      return true;
+      // Also verify permissions are loaded in localStorage
+      if (typeof window !== 'undefined') {
+        const perms = localStorage.getItem('user_permissions');
+        const roles = localStorage.getItem('user_roles');
+
+        if (perms || roles) {
+          // console.log('[useAuthState] ✅ Auth already ready with permissions');
+          return true;
+        }
+        // Auth ready but no permissions yet - continue waiting
+        // console.log('[useAuthState] ⚠️ Auth ready but permissions not loaded yet');
+      } else {
+        return true;
+      }
     }
 
     // If running in iframe, wait for parent to send token
@@ -40,9 +53,14 @@ export const useAuthState = () => {
         const checkInterval = setInterval(() => {
           const elapsed = Date.now() - startTime;
 
-          if (authReady.value) {
+          // ✅ Enhanced check: verify both authReady AND permissions
+          const perms = localStorage.getItem('user_permissions');
+          const roles = localStorage.getItem('user_roles');
+          const hasPermissions = !!(perms || roles);
+
+          if (authReady.value && hasPermissions) {
             clearInterval(checkInterval);
-            // console.log('[useAuthState] ✅ Auth ready after', elapsed, 'ms');
+            // console.log('[useAuthState] ✅ Auth ready with permissions after', elapsed, 'ms');
             resolve(true);
           } else if (elapsed >= timeout) {
             clearInterval(checkInterval);

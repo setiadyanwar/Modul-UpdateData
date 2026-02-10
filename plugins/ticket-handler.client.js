@@ -300,6 +300,39 @@ export default defineNuxtPlugin((nuxtApp) => {
 
           const initResult = await auth.initializeUserData();
           // console.log('[Ticket Handler] Auth core initializeUserData result:', initResult?.success);
+
+
+          // ✅ FIX #1: Wait explicitly for permissions to be stored in localStorage
+          // This prevents race condition where redirect happens before permissions are ready
+          await new Promise((resolve) => {
+            const maxWaitTime = 3000; // 3 seconds max wait
+            const startTime = Date.now();
+
+            const checkPermissionsReady = () => {
+              const perms = UserStorage.getPermissions();
+              const roles = UserStorage.getRoles();
+              const user = UserStorage.getUser();
+              const elapsed = Date.now() - startTime;
+
+              // Check if we have minimum required data
+              if (user && (perms.length > 0 || roles.length > 0)) {
+                resolve();
+              } else if (elapsed >= maxWaitTime) {
+                // Timeout - proceed anyway but log warning
+                console.warn('[Ticket Handler] ⚠️ Permissions wait timeout after', elapsed, 'ms', {
+                  hasUser: !!user,
+                  rolesCount: roles.length,
+                  permsCount: perms.length
+                });
+                resolve();
+              } else {
+                // Check again in 100ms
+                setTimeout(checkPermissionsReady, 100);
+              }
+            };
+
+            checkPermissionsReady();
+          });
         } catch (e) {
           // console.warn('[Ticket Handler] ⚠️ Failed to initialize auth core user data:', e?.message);
         }
@@ -487,15 +520,30 @@ export default defineNuxtPlugin((nuxtApp) => {
 
         const isReload = !!localStorage.getItem('last_visited_route');
 
-        // console.log('[Ticket Handler] ✅ All data saved, redirecting to', targetRoute, 'in 1000ms...');
+        // console.log('[Ticket Handler] ✅ All data saved, redirecting to', targetRoute, 'in 500ms...');
         // console.log('[Ticket Handler] 📍 Route type:', isReload ? 'RELOAD (restored route)' : 'FRESH LOGIN (default route)');
 
+        // ✅ FIX #2: Quick verification before redirect (permissions already waited in FIX #1)
+        // Short delay to ensure DOM is ready
         setTimeout(() => {
-          // console.log('[Ticket Handler] Redirecting now to:', targetRoute);
-          // Clean URL (remove ticket parameter) and go to target route
+          // Quick final check
+          const perms = UserStorage.getPermissions();
+          const roles = UserStorage.getRoles();
+          const user = UserStorage.getUser();
+
+          // Permissions should already be ready from FIX #1, this is just a sanity check
+          if (!user || (roles.length === 0 && perms.length === 0)) {
+            console.warn('[Ticket Handler] ⚠️ Unexpected: permissions not ready after FIX #1 wait', {
+              hasUser: !!user,
+              rolesCount: roles.length,
+              permsCount: perms.length
+            });
+          }
+
+          // Proceed with redirect
           window.history.replaceState({}, document.title, targetRoute);
           router.push(targetRoute);
-        }, 1000); // Increased from 500ms to 1000ms
+        }, 500); // Back to original 500ms - FIX #1 already handles the wait
 
         // Login success - clear flags
         if (process.client) {
@@ -670,8 +718,34 @@ export default defineNuxtPlugin((nuxtApp) => {
           await auth.checkAuth(); // Sets user.value from localStorage
           // console.log('[Ticket Handler] ✅ Auth core initialized from cached session');
 
+
           // ✅ Wait for reactive updates to propagate
           await nextTick();
+
+          // ✅ FIX #3: Verify permissions are ready before redirect (same as fresh ticket path)
+          // Wait for permissions to be available in cached ticket scenario
+          await new Promise((resolve) => {
+            const maxWaitTime = 2000; // 2 seconds max wait
+            const startTime = Date.now();
+
+            const checkPermissionsReady = () => {
+              const perms = UserStorage.getPermissions();
+              const roles = UserStorage.getRoles();
+              const user = UserStorage.getUser();
+              const elapsed = Date.now() - startTime;
+
+              if (user && (perms.length > 0 || roles.length > 0)) {
+                resolve();
+              } else if (elapsed >= maxWaitTime) {
+                console.warn('[Ticket Handler] ⚠️ Cached session timeout after', elapsed, 'ms');
+                resolve();
+              } else {
+                setTimeout(checkPermissionsReady, 100);
+              }
+            };
+
+            checkPermissionsReady();
+          });
 
           // ✅ THEN redirect (auth is guaranteed ready) - FIX RACE CONDITION
           let lastRoute = localStorage.getItem('last_visited_route') || '/update-data';
@@ -700,7 +774,6 @@ export default defineNuxtPlugin((nuxtApp) => {
             // console.log('[Ticket Handler] ✅ Found last_visited_route in localStorage:', lastRoute);
           }
 
-          // console.log('[Ticket Handler] 🚀 Redirecting to:', lastRoute);
           window.history.replaceState({}, document.title, lastRoute);
           router.push(lastRoute);
         } catch (error) {
