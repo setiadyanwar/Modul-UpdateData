@@ -10,7 +10,7 @@ import { useAuthenticationCore } from "./useAuthenticationCore";
 
 export const useProfile = () => {
   const { user } = useAuthenticationCore();
-  
+
   const profile = ref({
     employee_name: "",
     email: "",
@@ -30,16 +30,16 @@ export const useProfile = () => {
     nik: "",
     employee_id: "",
   });
-  
+
   const loading = ref(false);
   const error = ref(null);
 
   // Map user data to profile
   const mapUserToProfile = (userData) => {
     if (!userData) return null;
-    
+
     const isSSO = userData.authenticator === "ACTIVE DIRECTORY";
-    
+
     return {
       employee_name: isSSO ? userData.employee_name : (userData.name || userData.employee_name || ""),
       email: userData.email || "",
@@ -65,7 +65,7 @@ export const useProfile = () => {
   const loadProfile = async () => {
     loading.value = true;
     error.value = null;
-    
+
     try {
       const userData = user.value;
       if (userData) {
@@ -116,11 +116,11 @@ export const useProfile = () => {
   // User initials
   const userInitials = computed(() => {
     const name = profile.value.employee_name || user.value?.employee_name || user.value?.name || "";
-    
+
     if (!name.trim()) {
       return "U";
     }
-    
+
     return name
       .split(" ")
       .map((n) => n[0])
@@ -161,17 +161,42 @@ export const useProfile = () => {
     }
   }, { immediate: true, deep: true });
 
+  // ✅ FIX: Listen to custom event from ticket handler
+  // This ensures profile updates even if watcher doesn't trigger properly
+  if (process.client) {
+    const handleUserDataReady = (event) => {
+      console.log('[useProfile] 📢 Received user-data-ready event');
+      if (event.detail?.user) {
+        const mappedProfile = mapUserToProfile(event.detail.user);
+        if (mappedProfile) {
+          profile.value = mappedProfile;
+          console.log('[useProfile] ✅ Profile updated from event:', profile.value.employee_name);
+        }
+      }
+    };
+
+    window.addEventListener('user-data-ready', handleUserDataReady);
+
+    // Cleanup
+    if (typeof onUnmounted === 'function') {
+      onUnmounted(() => {
+        window.removeEventListener('user-data-ready', handleUserDataReady);
+      });
+    }
+  }
+
+
   return {
     // Profile data
     profile,
     profileData: profile,
     loading: computed(() => loading.value),
     error: computed(() => error.value),
-    
+
     // Functions
     loadProfile,
     updateProfilePhoto,
-    
+
     // Computed properties
     employeeName,
     email,
