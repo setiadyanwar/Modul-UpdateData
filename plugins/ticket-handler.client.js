@@ -315,10 +315,19 @@ export default defineNuxtPlugin((nuxtApp) => {
           // Set auth ready with all data
           setAuthReady(storedToken, storedUser, storedRoles, storedPermissions);
           console.log('[Ticket Handler] ✅ Auth ready state set after initialization');
+
+          // ✅ Dispatch event to notify components (Header, Sidebar) that user data is ready
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('user-data-updated', {
+              detail: { user: storedUser, roles: storedRoles, permissions: storedPermissions }
+            }));
+            console.log('[Ticket Handler] 📢 Dispatched user-data-updated event');
+          }
         } catch (e) {
           // console.warn('[Ticket Handler] ⚠️ Failed to initialize auth core user data:', e?.message);
         }
         // console.log('[Ticket Handler] Token check:', localStorage.getItem('access_token') ? 'EXISTS' : 'NOT FOUND');
+
 
 
 

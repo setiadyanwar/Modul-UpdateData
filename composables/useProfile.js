@@ -172,6 +172,38 @@ export const useProfile = () => {
     }
   }, { immediate: true, deep: true });
 
+  // ✅ FIX: Listen to user-data-updated event from ticket handler
+  // This ensures profile updates when ticket login completes
+  if (process.client) {
+    const handleUserDataUpdated = (event) => {
+      console.log('[useProfile] 📢 Received user-data-updated event');
+      // Reload from user.value (which should be updated by now)
+      if (user.value) {
+        const mappedProfile = mapUserToProfile(user.value);
+        if (mappedProfile) {
+          profile.value = mappedProfile;
+          console.log('[useProfile] ✅ Profile updated from event:', profile.value.employee_name);
+        }
+      } else if (event.detail?.user) {
+        // Fallback: use event data if user.value not set yet
+        const mappedProfile = mapUserToProfile(event.detail.user);
+        if (mappedProfile) {
+          profile.value = mappedProfile;
+          console.log('[useProfile] ✅ Profile updated from event data:', profile.value.employee_name);
+        }
+      }
+    };
+
+    window.addEventListener('user-data-updated', handleUserDataUpdated);
+
+    // Cleanup
+    if (typeof onUnmounted === 'function') {
+      onUnmounted(() => {
+        window.removeEventListener('user-data-updated', handleUserDataUpdated);
+      });
+    }
+  }
+
   return {
     // Profile data
     profile,
