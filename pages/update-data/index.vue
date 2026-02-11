@@ -4337,10 +4337,10 @@ onMounted(async () => {
   const { waitForAuth } = useAuthState(); // Call the composable
   // console.log('[Update-Data] ⏳ Waiting for auth before loading data...');
 
-  const authReady = await waitForAuth(2000); // Wait max 2 seconds (optimized from 5s)
+  const authReady = await waitForAuth(10000); // Wait max 10 seconds (increased for production reliability)
 
   if (!authReady) {
-    console.warn('[Update-Data] ⚠️ Auth not ready after 2s timeout, proceeding anyway');
+    console.warn('[Update-Data] ⚠️ Auth not ready after 10s timeout, proceeding anyway');
   } else {
     console.log('[Update-Data] ✅ Auth ready, proceeding with data load');
   }
