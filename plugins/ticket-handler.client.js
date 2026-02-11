@@ -300,23 +300,11 @@ export default defineNuxtPlugin((nuxtApp) => {
 
           const initResult = await auth.initializeUserData();
           // console.log('[Ticket Handler] Auth core initializeUserData result:', initResult?.success);
-
-          // ✅ FIX: Force trigger profile update after user data is initialized
-          // This ensures useProfile watcher catches the update even if user.value was set before component mounted
-          if (initResult?.success && typeof window !== 'undefined') {
-            // Dispatch custom event to notify components that user data is ready
-            window.dispatchEvent(new CustomEvent('user-data-ready', {
-              detail: {
-                user: initResult.userDetail,
-                permissions: initResult.permissions
-              }
-            }));
-            console.log('[Ticket Handler] 📢 Dispatched user-data-ready event');
-          }
         } catch (e) {
           // console.warn('[Ticket Handler] ⚠️ Failed to initialize auth core user data:', e?.message);
         }
         // console.log('[Ticket Handler] Token check:', localStorage.getItem('access_token') ? 'EXISTS' : 'NOT FOUND');
+
 
         // Step 3: User data already saved above via UserStorage.saveUser()
 

@@ -82,6 +82,17 @@ export const useProfile = () => {
     }
   };
 
+  // ✅ FIX: Load profile immediately on initialization
+  // This ensures profile is populated even if user.value was already set
+  if (process.client && user.value) {
+    const mappedProfile = mapUserToProfile(user.value);
+    if (mappedProfile) {
+      profile.value = mappedProfile;
+      console.log('[useProfile] ✅ Profile loaded on init:', profile.value.employee_name);
+    }
+  }
+
+
   // Update profile photo
   const updateProfilePhoto = async (photoUrl) => {
     profile.value.photo_profile_ess = photoUrl;
@@ -160,31 +171,6 @@ export const useProfile = () => {
       };
     }
   }, { immediate: true, deep: true });
-
-  // ✅ FIX: Listen to custom event from ticket handler
-  // This ensures profile updates even if watcher doesn't trigger properly
-  if (process.client) {
-    const handleUserDataReady = (event) => {
-      console.log('[useProfile] 📢 Received user-data-ready event');
-      if (event.detail?.user) {
-        const mappedProfile = mapUserToProfile(event.detail.user);
-        if (mappedProfile) {
-          profile.value = mappedProfile;
-          console.log('[useProfile] ✅ Profile updated from event:', profile.value.employee_name);
-        }
-      }
-    };
-
-    window.addEventListener('user-data-ready', handleUserDataReady);
-
-    // Cleanup
-    if (typeof onUnmounted === 'function') {
-      onUnmounted(() => {
-        window.removeEventListener('user-data-ready', handleUserDataReady);
-      });
-    }
-  }
-
 
   return {
     // Profile data
