@@ -300,10 +300,26 @@ export default defineNuxtPlugin((nuxtApp) => {
 
           const initResult = await auth.initializeUserData();
           // console.log('[Ticket Handler] Auth core initializeUserData result:', initResult?.success);
+
+          // ✅ CRITICAL FIX: Set auth ready state after initialization
+          // This signals to waitForAuth() that auth is ready and prevents timeout
+          const { useAuthState } = await import('~/composables/useAuthState');
+          const { setAuthReady } = useAuthState();
+
+          // Get current auth data
+          const storedToken = localStorage.getItem('access_token');
+          const storedUser = UserStorage.getUser();
+          const storedRoles = UserStorage.getRoles();
+          const storedPermissions = UserStorage.getPermissions();
+
+          // Set auth ready with all data
+          setAuthReady(storedToken, storedUser, storedRoles, storedPermissions);
+          console.log('[Ticket Handler] ✅ Auth ready state set after initialization');
         } catch (e) {
           // console.warn('[Ticket Handler] ⚠️ Failed to initialize auth core user data:', e?.message);
         }
         // console.log('[Ticket Handler] Token check:', localStorage.getItem('access_token') ? 'EXISTS' : 'NOT FOUND');
+
 
 
         // Step 3: User data already saved above via UserStorage.saveUser()
