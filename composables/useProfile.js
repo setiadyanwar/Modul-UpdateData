@@ -88,7 +88,6 @@ export const useProfile = () => {
     const mappedProfile = mapUserToProfile(user.value);
     if (mappedProfile) {
       profile.value = mappedProfile;
-      console.log('[useProfile] ✅ Profile loaded on init:', profile.value.employee_name);
     }
   }
 
@@ -176,20 +175,17 @@ export const useProfile = () => {
   // This ensures profile updates when ticket login completes
   if (process.client) {
     const handleUserDataUpdated = (event) => {
-      console.log('[useProfile] 📢 Received user-data-updated event');
       // Reload from user.value (which should be updated by now)
       if (user.value) {
         const mappedProfile = mapUserToProfile(user.value);
         if (mappedProfile) {
           profile.value = mappedProfile;
-          console.log('[useProfile] ✅ Profile updated from event:', profile.value.employee_name);
         }
       } else if (event.detail?.user) {
         // Fallback: use event data if user.value not set yet
         const mappedProfile = mapUserToProfile(event.detail.user);
         if (mappedProfile) {
           profile.value = mappedProfile;
-          console.log('[useProfile] ✅ Profile updated from event data:', profile.value.employee_name);
         }
       }
     };
@@ -252,7 +248,7 @@ export const useUserRoles = () => {
         userRoles.value = parsed;
         return;
       } catch (error) {
-        // console.error('[useUserRoles] Error parsing user_roles:', error);
+        // ignore parse errors
       }
     }
 
@@ -268,24 +264,22 @@ export const useUserRoles = () => {
           return;
         }
       } catch (error) {
-        // console.error('[useUserRoles] Error parsing user:', error);
+        // ignore parse errors
       }
     }
-
-    // console.warn('[useUserRoles] No roles found in localStorage');
   };
 
   // Load roles on initialization
   loadUserRoles();
 
   // ✅ FIX: Listen to custom event when roles are saved (fixes first load issue)
-  // This ensures roles update in real-time when UserStorage.saveRoles() is called
+  // This ensures roles update in real-time when roles are saved to localStorage
   if (process.client) {
     const handleRolesSaved = () => {
       loadUserRoles(); // Reload when roles change
     };
 
-    // Listen to custom event from UserStorage
+    // Listen to custom event from useUserProfile
     window.addEventListener('user-roles-saved', handleRolesSaved);
 
     // Listen to storage events for cross-tab sync

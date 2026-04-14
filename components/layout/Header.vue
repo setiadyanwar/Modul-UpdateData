@@ -153,12 +153,14 @@ const handleRolesRefreshEvent = () => {
 onMounted(() => {
   window.addEventListener('user-login', handleRolesRefreshEvent);
   window.addEventListener('user-roles-updated', handleRolesRefreshEvent);
+  window.addEventListener('user-roles-saved', handleRolesRefreshEvent); // ✅ Refresh when roles are saved from profile
   window.addEventListener('user-data-updated', handleRolesRefreshEvent); // ✅ Listen to iframe auth updates
 });
 
 onUnmounted(() => {
   window.removeEventListener('user-login', handleRolesRefreshEvent);
   window.removeEventListener('user-roles-updated', handleRolesRefreshEvent);
+  window.removeEventListener('user-roles-saved', handleRolesRefreshEvent);
   window.removeEventListener('user-data-updated', handleRolesRefreshEvent);
 });
 

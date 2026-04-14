@@ -107,7 +107,7 @@
 
     <!-- Family Section -->
     <UpdateDataFamilySection v-show="activeTab === 'family'" ref="familySectionRef" :model-value="familyData"
-      :edit-mode="safeEditMode" :is-loading="IsLoadingFamily"
+      :edit-mode="safeEditMode" :is-loading="isLoadingFamily"
       :is-tab-eligible="tabManagement.canEditTabCompletelySync(activeTab)" @update:model-value="val => familyData = val"
       @insert-request="handleInsertRequest" @edit-request="handleEditRequest"
       @open-change-request-modal="handleOpenChangeRequestModal" @field-touched="onFamilyFieldTouched"
@@ -115,7 +115,7 @@
 
     <!-- Education Section -->
     <UpdateDataEducationSection v-show="activeTab === 'education'" ref="educationSectionRef" :model-value="educationData"
-      :edit-mode="safeEditMode" :is-loading="IsLoadingEducation"
+      :edit-mode="safeEditMode" :is-loading="isLoadingEducation"
       :is-tab-eligible="tabManagement.canEditTabCompletelySync(activeTab)"
       :original-data="personalData.originalEducationData" :add-education-record="addEducationRecord"
       :remove-education-record="removeEducationRecord" @update:model-value="val => educationData = val"
@@ -123,18 +123,18 @@
 
     <!-- Benefit Section -->
     <UpdateDataSocialSecuritySection v-show="activeTab === 'social-security'" ref="socialSecuritySectionRef" :model-value="socialSecurityData"
-      :edit-mode="safeEditMode" :is-loading="IsLoadingSocialSecurity"
+      :edit-mode="safeEditMode" :is-loading="isLoadingSocialSecurity"
       @update:model-value="val => socialSecurityData = val"
       @files-changed="handleSocialSecurityFilesChanged" />
 
     <!-- Medical Record Section -->
     <UpdateDataMedicalRecordSection v-show="activeTab === 'medical-record'" :model-value="medicalRecordData"
-      :edit-mode="safeEditMode" :is-loading="IsLoadingMedicalRecord" :blood-type-options="medicalBloodTypeOptions"
+      :edit-mode="safeEditMode" :is-loading="isLoadingMedicalRecord" :blood-type-options="medicalBloodTypeOptions"
       :health-status-options="medicalHealthStatusOptions" @update:model-value="val => medicalRecordData = val" />
 
     <!-- Employment Information Section -->
     <UpdateDataEmploymentInfoSection v-show="activeTab === 'employment-information'" :model-value="employmentInfoData"
-      :is-loading="IsLoadingEmploymentInfo" />
+      :is-loading="isLoadingEmploymentInfo" />
 
     <!--
       Modals

@@ -36,16 +36,16 @@ export default defineNuxtPlugin((nuxtApp) => {
       // Step 1: Exchange ticket for JWT token via essbe API
       // console.log('[Ticket Handler] Step 1: POST /auth/ticket/login to essbe API');
 
-      // Import API client dynamically
-      const { apiPost } = await import('~/axios/api.client');
+      // Import API logic from the login feature module
+      const { performTicketLogin } = await import('~/pages/login/api/authApi');
 
-      // Exchange ticket for JWT token via essbe API
+      // Exchange ticket for JWT token via the modularized API
       let response;
       let responseStatus = null;
       let isErrorResponse = false;
 
       try {
-        response = await apiPost('/auth/ticket/login', { ticket });
+        response = await performTicketLogin(ticket);
 
         // ✅ CRITICAL: Check if response is actually an error
         // Axios with validateStatus < 500 doesn't throw for 4xx, so we need to check manually
