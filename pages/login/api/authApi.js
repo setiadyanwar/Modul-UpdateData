@@ -23,7 +23,7 @@ export const performLoginRequest = async (email, password) => {
  * @returns {Promise<any>} The raw API response
  */
 export const performTicketLogin = async (ticket) => {
-  const TICKET_LOGIN_ENDPOINT = '/api/auth/ticket/login';
+  const TICKET_LOGIN_ENDPOINT = '/api/ticket-exchange';
   
   return await $fetch(TICKET_LOGIN_ENDPOINT, {
     method: 'POST',

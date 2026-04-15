@@ -130,6 +130,7 @@ export const useAuthState = () => {
     authReady: readonly(authReady),
     authToken: readonly(authToken),
     authUser: readonly(authUser),
+    user: readonly(authUser), // ✅ Alias for compatibility with useAuthenticationCore
     authRoles: readonly(authRoles),
     authPermissions: readonly(authPermissions),
 

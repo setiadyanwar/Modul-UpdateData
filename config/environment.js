@@ -59,7 +59,7 @@ export default {
       ESS_HOST: 'https://ess-telkomsigma.vercel.app'
     },
     DEVELOPMENT: {
-      ESS_HOST: 'https://ess-telkomsigma.vercel.app'
+      ESS_HOST: 'http://localhost:3000'
     }
   },
 

@@ -141,19 +141,17 @@ export const useChangeRequestHistory = () => {
         // Check token validity before making request (do not clear existing list on failure)
         try {
           console.log('[History] Checking token validity...');
-          const { useAuthenticationCore } = await import('~/composables/useAuthenticationCore');
-          const authCore = useAuthenticationCore();
           const token = localStorage.getItem('access_token');
-          const isAuthenticated = authCore.isAuthenticated.value;
           
-          console.log('[History] Auth state - Token exists:', !!token, 'isAuthenticated:', isAuthenticated);
+          // Check if token exists (do not rely on composable state which may lag behind)
+          console.log('[History] Token from localStorage:', !!token);
           
-          if (!token || !isAuthenticated) {
-            console.warn('[History] ⚠️ No valid token found or not authenticated');
+          if (!token) {
+            console.warn('[History] ⚠️ No access token found');
             error.value = 'Session expired. Please log in again.';
             return; // keep previous requests
           }
-          console.log('[History] ✅ Token validated');
+          console.log('[History] ✅ Token exists, proceeding with API call');
         } catch (tokenErr) {
           console.error('[History] Token validation error:', tokenErr);
           error.value = 'Session expired. Please log in again.';

@@ -25,11 +25,11 @@ export default defineEventHandler(async (event) => {
     // Get API base URL from environment config
     const apiBaseUrl = envConfig.API_BASE_URL;
 
-    // Exchange ticket with backend
-    console.log('[Ticket Exchange API] Calling backend:', `${apiBaseUrl}/auth/ticket-exchange`);
+    // Exchange ticket with backend (use ticket/login endpoint which returns token)
+    console.log('[Ticket Exchange API] Calling backend:', `${apiBaseUrl}/auth/ticket/login`);
 
     // Use fetch directly to properly handle response status codes
-    const response = await fetch(`${apiBaseUrl}/auth/ticket-exchange`, {
+    const response = await fetch(`${apiBaseUrl}/auth/ticket/login`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

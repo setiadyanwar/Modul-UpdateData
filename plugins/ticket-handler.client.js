@@ -292,12 +292,18 @@ export default defineNuxtPlugin((nuxtApp) => {
           const { useAuthenticationCore } = await import('~/composables/useAuthenticationCore');
           const auth = useAuthenticationCore();
 
-          // ✅ OPTIMIZED: Skip explicit checkAuth, initializeUserData handles it.
-          // Also prevents double-fetch of user detail if already populated.
-          // We pass { userDetail: userData } if we want to hydrate it directly? 
-          // Currently initializeUserData fetches fresh data, which is good for consistency.
-          // But we can rely on parallel execution inside it.
+          // ✅ CRITICAL: Get stored user data and set synchronously BEFORE async initializeUserData
+          // This ensures components see user data immediately (no skeleton)
+          const storedUser = UserStorage.getUser();
+          const storedRoles = UserStorage.getRoles();
+          const storedPermissions = UserStorage.getPermissions();
 
+          if (storedUser && auth.user) {
+            auth.user.value = storedUser; // Set user data immediately
+            console.log('[Ticket Handler] ✅ User data set synchronously, preventing skeleton load');
+          }
+
+          // ✅ Now fetch full profile asynchronously (will update auth.user.value when done)
           const initResult = await auth.initializeUserData();
           // console.log('[Ticket Handler] Auth core initializeUserData result:', initResult?.success);
 
@@ -308,9 +314,6 @@ export default defineNuxtPlugin((nuxtApp) => {
 
           // Get current auth data
           const storedToken = localStorage.getItem('access_token');
-          const storedUser = UserStorage.getUser();
-          const storedRoles = UserStorage.getRoles();
-          const storedPermissions = UserStorage.getPermissions();
 
           // Set auth ready with all data
           setAuthReady(storedToken, storedUser, storedRoles, storedPermissions);
