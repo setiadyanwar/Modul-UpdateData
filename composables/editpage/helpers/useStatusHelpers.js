@@ -117,7 +117,7 @@ export const getBreadcrumbItems = (requestDetail, requestId) => {
     const items = [
         { label: "Dashboard", href: "/" },
         { label: "Update Data", href: "/update-data" },
-        { label: "Request History", href: "/update-data/history" },
+        { label: "Request History", href: "/history" },
     ];
 
     if (requestDetail) {

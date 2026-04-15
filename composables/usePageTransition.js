@@ -36,8 +36,8 @@ export const usePageTransition = () => {
   // Predefined loading messages for different routes
   const routeMessages = {
     '/update-data': 'Loading Personal Data...',
-    '/update-data/history': 'Loading Request History...',
-    '/update-data/consent': 'Loading Consent Management...',
+    '/history': 'Loading Request History...',
+    '/consent': 'Loading Consent Management...',
     '/rbac': 'Loading RBAC Management...',
     '/favorites': 'Loading Favorites...',
     '/manage-app': 'Loading App Management...',

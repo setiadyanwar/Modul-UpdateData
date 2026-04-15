@@ -107,7 +107,7 @@ const isLoading = computed(() => isLoadingConsents.value)
 const breadcrumbItems = computed(() => [
   { label: 'Home', href: '/' },
   { label: 'Update Data', href: '/update-data' },
-  { label: 'Consent Management', href: '/update-data/consent' }
+  { label: 'Consent Management', href: '/consent' }
 ])
 
 // Methods
@@ -132,7 +132,7 @@ const handleView = (consent) => {
 
 const handleEdit = (consent) => {
   // Navigate to edit page
-  navigateTo(`/update-data/consent/edit/${consent.id_consent}`)
+  navigateTo(`/consent/edit/${consent.id_consent}`)
 }
 
 

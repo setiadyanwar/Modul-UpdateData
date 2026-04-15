@@ -195,8 +195,8 @@ export function useEditPageComposed() {
     const code = displayRequestCode.value || `REQ-${requestId.value}`
     return [
       { label: 'Update Data', href: '/update-data' },
-      { label: 'Request History', href: '/update-data/history' },
-      { label: `Edit Request (${code})`, href: `/update-data/edit/${requestId.value}`, current: true }
+      { label: 'Request History', href: '/history' },
+      { label: `Edit Request (${code})`, href: `/history/${requestId.value}`, current: true }
     ]
   })
 

@@ -47,8 +47,8 @@ export const ROLE_PERMISSIONS = {
 
 // Route to permission mapping
 const ROUTE_PERMISSIONS = {
-  '/update-data/consent': [PERMISSIONS.MANAGE_CONSENT],
-  '/update-data/history': [PERMISSIONS.REQUEST_HISTORY_AND_STATUS],
+  '/consent': [PERMISSIONS.MANAGE_CONSENT],
+  '/history': [PERMISSIONS.REQUEST_HISTORY_AND_STATUS],
   '/rbac': [PERMISSIONS.RBAC_ADMIN],
   '/rbac/manage': [PERMISSIONS.RBAC_ADMIN],
 };

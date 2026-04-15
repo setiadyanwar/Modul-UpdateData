@@ -86,7 +86,7 @@ const suggestion = computed(() => {
   if (attemptedPath.includes("/history/")) {
     return {
       name: "History",
-      path: "/update-data/history",
+      path: "/history",
     };
   }
   if (attemptedPath.includes("/edit/")) {
@@ -95,7 +95,7 @@ const suggestion = computed(() => {
     if (potentialId && potentialId !== "edit") {
       return {
         name: "Edit",
-        path: `/update-data/edit/${potentialId}`,
+        path: `/history/${potentialId}`,
       };
     }
   }

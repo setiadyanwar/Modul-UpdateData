@@ -2125,7 +2125,7 @@ const submitRequestAPI = async () => {
       // Redirect only when requested by the caller (e.g., from history edit page)
       try {
         if (props.redirectOnSuccess) {
-          await navigateTo('/update-data/history');
+          await navigateTo('/history');
         }
       } catch (e) {
         // ignore navigation errors

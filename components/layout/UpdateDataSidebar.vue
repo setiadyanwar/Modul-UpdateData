@@ -243,7 +243,7 @@ const regularNavigation = computed(() => {
   if (canViewHistory.value) {
     items.push({
       name: "Request History & Status",
-      href: "/update-data/history",
+      href: "/history",
       icon: "pi pi-history",
     });
   }
@@ -259,7 +259,7 @@ const hcNavigation = computed(() => {
   if (canManageConsent.value) {
     items.push({
       name: "Consent Management",
-      href: "/update-data/consent",
+      href: "/consent",
       icon: "pi pi-file",
     });
   }
@@ -272,16 +272,18 @@ const isActive = (href) => {
   if (href === "/update-data") {
     // Active only for the main update-data page
     return route.path === "/update-data";
-  } else if (href === "/update-data/history") {
+  } else if (href === "/history") {
     // Active for all history, edit, and view pages
     return (
-      route.path.startsWith("/update-data/history") ||
-      route.path.startsWith("/update-data/edit") ||
-      route.path.startsWith("/update-data/view")
+      route.path.startsWith("/history/") ||
+      route.path === "/history"
     );
-  } else if (href === "/update-data/consent") {
+  } else if (href === "/consent") {
     // Active for consent management page
-    return route.path === "/update-data/consent";
+    return (
+      route.path === "/consent" ||
+      route.path.startsWith("/consent/")
+    );
   }
   // Fallback: active if path matches exactly
   return route.path === href;

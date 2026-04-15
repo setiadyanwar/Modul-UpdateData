@@ -15,7 +15,7 @@ export default defineNuxtPlugin(() => {
   // Pantau perubahan rute
   router.beforeEach((to, from) => {
     // Reset cache saat navigasi dari history ke update-data
-    if (from.path.includes('/update-data/history') && to.path === '/update-data') {
+    if (from.path.includes('/history') && to.path === '/update-data') {
       // Reset cache untuk memastikan data terbaru dimuat
       tabManagement.resetChangeRequestsCache();
       

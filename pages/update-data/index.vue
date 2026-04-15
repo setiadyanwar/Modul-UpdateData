@@ -1136,7 +1136,7 @@ const continueExistingDraft = async () => {
   if (currentStatusRequest.value) {
     const requestId = currentStatusRequest.value.id_change_req || currentStatusRequest.value.id;
     if (requestId) {
-      await navigateTo(`/update-data/edit/${requestId}`);
+      await navigateTo(`/history/${requestId}`);
     }
   }
 };
@@ -2388,7 +2388,7 @@ const handleChangeRequestSubmit = async (formData) => {
     showSuccessToast(message);
 
     // Navigate to history page
-    await navigateTo('/update-data/history');
+    await navigateTo('/history');
 
   } catch (error) {
 
@@ -3926,7 +3926,7 @@ const handleSaveAsDraft = async () => {
       }));
 
       // Redirect to history page where user can continue editing
-      await navigateTo('/update-data/history');
+      await navigateTo('/history');
       return response;
     } else {
       throw new Error(response?.message || 'Failed to save draft - API returned non-success response');
@@ -4774,7 +4774,7 @@ onMounted(async () => {
     }
 
     // Detect navigation FROM history TO update-data
-    if (newPath === '/update-data' && oldPath && oldPath.includes('/update-data/history')) {
+    if (newPath === '/update-data' && oldPath && oldPath.includes('/history')) {
       // console.log('[NAVIGATION] Detected navigation from history to update-data');
       // console.log('[NAVIGATION] Old path:', oldPath);
       // console.log('[NAVIGATION] New path:', newPath);

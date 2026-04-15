@@ -2211,7 +2211,7 @@ const isApiNotReady = computed(() => {
   };
   
   const handleEdit = () => {
-  navigateTo(`/update-data/edit/${props.requestId}`);
+  navigateTo(`/history/${props.requestId}`);
     closeModal();
   };
   

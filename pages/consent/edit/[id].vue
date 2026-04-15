@@ -227,8 +227,8 @@ const hasChanges = computed(() => {
 const breadcrumbItems = computed(() => [
   { label: 'Home', href: '/' },
   { label: 'Update Data', href: '/update-data' },
-  { label: 'Consent Management', href: '/update-data/consent' },
-  { label: 'Edit Consent', href: `/update-data/consent/edit/${consentId}` }
+  { label: 'Consent Management', href: '/consent' },
+  { label: 'Edit Consent', href: `/consent/edit/${consentId}` }
 ])
 
 // Methods
@@ -285,7 +285,7 @@ const handleSubmit = async () => {
     }
     
     // Navigate back to list with refresh flag so index reloads data
-    await navigateTo({ path: '/update-data/consent', query: { refresh: Date.now().toString() } })
+    await navigateTo({ path: '/consent', query: { refresh: Date.now().toString() } })
     
   } catch (error) {
     showToast('Failed to update consent', 'error')
@@ -319,7 +319,7 @@ const populateForm = (consentData) => {
 }
 
 const goBack = () => {
-  navigateTo('/update-data/consent')
+  navigateTo('/consent')
 }
 
 // Watchers

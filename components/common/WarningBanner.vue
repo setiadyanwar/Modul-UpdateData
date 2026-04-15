@@ -141,7 +141,7 @@ const props = defineProps({
   },
   historyLink: {
     type: String,
-    default: '/update-data/history'
+    default: '/history'
   }
 });
 
@@ -166,13 +166,13 @@ const computedVariant = computed(() => {
 // Computed history link that can be customized for need revision
 const computedHistoryLink = computed(() => {
   if (computedVariant.value === 'need-revision' && props.needRevisionRequest?.id) {
-    return `/update-data/edit/${props.needRevisionRequest.id}`;
+    return `/history/${props.needRevisionRequest.id}`;
   }
   if (computedVariant.value === 'draft' && props.needRevisionRequest?.id) {
-    return `/update-data/edit/${props.needRevisionRequest.id}`;
+    return `/history/${props.needRevisionRequest.id}`;
   }
   if (computedVariant.value === 'pending' && props.needRevisionRequest?.id) {
-    return `/update-data/view/${props.needRevisionRequest.id}`;
+    return `/history/${props.needRevisionRequest.id}`;
   }
   return props.historyLink;
 });

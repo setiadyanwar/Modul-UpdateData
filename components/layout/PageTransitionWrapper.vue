@@ -50,7 +50,7 @@ const props = defineProps({
   // Route paths that should use skeleton
   skeletonRoutes: {
     type: Array,
-    default: () => ['/update-data', '/update-data/history']
+    default: () => ['/update-data', '/history']
   }
 });
 

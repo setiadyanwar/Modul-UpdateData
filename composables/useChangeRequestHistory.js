@@ -134,29 +134,39 @@ export const useChangeRequestHistory = () => {
     
     loadingPromise = (async () => {
       try {
+        console.log('[History] Starting loadChangeRequests');
         isLoading.value = true
         error.value = null
         
         // Check token validity before making request (do not clear existing list on failure)
         try {
+          console.log('[History] Checking token validity...');
           const { useAuthenticationCore } = await import('~/composables/useAuthenticationCore');
           const authCore = useAuthenticationCore();
-          const validToken = await authCore.getValidAccessToken();
-          if (!validToken) {
+          const token = localStorage.getItem('access_token');
+          const isAuthenticated = authCore.isAuthenticated.value;
+          
+          console.log('[History] Auth state - Token exists:', !!token, 'isAuthenticated:', isAuthenticated);
+          
+          if (!token || !isAuthenticated) {
+            console.warn('[History] ⚠️ No valid token found or not authenticated');
             error.value = 'Session expired. Please log in again.';
             return; // keep previous requests
           }
-        } catch {
+          console.log('[History] ✅ Token validated');
+        } catch (tokenErr) {
+          console.error('[History] Token validation error:', tokenErr);
           error.value = 'Session expired. Please log in again.';
           return; // keep previous requests
         }
         
         // Request first page explicitly to avoid backend default page issues
+        console.log('[History] Fetching change requests from API...');
         const response = await apiGet('/employee/change-request?page=1&limit=50')
+        console.log('[History] API Response:', response);
         
         if (response.success && response.data) {
-        
-        // Transform API data to match component expectations
+          console.log('[History] ✅ Data received, records count:', response.data.length);
         requests.value = response.data.map(request => ({
           id: request.id_change_req,
           id_change_req: request.id_change_req,
@@ -213,7 +223,7 @@ export const useChangeRequestHistory = () => {
             
             if (newToken) {
               // Retry the request with new token
-              const retryResponse = await apiGet('/api/proxy/employee/change-request?limit=50');
+              const retryResponse = await apiGet('/employee/change-request?limit=50');
               if (retryResponse.success && retryResponse.data) {
                 // Transform API data to match component expectations
                 requests.value = retryResponse.data.map(request => ({
@@ -259,6 +269,7 @@ export const useChangeRequestHistory = () => {
         }
         
         // error loading requests - keep previous list to avoid empty UI
+        console.error('[History] ❌ Error loading change requests:', err.message);
         error.value = err.message
       } finally {
         isLoading.value = false
@@ -271,7 +282,7 @@ export const useChangeRequestHistory = () => {
 
   // Get change request detail
   const getChangeRequestDetail = async (changeRequestId) => {
-    const response = await apiGet(`/api/proxy/employee/change-request/${changeRequestId}`)
+    const response = await apiGet(`/employee/change-request/${changeRequestId}`)
     if (response.success && response.data) {
       return response.data
     }

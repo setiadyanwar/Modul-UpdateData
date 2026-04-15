@@ -349,7 +349,7 @@ watch(changeRequests, (newRequests, oldRequests) => {
 // Watch for route changes to refresh data when navigating to this page
 const route = useRoute();
 watch(() => route.path, (newPath, oldPath) => {
-  if (newPath === '/update-data/history' && oldPath !== newPath) {
+  if (newPath === '/history' && oldPath !== newPath) {
     // Use nextTick and then call refresh without async/await in watch
     nextTick(() => {
       debouncedRefresh();
@@ -571,7 +571,7 @@ const handleRowClick = async (request) => {
 // Handle Edit dengan data lengkap
 const handleEdit = (request) => {
   // Navigate to edit page with clean URL - data will be loaded from API
-  navigateTo(`/update-data/edit/${request.id}`);
+  navigateTo(`/history/${request.id}`);
 };
 
 const handleDelete = async (request) => {
