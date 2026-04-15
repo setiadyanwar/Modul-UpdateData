@@ -321,17 +321,17 @@ export const useExportData = () => {
     error.value = null;
 
     try {
-      // Map data types ke kategori API
+      // Map data types ke kategori API (harus match dengan title di dataTypes array)
       const categoryMapping = {
         "Basic Information": "basic",
-        "Employment": "employment",
+        "Employment Information": "employment",
         "Address": "address", 
         "Emergency Contact": "emergency",
-        "Account": "payroll",
+        "Payroll Account Information": "payroll",
         "Family": "family",
         "Education": "education",
         "Benefit": "social",
-        "Medical": "medical"
+        "Medical Record": "medical"
       };
 
       // Siapkan kategori yang dipilih
@@ -566,10 +566,18 @@ function normalizeFamily(data) {
     familyData = data.data;
   }
   
-  // Return the data with family_members array
+  // Check if familyData is already an array (direct response)
+  if (Array.isArray(familyData)) {
+    return {
+      family_members: familyData,
+      total_family_members: familyData.length
+    };
+  }
+  
+  // Otherwise it's an object, extract the family_members array
   return {
     family_members: familyData.family_members || [],
-    total_family_members: familyData.total_family_members || 0
+    total_family_members: familyData.total_family_members || familyData.family_members?.length || 0
   };
 }
 
@@ -582,9 +590,18 @@ function normalizeEmergencyContact(data) {
     contactData = data.data;
   }
   
+  // Check if contactData is already an array (direct response)
+  if (Array.isArray(contactData)) {
+    return {
+      emergency_contacts: contactData,
+      total_contacts: contactData.length
+    };
+  }
+  
+  // Otherwise it's an object, extract the emergency_contacts array
   return {
     emergency_contacts: contactData.emergency_contacts || [],
-    total_contacts: contactData.total_contacts || 0
+    total_contacts: contactData.total_contacts || contactData.emergency_contacts?.length || 0
   };
 }
 
@@ -597,9 +614,18 @@ function normalizeEducation(data) {
     educationData = data.data;
   }
   
+  // Check if educationData is already an array (direct response)
+  if (Array.isArray(educationData)) {
+    return {
+      education_history: educationData,
+      total_education_records: educationData.length
+    };
+  }
+  
+  // Otherwise it's an object, extract the education_history array
   return {
     education_history: educationData.education_history || [],
-    total_education_records: educationData.total_education_records || 0
+    total_education_records: educationData.total_education_records || educationData.education_history?.length || 0
   };
 }
 

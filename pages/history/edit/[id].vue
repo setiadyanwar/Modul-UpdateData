@@ -470,7 +470,7 @@ const breadcrumbItems = computed(() => {
   const items = [
     { label: "Dashboard", href: "/" },
     { label: "Update Data", href: "/update-data" },
-    { label: "Request History", href: "/update-data/history" },
+    { label: "Request History", href: "/history" },
   ];
 
   if (requestDetail.value) {
@@ -3004,7 +3004,7 @@ const handleChangeRequest = async (requestData) => {
 
       console.log('🔄 Redirecting to history page...');
       // Redirect to history page
-      await navigateTo('/update-data/history');
+      await navigateTo('/history');
     } else {
       console.error('❌ Submit failed:', response);
       throw new Error(response.message || 'Failed to update request');
@@ -3084,7 +3084,7 @@ const handleRevisionSubmit = async () => {
       }));
 
       // Redirect to history page or show success message
-      await navigateTo('/update-data/history');
+      await navigateTo('/history');
     } else {
       throw new Error(response.message || 'Failed to submit revision');
     }
@@ -3175,7 +3175,7 @@ const loadRequestDetail = async () => {
       if (!local) {
         error.value = "Request not found. Please check your request history.";
         setTimeout(() => {
-          navigateTo('/update-data/history');
+          navigateTo('/history');
         }, 2000);
         return;
       }
@@ -7674,7 +7674,7 @@ const handleSubmitRequest = async () => {
       }));
 
       // Redirect to history page
-      await navigateTo('/update-data/history');
+      await navigateTo('/history');
     } else {
       throw new Error(response.message || 'Failed to submit request');
     }

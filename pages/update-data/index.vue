@@ -69,7 +69,7 @@
       :has-draft="hasDraftForCurrentCategory"
       :need-revision-request="currentStatusRequest"
       :variant="getWarningBannerVariant"
-      history-link="/update-data/history"
+      history-link="/history"
     />
 
     <!--

@@ -571,7 +571,7 @@ const handleRowClick = async (request) => {
 // Handle Edit dengan data lengkap
 const handleEdit = (request) => {
   // Navigate to edit page with clean URL - data will be loaded from API
-  navigateTo(`/history/${request.id}`);
+  navigateTo(`/history/edit/${request.id}`);
 };
 
 const handleDelete = async (request) => {

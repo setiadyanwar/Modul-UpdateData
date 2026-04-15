@@ -533,7 +533,7 @@ const goBack = () => {
 };
 
 const handleEdit = () => {
-  navigateTo(`/history/${route.params.id}`);
+  navigateTo(`/history/view/${route.params.id}`);
 };
 
 const retryLoad = async () => {
