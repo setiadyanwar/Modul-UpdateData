@@ -81,7 +81,26 @@ export const useAuthenticationCore = () => {
   };
 
   const handleIframeLogout = (reason) => {
-    const parentOrigin = document.referrer ? new URL(document.referrer).origin : '*';
+    // Get parent origin - same logic as ticket-handler
+    const getParentOrigin = () => {
+      try {
+        const ref = document.referrer || '';
+        if (ref) {
+          const origin = new URL(ref).origin;
+          if (origin) return origin;
+        }
+        // Fallback to config
+        const envConfig = require('~/config/environment').default;
+        return envConfig.IS_PRODUCTION 
+          ? envConfig.FRONTEND_URLS.PRODUCTION.ESS_HOST 
+          : envConfig.FRONTEND_URLS.DEVELOPMENT.ESS_HOST;
+      } catch {
+        return '*';
+      }
+    };
+
+    const parentOrigin = getParentOrigin();
+    console.log('[Auth] Sending logout postMessage to:', parentOrigin);
     
     window.parent.postMessage({
       type: 'LOGOUT_REQUEST',
