@@ -161,10 +161,12 @@
                 <button
                   v-if="canEdit(getNormalizedStatus(request))"
                   @click.stop="handleEdit(request)"
-                  class="inline-flex items-center justify-center w-6 h-6 bg-green-100 dark:bg-blue-900 hover:bg-green-200 dark:hover:bg-blue-800 text-green-600 dark:text-blue-400 rounded-md transition-colors"
+                  :disabled="isEditLoading(request.id)"
+                  class="inline-flex items-center justify-center w-6 h-6 bg-green-100 dark:bg-blue-900 hover:bg-green-200 dark:hover:bg-blue-800 text-green-600 dark:text-blue-400 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   title="Edit Request"
                 >
-                  <i class="pi pi-pencil text-xs"></i>
+                  <i v-if="!isEditLoading(request.id)" class="pi pi-pencil text-xs"></i>
+                  <i v-else class="pi pi-spin pi-spinner text-xs animate-spin"></i>
                 </button>
                 <button
                   v-if="canDelete(getNormalizedStatus(request))"
@@ -253,10 +255,12 @@
             <button
               v-if="canEdit(getNormalizedStatus(request))"
               @click.stop="handleEdit(request)"
-              class="inline-flex items-center justify-center w-8 h-8 bg-green-100 dark:bg-green-900 hover:bg-green-200 dark:hover:bg-green-800 text-green-600 dark:text-green-400 rounded-md transition-colors"
+              :disabled="isEditLoading(request.id)"
+              class="inline-flex items-center justify-center w-8 h-8 bg-green-100 dark:bg-green-900 hover:bg-green-200 dark:hover:bg-green-800 text-green-600 dark:text-green-400 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               title="Edit Request"
             >
-              <i class="pi pi-pencil text-sm"></i>
+              <i v-if="!isEditLoading(request.id)" class="pi pi-pencil text-sm"></i>
+              <i v-else class="pi pi-spin pi-spinner text-sm animate-spin"></i>
             </button>
             <button
               v-if="canDelete(getNormalizedStatus(request))"
@@ -385,6 +389,9 @@ const emit = defineEmits([
 
 // State for selected items and filter dropdown
 // No bulk selection state
+
+// State for tracking loading per request
+const loadingRequests = ref(new Set());
 
 // Limit displayed items to 40 to avoid vertical scrolling in the table
 const displayData = computed(() => {
@@ -550,7 +557,13 @@ const handleView = (request) => {
 };
 
 const handleEdit = (request) => {
+  // Add request to loading set
+  loadingRequests.value.add(request.id);
   emit("edit", request);
+};
+
+const isEditLoading = (requestId) => {
+  return loadingRequests.value.has(requestId);
 };
 
 const handleDelete = (request) => {
