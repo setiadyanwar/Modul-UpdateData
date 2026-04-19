@@ -372,8 +372,32 @@ const enrichEducationDataWithLabels = async (educationData) => {
 };
 
 // Document preview functions
-  const openDocumentPreview = (document) => {
-    selectedDocument.value = document;
+  const openDocumentPreview = (attachment) => {
+    // ✅ NEW: Extract URL from attachment object (support multiple field names)
+    // Check for direct URL fields first (from API response like /employee/basic-information)
+    const documentUrl = attachment?.url || 
+                       attachment?.preview_url || 
+                       attachment?.file_path || 
+                       attachment?.ktp_doc || 
+                       attachment?.professional_photo || 
+                       null;
+    
+    // Ensure we have at least an ID for fallback API calls
+    const documentId = attachment?.item_id || 
+                      attachment?.id || 
+                      null;
+    
+    console.log('[ViewDataModal] Opening document preview:', {
+      documentUrl,
+      documentId,
+      attachmentKeys: Object.keys(attachment || {})
+    });
+    
+    selectedDocument.value = {
+      ...attachment,
+      url: documentUrl,
+      id: documentId
+    };
     isDocumentPreviewOpen.value = true;
   };
 

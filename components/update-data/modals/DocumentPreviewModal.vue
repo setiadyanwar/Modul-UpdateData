@@ -161,9 +161,30 @@ const isDownloading = ref(false);
 const previewOffset = 56; // adjust if Microsoft changes header height
 
 // Watch for modal open to load document content
-watch(() => props.isOpen, async (newValue) => {
-  if (newValue && props.itemId) {
-    await loadDocumentContent();
+watch(() => [props.isOpen, props.documentUrl, props.itemId], async ([newIsOpen, newDocUrl, newItemId]) => {
+  if (newIsOpen) {
+    console.log('[DocumentPreviewModal] Opening with:', {
+      documentUrl: newDocUrl,
+      itemId: newItemId,
+      parentId: props.parentId,
+      documentName: props.documentName
+    });
+    // ✅ NEW: If documentUrl is provided, use it directly without API call
+    if (newDocUrl && (newDocUrl.includes('http://') || newDocUrl.includes('https://'))) {
+      console.log('[DocumentPreviewModal] Using direct URL:', newDocUrl);
+      documentContent.value = newDocUrl;
+      error.value = '';
+      loading.value = false;
+      return;
+    }
+    // Otherwise, try to load from API using itemId
+    if (newItemId) {
+      console.log('[DocumentPreviewModal] Loading from API with itemId:', newItemId);
+      await loadDocumentContent();
+    } else {
+      console.warn('[DocumentPreviewModal] No documentUrl or itemId provided');
+      error.value = 'No document URL or ID provided';
+    }
   } else {
     // Reset state when closed
     documentContent.value = '';
@@ -184,6 +205,15 @@ const loadDocumentContent = async () => {
   error.value = '';
 
   try {
+    // ✅ NEW: Check if itemId is a direct URL first (from API response like /employee/basic-information)
+    const itemIdStr = props.itemId.toString();
+    if (itemIdStr.includes('http://') || itemIdStr.includes('https://')) {
+      // Direct URL - no API call needed
+      documentContent.value = itemIdStr;
+      loading.value = false;
+      return;
+    }
+
     // Parse itemId - might contain comma (parent_id,item_id format)
     let actualParentId = props.parentId;
     let actualItemId = props.itemId;

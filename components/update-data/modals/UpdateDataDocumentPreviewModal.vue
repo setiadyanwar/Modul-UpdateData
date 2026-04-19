@@ -115,7 +115,7 @@
 </template>
 
 <script setup>
-import { ref, watch, computed } from 'vue';
+import { ref, watch, computed, nextTick } from 'vue';
 import { useApi } from '~/composables/useApi';
 import { useToast } from '~/composables/useToast';
 
@@ -190,65 +190,87 @@ const handleIframeError = () => {
 };
 
 const fetchPreviewLink = async () => {
+  console.log('[UpdateDataDocumentPreviewModal] Fetching preview:', {
+    parentId: props.parentId,
+    itemId: props.itemId,
+    isHttpUrl: props.itemId?.toString().includes('http')
+  });
   
-  if (!props.parentId || !props.itemId) {
+  // ✅ NEW: Check if itemId is a direct URL first (from API response)
+  if (props.itemId && typeof props.itemId === 'string' && props.itemId.includes('http')) {
+    // Direct URL - no API call needed
+    console.log('[UpdateDataDocumentPreviewModal] Using direct URL:', props.itemId);
+    previewLink.value = props.itemId;
+    isLoading.value = false;
     return;
   }
-  
+
+  // Otherwise, need parentId and itemId for API call
+  if (!props.parentId || !props.itemId) {
+    console.warn('[UpdateDataDocumentPreviewModal] Missing parentId or itemId');
+    return;
+  }
   
   isLoading.value = true;
   error.value = '';
   previewLink.value = '';
   
   try {
-    
     if (!api || !api.get) {
       throw new Error('API object or api.get method not available');
     }
     
-    // Coba endpoint baru dulu
+    // Try parent-based endpoint first
     const response = await api.get(`/employee/attachments/parent/${props.parentId}/item/${props.itemId}/preview`);
     
-    // Check if preview_link is directly in response.data (new endpoint) or in response.data.data (old endpoint)
-    if (response.data.preview_link) {
-      // New endpoint format: response.data.preview_link
-      previewLink.value = response.data.preview_link;
-    } else if (response.data.data?.preview_link) {
-      // Old endpoint format: response.data.data.preview_link
-      previewLink.value = response.data.data.preview_link;
+    // Handle multiple response structures for backend compatibility
+    const previewUrl = response.data?.preview_link || 
+                      response.data?.data?.preview_link || 
+                      response.result?.preview_link || 
+                      null;
+    
+    console.log('[UpdateDataDocumentPreviewModal] API response:', {
+      status: response.status,
+      previewUrl
+    });
+    
+    if (previewUrl) {
+      previewLink.value = previewUrl;
     } else {
       error.value = 'Preview link not available';
     }
   } catch (err) {
-    // console.error('Preview fetch error:', {
-    //   message: err.message,
-    //   status: err.response?.status,
-    //   statusText: err.response?.statusText,
-    //   data: err.response?.data
-    // });
-    
-    // Jika endpoint baru gagal, coba endpoint lama sebagai fallback
+    console.warn('[UpdateDataDocumentPreviewModal] Parent endpoint failed:', err.message);
+    // Try item-id-only endpoint as fallback
     try {
-      
       if (!api || !api.get) {
         throw new Error('API object or api.get method not available for fallback');
       }
       
       const fallbackResponse = await api.get(`/employee/attachments/${props.itemId}/preview`);
       
-      if (fallbackResponse.data.status && fallbackResponse.data.data?.preview_link) {
-        previewLink.value = fallbackResponse.data.data.preview_link;
+      const previewUrl = fallbackResponse.data?.preview_link || 
+                        fallbackResponse.data?.data?.preview_link || 
+                        fallbackResponse.result?.preview_link || 
+                        null;
+      
+      console.log('[UpdateDataDocumentPreviewModal] Fallback API response:', {
+        status: fallbackResponse.status,
+        previewUrl
+      });
+      
+      if (previewUrl) {
+        previewLink.value = previewUrl;
       } else {
         error.value = 'Preview link not available from both endpoints';
       }
     } catch (fallbackErr) {
-      // console.error('Fallback preview fetch error:', {
-      //   message: fallbackErr.message,
-      //   status: fallbackErr.response?.status,
-      //   statusText: fallbackErr.response?.statusText,
-      //   data: fallbackErr.response?.data
-      // });
-      error.value = 'Failed to load preview from both endpoints';
+      console.error('[DocumentPreview] Failed to load preview:', {
+        parentId: props.parentId,
+        itemId: props.itemId,
+        error: fallbackErr.message
+      });
+      error.value = 'Failed to load document preview';
     }
   } finally {
     isLoading.value = false;
